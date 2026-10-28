@@ -37,7 +37,7 @@ public sealed class Runtime
         if(!File.Exists(secret))throw new Exception("Run Configure-Database.cmd first. No database password should be placed in appsettings.json.");
         if(!OperatingSystem.IsWindows())throw new Exception("Set TD_PG_CONNECTION for non-Windows test host.");
         // PowerShell receives the file path as an argument, not interpolated command text.
-        var r=await Run("powershell.exe",["-NoProfile","-File",Path.Combine(Root,"scripts","Read-DatabaseSecret.ps1"),"-SecretPath",secret],"",Root,false,TimeSpan.FromSeconds(20),false);
+        var r=await Run("powershell.exe",["-NoProfile","-ExecutionPolicy","Bypass","-File",Path.Combine(Root,"scripts","Read-DatabaseSecret.ps1"),"-SecretPath",secret],"",Root,false,TimeSpan.FromSeconds(20),false);
         if(r.Code!=0)throw new Exception("Could not decrypt database configuration for this Windows account.");
         Environment.SetEnvironmentVariable("TD_PG_CONNECTION",r.Output.Trim());
     }
