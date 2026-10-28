@@ -1,0 +1,415 @@
+erDiagram
+    knowledge_source_groups {
+        uuid id PK
+        text group_key
+        text evidence_role
+        text drive_folder_id
+        text folder_url
+        text sync_cursor
+        timestamptz last_successful_scan_at
+        jsonb metadata
+    }
+    knowledge_storage_objects {
+        uuid id PK
+        uuid group_id
+        text object_key
+        text object_kind
+        text drive_file_id
+        uuid parent_object_id
+        text member_path
+        text title
+        text mime_type
+        text original_url
+        text availability
+        timestamptz last_seen_at
+        jsonb metadata
+        text detected_mime_type
+        jsonb format_details
+    }
+    knowledge_object_versions {
+        uuid id PK
+        uuid object_id
+        text version_key
+        text provider_revision
+        timestamptz provider_modified_at
+        bigint byte_size
+        text sha256
+        uuid parent_archive_version_id
+        integer archive_entry_index
+        text crc32
+        timestamptz registered_at
+        text storage_uri
+        text read_status
+        jsonb error_details
+    }
+    knowledge_sources {
+        uuid id PK
+        text source_system
+        text external_key
+        text source_type
+        text title
+        text product
+        text module
+        text source_url
+        timestamptz created_at
+        text external_namespace
+    }
+    knowledge_source_versions {
+        uuid id PK
+        uuid source_id
+        text revision_key
+        text evidence_role
+        text storage_uri
+        text object_version_id
+        text mime_type
+        bigint byte_size
+        text content_sha256
+        text external_revision
+        timestamptz source_modified_at
+        timestamptz ingested_at
+        text lifecycle_status
+        jsonb metadata
+        jsonb applicability
+        uuid group_id
+    }
+    knowledge_version_representations {
+        uuid source_version_id PK
+        uuid object_version_id PK
+        text representation_role
+        jsonb metadata
+    }
+    knowledge_intake_batches {
+        uuid id PK
+        text batch_key
+        uuid manifest_object_version_id
+        jsonb declared_scope
+        timestamptz discovered_at
+        text scan_status
+        text manifest_reconciliation
+        jsonb notes
+    }
+    knowledge_intake_entries {
+        uuid id PK
+        uuid batch_id
+        uuid group_id
+        text entry_key
+        text container_name
+        text member_path
+        bigint expected_bytes
+        text expected_sha256
+        uuid observed_object_version_id
+        text presence_status
+        text review_status
+        text reason
+        jsonb details
+    }
+    knowledge_ingestion_jobs {
+        uuid id PK
+        uuid object_version_id
+        text operation
+        text processor_version
+        text config_sha256
+        integer attempt
+        text status
+        timestamptz started_at
+        timestamptz finished_at
+        jsonb error_details
+    }
+    knowledge_extractions {
+        uuid id PK
+        uuid source_version_id
+        text method
+        text processor_version
+        text status
+        jsonb warnings
+        timestamptz created_at
+        text config_sha256
+        boolean is_active
+        uuid input_artifact_id
+    }
+    knowledge_artifacts {
+        uuid id PK
+        uuid source_version_id
+        uuid extraction_id
+        uuid origin_object_version_id
+        uuid parent_artifact_id
+        text artifact_key
+        text artifact_kind
+        text mime_type
+        text storage_uri
+        jsonb inline_data
+        text sha256
+        text status
+        jsonb locator
+        jsonb metadata
+        timestamptz created_at
+    }
+    knowledge_content_units {
+        uuid id PK
+        uuid extraction_id
+        uuid parent_unit_id
+        text unit_key
+        text unit_type
+        text heading
+        text content_text
+        text representation_kind
+        jsonb locator
+        text content_sha256
+        jsonb metadata
+        tsvector search_text
+        text artifact_uri
+        numeric start_seconds
+        numeric end_seconds
+        integer page_number
+        text sheet_name
+        text cell_range
+        uuid artifact_id
+        text language
+        text content_status
+    }
+    knowledge_unit_links {
+        uuid from_unit_id PK
+        uuid to_unit_id PK
+        text relationship PK
+        jsonb details
+    }
+    knowledge_source_links {
+        uuid id PK
+        uuid from_version_id
+        uuid to_source_id
+        text target_uri
+        text relationship
+        text resolution_status
+        uuid to_version_id
+    }
+    knowledge_media_tracks {
+        uuid id PK
+        uuid source_version_id
+        integer stream_index
+        text track_type
+        text codec
+        numeric duration_seconds
+        integer width
+        integer height
+        integer sample_rate
+        integer channels
+        bigint frame_rate_numerator
+        bigint frame_rate_denominator
+        text language
+        text time_base
+        jsonb metadata
+    }
+    knowledge_api_operations {
+        uuid id PK
+        uuid source_version_id
+        text operation_key
+        text method_raw
+        text path_raw
+        text request_url_raw
+        text audience_label
+        text environment_label
+        text api_version_label
+        jsonb source_locator
+        jsonb raw_definition
+        jsonb metadata
+    }
+    knowledge_api_examples {
+        uuid id PK
+        uuid operation_id
+        text example_key
+        text example_kind
+        text context
+        text language
+        text status_label_raw
+        integer http_status
+        text content_type
+        text body_text
+        jsonb structured_body
+        text payload_status
+        uuid source_object_version_id
+        uuid content_unit_id
+        jsonb source_locator
+        jsonb metadata
+    }
+    knowledge_api_parameters {
+        uuid id PK
+        uuid operation_id
+        uuid response_example_id
+        uuid parent_parameter_id
+        text parameter_key
+        text location
+        text name
+        text data_type_raw
+        boolean required_claim
+        text description
+        jsonb example_value
+        integer ordinal
+        jsonb source_locator
+        jsonb raw_definition
+    }
+    analysis_runs {
+        uuid id PK
+        text run_key
+        text module
+        text topic
+        text question
+        text contract_version
+        text agent_a_version
+        text agent_b_version
+        text status
+        timestamptz created_at
+        timestamptz completed_at
+    }
+    analysis_stages {
+        uuid id PK
+        uuid run_id
+        text stage
+        integer attempt
+        text status
+        uuid profile_id
+        timestamptz started_at
+        timestamptz completed_at
+        jsonb details
+    }
+    analysis_run_sources {
+        uuid run_id PK
+        uuid source_version_id PK
+        text coverage_status
+        jsonb coverage_details
+        jsonb search_terms
+        jsonb reviewed_scope
+    }
+    analysis_agent_outputs {
+        uuid id PK
+        uuid run_id
+        text agent_role
+        jsonb output_json
+        boolean schema_validated
+        jsonb validation_details
+        timestamptz created_at
+        text contract_schema_sha256
+        text validation_status
+        jsonb model_details
+        text prompt_sha256
+    }
+    analysis_records {
+        uuid id PK
+        uuid run_id
+        uuid agent_output_id
+        text record_key
+        text record_type
+        uuid subject_version_id
+        text topic
+        text statement
+        text evidence_level
+        text currency_status
+        text quality_status
+        text finding_type
+        text review_status
+        uuid supersedes_record_id
+        jsonb details
+        timestamptz created_at
+    }
+    analysis_record_evidence {
+        uuid record_id PK
+        uuid content_unit_id PK
+        text relationship PK
+        jsonb locator
+        text excerpt
+    }
+    analysis_record_links {
+        uuid from_record_id PK
+        uuid to_record_id PK
+        text relationship PK
+    }
+    analysis_human_reviews {
+        uuid id PK
+        uuid record_id
+        text reviewer_identity
+        timestamptz reviewed_at
+        text decision
+        text rationale
+        text evidence_uri
+        timestamptz created_at
+    }
+    retrieval_embedding_profiles {
+        uuid id PK
+        text profile_key
+        text provider
+        text model
+        text model_revision
+        integer dimensions
+        text distance_metric
+        text preprocessing_version
+    }
+    retrieval_content_embeddings {
+        uuid content_unit_id PK
+        uuid profile_id PK
+        text input_sha256
+        vector embedding
+        timestamptz created_at
+        text embedded_text
+    }
+    retrieval_analysis_embeddings {
+        uuid record_id PK
+        uuid profile_id PK
+        text input_sha256
+        vector embedding
+        timestamptz created_at
+        text embedded_text
+    }
+    knowledge_sources ||--o{ knowledge_source_versions : "source_id"
+    knowledge_source_groups ||--o{ knowledge_source_versions : "group_id"
+    knowledge_source_groups ||--o{ knowledge_source_versions : "group_id,evidence_role"
+    knowledge_source_versions ||--o{ knowledge_extractions : "source_version_id"
+    knowledge_artifacts ||--o{ knowledge_extractions : "input_artifact_id,source_version_id"
+    knowledge_extractions ||--o{ knowledge_content_units : "extraction_id"
+    knowledge_content_units ||--o{ knowledge_content_units : "parent_unit_id,extraction_id"
+    knowledge_artifacts ||--o{ knowledge_content_units : "artifact_id"
+    knowledge_source_versions ||--o{ knowledge_source_links : "from_version_id"
+    knowledge_sources ||--o{ knowledge_source_links : "to_source_id"
+    knowledge_source_versions ||--o{ knowledge_source_links : "to_version_id,to_source_id"
+    analysis_runs ||--o{ analysis_run_sources : "run_id"
+    knowledge_source_versions ||--o{ analysis_run_sources : "source_version_id"
+    analysis_runs ||--o{ analysis_agent_outputs : "run_id"
+    analysis_runs ||--o{ analysis_records : "run_id"
+    knowledge_source_versions ||--o{ analysis_records : "subject_version_id"
+    analysis_records ||--o{ analysis_records : "supersedes_record_id"
+    analysis_agent_outputs ||--o{ analysis_records : "agent_output_id,run_id"
+    analysis_records ||--o{ analysis_record_evidence : "record_id"
+    knowledge_content_units ||--o{ analysis_record_evidence : "content_unit_id"
+    knowledge_content_units ||--o{ retrieval_content_embeddings : "content_unit_id"
+    retrieval_embedding_profiles ||--o{ retrieval_content_embeddings : "profile_id"
+    analysis_records ||--o{ retrieval_analysis_embeddings : "record_id"
+    retrieval_embedding_profiles ||--o{ retrieval_analysis_embeddings : "profile_id"
+    knowledge_source_groups ||--o{ knowledge_storage_objects : "group_id"
+    knowledge_storage_objects ||--o{ knowledge_storage_objects : "parent_object_id"
+    knowledge_storage_objects ||--o{ knowledge_storage_objects : "parent_object_id,group_id"
+    knowledge_storage_objects ||--o{ knowledge_object_versions : "object_id"
+    knowledge_object_versions ||--o{ knowledge_object_versions : "parent_archive_version_id"
+    knowledge_source_versions ||--o{ knowledge_version_representations : "source_version_id"
+    knowledge_object_versions ||--o{ knowledge_version_representations : "object_version_id"
+    knowledge_object_versions ||--o{ knowledge_ingestion_jobs : "object_version_id"
+    knowledge_content_units ||--o{ knowledge_unit_links : "from_unit_id"
+    knowledge_content_units ||--o{ knowledge_unit_links : "to_unit_id"
+    analysis_runs ||--o{ analysis_stages : "run_id"
+    retrieval_embedding_profiles ||--o{ analysis_stages : "profile_id"
+    analysis_records ||--o{ analysis_record_links : "from_record_id"
+    analysis_records ||--o{ analysis_record_links : "to_record_id"
+    analysis_records ||--o{ analysis_human_reviews : "record_id"
+    knowledge_object_versions ||--o{ knowledge_intake_batches : "manifest_object_version_id"
+    knowledge_intake_batches ||--o{ knowledge_intake_entries : "batch_id"
+    knowledge_source_groups ||--o{ knowledge_intake_entries : "group_id"
+    knowledge_object_versions ||--o{ knowledge_intake_entries : "observed_object_version_id"
+    knowledge_source_versions ||--o{ knowledge_artifacts : "source_version_id"
+    knowledge_object_versions ||--o{ knowledge_artifacts : "origin_object_version_id"
+    knowledge_extractions ||--o{ knowledge_artifacts : "extraction_id,source_version_id"
+    knowledge_artifacts ||--o{ knowledge_artifacts : "parent_artifact_id,source_version_id"
+    knowledge_source_versions ||--o{ knowledge_media_tracks : "source_version_id"
+    knowledge_source_versions ||--o{ knowledge_api_operations : "source_version_id"
+    knowledge_api_operations ||--o{ knowledge_api_examples : "operation_id"
+    knowledge_object_versions ||--o{ knowledge_api_examples : "source_object_version_id"
+    knowledge_content_units ||--o{ knowledge_api_examples : "content_unit_id"
+    knowledge_api_operations ||--o{ knowledge_api_parameters : "operation_id"
+    knowledge_api_parameters ||--o{ knowledge_api_parameters : "parent_parameter_id,operation_id,location"
+    knowledge_api_examples ||--o{ knowledge_api_parameters : "response_example_id,operation_id"

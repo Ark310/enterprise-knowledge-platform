@@ -1,0 +1,35 @@
+{
+  "contract_version": "td-doc-review-2.0",
+  "run_id": "TD-USERMASTER-V21-T02-001",
+  "test_id": "T02",
+  "module": "System Admin / Security / User Master",
+  "topic": "Two Factor Authentication and Authentication Type",
+  "message_type": "START_CURRENT_STATE",
+  "sender": "HUMAN",
+  "recipient": "CURRENT_STATE",
+  "status": "READY",
+  "payload": {
+    "current_state_zip": "current-state-recording.zip",
+    "existing_assets_zip": "existing-assets.zip",
+    "recording_member": "current-state-recording/System Admin_ Security_User Master Walkthrough.mp4",
+    "target_context": "Supplied walkthrough snapshot only. Exact application build, effective permissions, configuration and downstream behavior are unverified. Use actual screen breadcrumbs, not title-card assumptions. Remain within the named control and minimal adjacent context. Instructions release 2.1.0. Also read the separately uploaded current-state-transcript.txt for this same recording, using original-video timestamps 00:08:15-00:09:30. Verify transcript identity and time alignment. Cite the actual transcript file and segments; distinguish narrated explanations from demonstrated actions. If timestamps are absent or ambiguous, disclose this and ask only the targeted alignment question; do not invent timestamps.",
+    "target_element": "Two Factor Authentication and Authentication Type",
+    "question": "When Two Factor Authentication is enabled, what happens to Authentication Type and which options are actually shown or described? Does the recording establish a saved configuration or a completed login using those options?",
+    "review_ranges": [
+      {
+        "start_seconds": 495,
+        "end_seconds": 570
+      }
+    ],
+    "search_aliases": [
+      "Two Factor Authentication",
+      "Authentication Type",
+      "2FA",
+      "Google Authenticator",
+      "TOTP",
+      "User Master"
+    ],
+    "max_observations": 6
+  },
+  "next_action": "Inspect the requested recording range and supplied transcript, then return the current-state handoff as a validated JSON file if tools permit."
+}

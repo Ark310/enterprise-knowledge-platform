@@ -1,0 +1,34 @@
+{
+  "contract_version": "td-doc-review-2.0",
+  "run_id": "TD-USERMASTER-V21-T04-001",
+  "test_id": "T04",
+  "module": "System Admin / Security / User Master",
+  "topic": "Time Zone",
+  "message_type": "START_CURRENT_STATE",
+  "sender": "HUMAN",
+  "recipient": "CURRENT_STATE",
+  "status": "READY",
+  "payload": {
+    "current_state_zip": "current-state-recording.zip",
+    "existing_assets_zip": "existing-assets.zip",
+    "recording_member": "current-state-recording/System Admin_ Security_User Master Walkthrough.mp4",
+    "target_context": "Instructions release 2.1.0. Supplied walkthrough snapshot only; exact build, role and configuration unknown. Use actual screen breadcrumbs rather than title-card assumptions. Read the supplied transcript INSIDE current-state-recording.zip at current-state-recording/System Admin_ Security_User Master Walkthrough_Transcript.docx. No separate current-state-transcript.txt is required. Verify the actual archive member path and recording identity. Read only the relevant passage for Time Zone; cite actual paragraph/segment and timestamp when available. Coarse speaker-block times are not exact action times: disclose uncertain alignment without inventing times. If transcript labeling disagrees with the screen, flag it and ask only if it materially prevents interpretation. Remain within this control and minimal adjacent context.",
+    "target_element": "Time Zone",
+    "question": "Explain only the Time Zone control in Allowed Working Days/Time: what location, selected value and option format are visible, and what does the supplied transcript say its purpose is? Separate narrated purpose from demonstrated saving, persistence or enforcement.",
+    "review_ranges": [
+      {
+        "start_seconds": 90,
+        "end_seconds": 165
+      }
+    ],
+    "search_aliases": [
+      "Time Zone",
+      "timezone",
+      "Allowed Working Days",
+      "Working Time",
+      "User Master"
+    ],
+    "max_observations": 6
+  },
+  "next_action": "Read the scoped video and embedded transcript, then return CURRENT_STATE_HANDOFF as a complete JSON download if tools permit."
+}

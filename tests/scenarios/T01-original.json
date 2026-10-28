@@ -1,0 +1,35 @@
+{
+  "contract_version": "td-doc-review-2.0",
+  "run_id": "TD-USERMASTER-V2-T01-001",
+  "test_id": "T01",
+  "module": "System Admin / Security / User Master",
+  "topic": "Time Zone",
+  "message_type": "START_CURRENT_STATE",
+  "sender": "HUMAN",
+  "recipient": "CURRENT_STATE",
+  "status": "READY",
+  "payload": {
+    "current_state_zip": "current-state-recording.zip",
+    "existing_assets_zip": "existing-assets.zip",
+    "recording_member": "current-state-recording/System Admin_ Security_User Master Walkthrough.mp4",
+    "target_context": "Supplied walkthrough snapshot only. Exact application build, effective permissions, configuration and downstream behavior are unverified. Use actual screen breadcrumbs, not title-card assumptions. Remain within the named control and minimal adjacent context.",
+    "target_element": "Time Zone",
+    "question": "Explain only the Time Zone setting in Allowed Working Days/Time: what options or behavior are actually shown or stated, and what remains unverified about applying or enforcing it?",
+    "review_ranges": [
+      {
+        "start_seconds": 90,
+        "end_seconds": 165
+      }
+    ],
+    "search_aliases": [
+      "Time Zone",
+      "Allowed Working Days",
+      "Working Hours",
+      "Working Time",
+      "User Master",
+      "User Detail"
+    ],
+    "max_observations": 6
+  },
+  "next_action": ""
+}

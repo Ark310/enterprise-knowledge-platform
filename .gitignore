@@ -1,0 +1,9 @@
+bin/
+obj/
+.venv/
+runtime/
+config/*.dpapi
+*.user
+*.suo
+.vs/
+tools/ffmpeg/

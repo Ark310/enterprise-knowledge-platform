@@ -1,0 +1,19 @@
+READY 55439
+test_ingest_retry_search_api_and_local_constraints (__main__.DatabaseTests.test_ingest_retry_search_api_and_local_constraints) ... [1/4] current-state/demo.srt
+[2/4] existing-assets/Confluence Articles/demo.md
+[3/4] existing-assets/REST API/page.json
+[4/4] existing-assets/Sharepoint/example.snag
+[1/4] current-state/demo.srt
+[2/4] existing-assets/Confluence Articles/demo.md
+[3/4] existing-assets/REST API/page.json
+[4/4] existing-assets/Sharepoint/example.snag
+[1/4] current-state/demo.srt
+[2/4] existing-assets/Confluence Articles/demo.md
+[3/4] existing-assets/REST API/page.json
+[4/4] existing-assets/Sharepoint/example.snag
+ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.928s
+
+OK

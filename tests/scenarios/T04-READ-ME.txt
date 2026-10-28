@@ -1,0 +1,9 @@
+T04 — Time Zone / instructions 2.1.0 / contract td-doc-review-2.0
+Run: TD-USERMASTER-V21-T04-001
+
+1. Keep the installed v2.1 instructions; no agent edit needed.
+2. Fresh Agent A conversation: upload YOUR UPDATED current-state-recording.zip containing both MP4 and Word transcript. Paste START.json in full.
+3. Fresh Agent B conversation: upload A's complete handoff JSON, that same updated current-state-recording.zip and existing-assets.zip. Process the handoff under the contract.
+4. Bring both outputs back for evaluation. Keep REVIEWER-ONLY.txt out of both agents.
+
+This case pack contains a launch and evaluation guidance, not copies of your source ZIPs. Use the updated ZIP shown in your screenshot, not an older recording-only copy. If the transcript member name differs, edit target_context to its actual path before running. No need to convert Word to TXT or upload the transcript twice outside the ZIP.

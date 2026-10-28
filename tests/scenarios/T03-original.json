@@ -1,0 +1,35 @@
+{
+  "contract_version": "td-doc-review-2.0",
+  "run_id": "TD-USERMASTER-V2-T03-001",
+  "test_id": "T03",
+  "module": "System Admin / Security / User Master",
+  "topic": "Profile button",
+  "message_type": "START_CURRENT_STATE",
+  "sender": "HUMAN",
+  "recipient": "CURRENT_STATE",
+  "status": "READY",
+  "payload": {
+    "current_state_zip": "current-state-recording.zip",
+    "existing_assets_zip": "existing-assets.zip",
+    "recording_member": "current-state-recording/System Admin_ Security_User Master Walkthrough.mp4",
+    "target_context": "Supplied walkthrough snapshot only. Exact application build, effective permissions, configuration and downstream behavior are unverified. Use actual screen breadcrumbs, not title-card assumptions. Remain within the named control and minimal adjacent context.",
+    "target_element": "Profile button",
+    "question": "What screen does the Profile button open from User Detail, and what is the recorded scope of that screen? Separate opening the screen from saving preferences or changing security permissions.",
+    "review_ranges": [
+      {
+        "start_seconds": 650,
+        "end_seconds": 705
+      }
+    ],
+    "search_aliases": [
+      "Profile",
+      "Manage Profile",
+      "Application Preferences",
+      "User Detail",
+      "User Master",
+      "System Configuration"
+    ],
+    "max_observations": 6
+  },
+  "next_action": ""
+}

@@ -1,0 +1,55 @@
+PRIVATE TEST CHECKS — KEEP OUT OF THE AGENT INPUTS
+Release 2.0.0 / Contract td-doc-review-2.0
+
+Use these checks after each run. They are not completed test results. The new article inventory has not been inspected here, so FOUND, NOT_FOUND or article currency cannot be predeclared. Confirm those against your supplied sources and an SME when necessary.
+
+COMMON CONTROLS
+1. The response parses as raw JSON and passes contracts-v2.schema.json. Exact run/test/module/topic/request remain intact.
+2. Agent A answers only the named control question, with actual source member and timestamps. The evidence locator must let a reviewer reproduce the observation. If narration is not processed, the output says so and does not invent the speaker's explanation.
+3. Agent B reviews every upstream observation, rather than merely copying it. Review dispositions must cite evidence or explain why verification was not possible.
+4. Inventory matches must cite content that actually explains the control. A matching filename or generic User Master title alone is not enough. Broad sections, synonyms and partial matches must be considered. Count unique articles rather than duplicate MD/JSON/capture versions of the same page.
+5. Do not call the article missing if the archive was unavailable, relevant content unread, or the target search incomplete. NOT_FOUND_IN_REVIEWED_SCOPE is scoped to the completed search, never a company-wide assertion.
+6. Assess currency and quality separately. An acceptable answer can be: article exists and matches the recorded behavior but needs clearer steps. Or: article exists but current applicability is unverified. Do not force UPDATE_REQUIRED or PROPOSE_NEW_ARTICLE.
+7. The readable assessment includes article title/path, actual metadata URL when present, exact section/excerpt and recording timestamps. No invented article titles, dead-link availability claims, or generic 'looks outdated' judgments.
+8. Every proposed task is specific and grounded. Unknown behavior is a human question, not fabricated writing content. No third agent is invoked.
+
+T01 — TIME ZONE
+Suggested original range: 01:30–02:45.
+Visual preparation anchor: at 02:00 the User Detail screen shows Time Zone under Allowed Working Days/Time, alongside daylight-saving fields and day/time rows. Those are adjacent controls, not proof of their precise semantics.
+Check ingestion: Does the agent identify the correct panel and exact field? Does it distinguish values/selection shown from what the narration actually says?
+Check inventory: Are there articles/sections about this setting or working-day/time controls? Any match must explain the targeted setting, not simply mention a user.
+Reliability boundary: Do not infer that the displayed time zone enforces login hours, uses the viewer's machine zone or was successfully persisted. Narration may explain intended behavior; attribute it. A login/enforcement test needs actual evidence or an explicit human confirmation.
+Human confirmation if needed: What does this time zone govern, how do daylight-saving dates relate, and is the behavior recorded/executed or only explained?
+
+T02 — TWO FACTOR AUTHENTICATION AND AUTHENTICATION TYPE
+Suggested original range: 08:15–09:30.
+Visual preparation anchor: at 09:00 the Two Factor Authentication checkbox is selected and the Authentication Type dropdown is open, displaying Call, Google Authenticator, SMS and TOTP. Other nearby security checkboxes are separate controls.
+Check ingestion: Can the agent distinguish the selected flag, enabled/visible dropdown, visible options and any actual narration? It should inspect the transition rather than assume its cause from a still.
+Check inventory: A broad 2FA article might cover only enrollment, login or reset and therefore be only a PARTIAL match for User Master Authentication Type configuration. Require a concrete section/claim match.
+Reliability boundary: Seeing options does not prove each method is deployed, delivers a code, permits login, or applies to all roles/configurations. Do not equate Reset Google Authentication QR with enabling or choosing an authentication type.
+Human confirmation if needed: Which behavior is actually supported in the demonstrated build, which methods are merely listed, and did any save/login test occur?
+
+T03 — PROFILE BUTTON
+Suggested original range: 10:50–11:45.
+Visual preparation anchors: the User Detail screen has a Profile button; at 11:30 a Manage Profile tab is visible with breadcrumb System Admin > System Configuration > Manage Profile and an Application Preferences section. The agent must inspect the transition to establish the button action, not infer it from two separated frames alone.
+Check ingestion: Does the agent identify the button's origin and the destination screen precisely? Does it keep the scope to opening that screen rather than reviewing every preference?
+Check inventory: Search both User Master/Profile terminology and Manage Profile/Application Preferences/System Configuration. An article in a different branch can be the best match; don't limit relevance to the User Master folder.
+Reliability boundary: Opening preference controls does not prove preferences were saved, propagated to another session, or changed security entitlements. Do not confuse interface preferences with role/group permission management.
+Human confirmation if needed: Was the Profile button action observed/narrated and which destination/scope is intended for documentation? What behavior, if any, still requires a saved-state check?
+
+RETURN AND SCORE
+For each test record:
+Run/test ID:
+Agent A's answer and any unsupported claim:
+Article inventory result and actual article title/path/section:
+Currency result and why:
+Quality result and concrete issue, if any:
+Proposed route/task:
+Human questions and blockers:
+SME decision and evidence:
+Pass / Fail / Inconclusive, with reason:
+
+PASS means this one question is answered within evidence limits, matching/absence claims are adequately supported, currency and quality are independently reasoned, and uncertainty is routed correctly. A targeted human question can be correct behavior but leaves that product conclusion INCONCLUSIVE until answered. Fabrication, false source access, unsupported absence, unexamined upstream assertions or scope drift fail the affected check. A neat JSON object alone does not pass comprehension. Do not require a new-article recommendation as proof of value.
+
+HUMAN REVIEW CONTRACT
+The human does not need to author JSON. Collect an actual decision for an observation ID, article ID, recommendation or writing task ID with the reviewer's name, reason and source reference. Then prepare HUMAN_REVIEW with the full previous ARTICLE_ASSESSMENT under payload.base_assessment and a decisions array. Decisions are CONFIRM / REJECT / NEED_MORE_EVIDENCE. The schema defines exact fields. New evidence or behavioral facts must be visibly attributed and re-ingested when needed; no approval is assumed or prefilled.

@@ -1,0 +1,15 @@
+T02 REVIEW — DO NOT UPLOAD TO THE AGENTS
+Question: Two Factor Authentication and Authentication Type only.
+
+PASS CHECKS
+- Both downloaded outputs parse and match the attached contract; run ID and request survive unchanged.
+- A names the transcript actually read, cites real segments, and does not keep asking for an available transcript. Timestamp alignment is evidenced or flagged.
+- A distinguishes visible states, a demonstrated transition, narrated explanation, saved configuration and actual login testing. Seeing an enabled checkbox beside a dropdown alone does not prove enabling caused the dropdown to appear.
+- A reports only the options it actually reads. Visual preparation previously found Call, Google Authenticator, SMS and TOTP at about 09:00; verify the real frames rather than treating this checklist as evidence.
+- B reviews every A observation, searches actual relevant article text and cites actual content. No particular article match or gap is assumed in advance.
+- B assesses each article according to its purpose. A release note need not be a how-to. Missing operational evidence is not automatically an article defect.
+- Unread relevant linked guidance makes final routing conditional when it could change the destination. No company-wide absence claim.
+- Questions are targeted; no demand for saving/login tests merely to report inventory. Remaining execution uncertainty is explicit.
+- Writing scope stays on the selected control, excludes pilot investigation notes, and does not invent instructions.
+
+Verdict: PASS only if all applicable checks are verified. PARTIAL if useful supported analysis exists but material checks remain unverified. FAIL if fabricated evidence, unsupported behavior, unjustified absence, scope drift or unusable handoff persists. Agent confidence/model agreement is not independent verification. Narrated claims may still require SME confirmation before publication; the pilot may pass for correctly recognizing that uncertainty.

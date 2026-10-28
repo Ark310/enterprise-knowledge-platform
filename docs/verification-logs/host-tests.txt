@@ -1,0 +1,7 @@
+PASS safe process invocation
+PASS database secret removed from Codex environment
+PASS user text travels through stdin without shell interpolation
+PASS shell tools explicitly disabled
+PASS ambient Codex configuration omitted
+PASS Codex final JSON consumed
+Host tests passed: 6

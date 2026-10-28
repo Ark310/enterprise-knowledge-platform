@@ -1,0 +1,6667 @@
+{
+  "source_sql": "/workspace/scratch/aed6c87a9d4c/deliverables/TD-PostgreSQL-v0.3.0/01-schema.sql",
+  "tables": {
+    "knowledge.sources": {
+      "name": "knowledge.sources",
+      "short": "sources",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": "gen_random_uuid()",
+          "generated": null,
+          "references": []
+        },
+        "source_system": {
+          "name": "source_system",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "external_key": {
+          "name": "external_key",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "source_type": {
+          "name": "source_type",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "product": {
+          "name": "product",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "module": {
+          "name": "module",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "source_url": {
+          "name": "source_url",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamptz",
+          "required": true,
+          "pk": false,
+          "default": "now()",
+          "generated": null,
+          "references": []
+        },
+        "external_namespace": {
+          "name": "external_namespace",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": "'td'",
+          "generated": null,
+          "references": []
+        }
+      },
+      "constraints": [
+        {
+          "name": "sources_pkey",
+          "kind": "CONSTR_PRIMARY",
+          "columns": [
+            "id"
+          ],
+          "sql": "PRIMARY KEY",
+          "column_context": "id"
+        },
+        {
+          "name": "sources_source_system_external_namespace_external_key_key",
+          "kind": "CONSTR_UNIQUE",
+          "columns": [
+            "source_system",
+            "external_namespace",
+            "external_key"
+          ],
+          "sql": "UNIQUE (source_system, external_namespace, external_key)",
+          "column_context": null
+        },
+        {
+          "name": "sources_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [],
+          "sql": "CHECK (source_type IN ('ARTICLE', 'RELEASE_NOTE', 'RECORDING', 'TRANSCRIPT', 'SCREENSHOT', 'WORKBOOK', 'SAMPLE_DATA', 'DOCUMENT', 'API_REFERENCE', 'API_SECTION', 'API_SPEC', 'API_COLLECTION', 'CODE_SAMPLE', 'EDITABLE_CAPTURE', 'OTHER'))",
+          "column_context": null
+        }
+      ],
+      "indexes": []
+    },
+    "knowledge.source_versions": {
+      "name": "knowledge.source_versions",
+      "short": "source_versions",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": "gen_random_uuid()",
+          "generated": null,
+          "references": []
+        },
+        "source_id": {
+          "name": "source_id",
+          "type": "uuid",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.source_versions",
+              "columns": [
+                "source_id"
+              ],
+              "to": "knowledge.sources",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "source_versions_source_id_fkey"
+            }
+          ]
+        },
+        "revision_key": {
+          "name": "revision_key",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "evidence_role": {
+          "name": "evidence_role",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.source_versions",
+              "columns": [
+                "group_id",
+                "evidence_role"
+              ],
+              "to": "knowledge.source_groups",
+              "target_columns": [
+                "id",
+                "evidence_role"
+              ],
+              "constraint_name": "source_versions_group_id_evidence_role_fkey"
+            }
+          ]
+        },
+        "storage_uri": {
+          "name": "storage_uri",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "object_version_id": {
+          "name": "object_version_id",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "mime_type": {
+          "name": "mime_type",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "byte_size": {
+          "name": "byte_size",
+          "type": "bigint",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "content_sha256": {
+          "name": "content_sha256",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "external_revision": {
+          "name": "external_revision",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "source_modified_at": {
+          "name": "source_modified_at",
+          "type": "timestamptz",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "ingested_at": {
+          "name": "ingested_at",
+          "type": "timestamptz",
+          "required": true,
+          "pk": false,
+          "default": "now()",
+          "generated": null,
+          "references": []
+        },
+        "lifecycle_status": {
+          "name": "lifecycle_status",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": "'ACTIVE'",
+          "generated": null,
+          "references": []
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": "'{}'",
+          "generated": null,
+          "references": []
+        },
+        "applicability": {
+          "name": "applicability",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": "'{}'",
+          "generated": null,
+          "references": []
+        },
+        "group_id": {
+          "name": "group_id",
+          "type": "uuid",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.source_versions",
+              "columns": [
+                "group_id"
+              ],
+              "to": "knowledge.source_groups",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "source_versions_group_id_fkey"
+            },
+            {
+              "from": "knowledge.source_versions",
+              "columns": [
+                "group_id",
+                "evidence_role"
+              ],
+              "to": "knowledge.source_groups",
+              "target_columns": [
+                "id",
+                "evidence_role"
+              ],
+              "constraint_name": "source_versions_group_id_evidence_role_fkey"
+            }
+          ]
+        }
+      },
+      "constraints": [
+        {
+          "name": "source_versions_pkey",
+          "kind": "CONSTR_PRIMARY",
+          "columns": [
+            "id"
+          ],
+          "sql": "PRIMARY KEY",
+          "column_context": "id"
+        },
+        {
+          "name": "source_versions_source_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "source_id"
+          ],
+          "sql": "REFERENCES knowledge.sources",
+          "column_context": "source_id",
+          "target": "knowledge.sources",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "source_versions_evidence_role_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "evidence_role"
+          ],
+          "sql": "CHECK (evidence_role IN ('CURRENT_STATE', 'EXISTING_ASSET'))",
+          "column_context": "evidence_role"
+        },
+        {
+          "name": "source_versions_byte_size_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "byte_size"
+          ],
+          "sql": "CHECK (byte_size >= 0)",
+          "column_context": "byte_size"
+        },
+        {
+          "name": "source_versions_content_sha256_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "content_sha256"
+          ],
+          "sql": "CHECK (content_sha256 ~ '^[0-9a-f]{64}$')",
+          "column_context": "content_sha256"
+        },
+        {
+          "name": "source_versions_lifecycle_status_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "lifecycle_status"
+          ],
+          "sql": "CHECK (lifecycle_status IN ('ACTIVE', 'SUPERSEDED', 'DELETED'))",
+          "column_context": "lifecycle_status"
+        },
+        {
+          "name": "source_versions_metadata_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "metadata"
+          ],
+          "sql": "CHECK (jsonb_typeof(metadata) = 'object')",
+          "column_context": "metadata"
+        },
+        {
+          "name": "source_versions_source_id_revision_key_key",
+          "kind": "CONSTR_UNIQUE",
+          "columns": [
+            "source_id",
+            "revision_key"
+          ],
+          "sql": "UNIQUE (source_id, revision_key)",
+          "column_context": null
+        },
+        {
+          "name": "source_versions_group_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "group_id"
+          ],
+          "sql": "REFERENCES knowledge.source_groups",
+          "column_context": "group_id",
+          "target": "knowledge.source_groups",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "source_versions_group_id_evidence_role_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "group_id",
+            "evidence_role"
+          ],
+          "sql": "FOREIGN KEY (group_id, evidence_role) REFERENCES knowledge.source_groups (id, evidence_role)",
+          "column_context": null,
+          "target": "knowledge.source_groups",
+          "target_columns": [
+            "id",
+            "evidence_role"
+          ]
+        },
+        {
+          "name": "source_versions_id_source_id_key",
+          "kind": "CONSTR_UNIQUE",
+          "columns": [
+            "id",
+            "source_id"
+          ],
+          "sql": "UNIQUE (id, source_id)",
+          "column_context": null
+        }
+      ],
+      "indexes": [
+        {
+          "table": "knowledge.source_versions",
+          "sql": "CREATE INDEX versions_source_idx ON knowledge.source_versions (source_id)",
+          "unique": false
+        },
+        {
+          "table": "knowledge.source_versions",
+          "sql": "CREATE INDEX source_role_idx ON knowledge.source_versions (evidence_role, lifecycle_status)",
+          "unique": false
+        }
+      ]
+    },
+    "knowledge.extractions": {
+      "name": "knowledge.extractions",
+      "short": "extractions",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": "gen_random_uuid()",
+          "generated": null,
+          "references": []
+        },
+        "source_version_id": {
+          "name": "source_version_id",
+          "type": "uuid",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.extractions",
+              "columns": [
+                "source_version_id"
+              ],
+              "to": "knowledge.source_versions",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "extractions_source_version_id_fkey"
+            },
+            {
+              "from": "knowledge.extractions",
+              "columns": [
+                "input_artifact_id",
+                "source_version_id"
+              ],
+              "to": "knowledge.artifacts",
+              "target_columns": [
+                "id",
+                "source_version_id"
+              ],
+              "constraint_name": "extractions_input_artifact_id_source_version_id_fkey"
+            }
+          ]
+        },
+        "method": {
+          "name": "method",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "processor_version": {
+          "name": "processor_version",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "warnings": {
+          "name": "warnings",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": "'[]'",
+          "generated": null,
+          "references": []
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamptz",
+          "required": true,
+          "pk": false,
+          "default": "now()",
+          "generated": null,
+          "references": []
+        },
+        "config_sha256": {
+          "name": "config_sha256",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "required": true,
+          "pk": false,
+          "default": "FALSE",
+          "generated": null,
+          "references": []
+        },
+        "input_artifact_id": {
+          "name": "input_artifact_id",
+          "type": "uuid",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.extractions",
+              "columns": [
+                "input_artifact_id",
+                "source_version_id"
+              ],
+              "to": "knowledge.artifacts",
+              "target_columns": [
+                "id",
+                "source_version_id"
+              ],
+              "constraint_name": "extractions_input_artifact_id_source_version_id_fkey"
+            }
+          ]
+        }
+      },
+      "constraints": [
+        {
+          "name": "extractions_pkey",
+          "kind": "CONSTR_PRIMARY",
+          "columns": [
+            "id"
+          ],
+          "sql": "PRIMARY KEY",
+          "column_context": "id"
+        },
+        {
+          "name": "extractions_source_version_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "source_version_id"
+          ],
+          "sql": "REFERENCES knowledge.source_versions",
+          "column_context": "source_version_id",
+          "target": "knowledge.source_versions",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "extractions_status_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "status"
+          ],
+          "sql": "CHECK (status IN ('PENDING', 'PROCESSING', 'COMPLETE', 'PARTIAL', 'FAILED'))",
+          "column_context": "status"
+        },
+        {
+          "name": "extractions_config_sha256_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "config_sha256"
+          ],
+          "sql": "CHECK (config_sha256 ~ '^[0-9a-f]{64}$')",
+          "column_context": "config_sha256"
+        },
+        {
+          "name": "extractions_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [],
+          "sql": "CHECK (NOT is_active OR status IN ('COMPLETE', 'PARTIAL'))",
+          "column_context": null
+        },
+        {
+          "name": "extractions_id_source_version_id_key",
+          "kind": "CONSTR_UNIQUE",
+          "columns": [
+            "id",
+            "source_version_id"
+          ],
+          "sql": "UNIQUE (id, source_version_id)",
+          "column_context": null
+        },
+        {
+          "name": "extractions_input_artifact_id_source_version_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "input_artifact_id",
+            "source_version_id"
+          ],
+          "sql": "FOREIGN KEY (input_artifact_id, source_version_id) REFERENCES knowledge.artifacts (id, source_version_id)",
+          "column_context": null,
+          "target": "knowledge.artifacts",
+          "target_columns": [
+            "id",
+            "source_version_id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "table": "knowledge.extractions",
+          "sql": "CREATE INDEX extractions_version_idx ON knowledge.extractions (source_version_id)",
+          "unique": false
+        },
+        {
+          "table": "knowledge.extractions",
+          "sql": "CREATE UNIQUE INDEX active_extraction_idx ON knowledge.extractions (source_version_id) WHERE is_active",
+          "unique": true
+        }
+      ]
+    },
+    "knowledge.content_units": {
+      "name": "knowledge.content_units",
+      "short": "content_units",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": "gen_random_uuid()",
+          "generated": null,
+          "references": []
+        },
+        "extraction_id": {
+          "name": "extraction_id",
+          "type": "uuid",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.content_units",
+              "columns": [
+                "extraction_id"
+              ],
+              "to": "knowledge.extractions",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "content_units_extraction_id_fkey"
+            },
+            {
+              "from": "knowledge.content_units",
+              "columns": [
+                "parent_unit_id",
+                "extraction_id"
+              ],
+              "to": "knowledge.content_units",
+              "target_columns": [
+                "id",
+                "extraction_id"
+              ],
+              "constraint_name": "content_units_parent_unit_id_extraction_id_fkey"
+            }
+          ]
+        },
+        "parent_unit_id": {
+          "name": "parent_unit_id",
+          "type": "uuid",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.content_units",
+              "columns": [
+                "parent_unit_id",
+                "extraction_id"
+              ],
+              "to": "knowledge.content_units",
+              "target_columns": [
+                "id",
+                "extraction_id"
+              ],
+              "constraint_name": "content_units_parent_unit_id_extraction_id_fkey"
+            }
+          ]
+        },
+        "unit_key": {
+          "name": "unit_key",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "unit_type": {
+          "name": "unit_type",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "heading": {
+          "name": "heading",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "content_text": {
+          "name": "content_text",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "representation_kind": {
+          "name": "representation_kind",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "locator": {
+          "name": "locator",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "content_sha256": {
+          "name": "content_sha256",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": "'{}'",
+          "generated": null,
+          "references": []
+        },
+        "search_text": {
+          "name": "search_text",
+          "type": "tsvector",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": "to_tsvector(CAST('simple' AS regconfig), COALESCE(heading, '') || ' ' || content_text)",
+          "references": []
+        },
+        "artifact_uri": {
+          "name": "artifact_uri",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "start_seconds": {
+          "name": "start_seconds",
+          "type": "numeric",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "end_seconds": {
+          "name": "end_seconds",
+          "type": "numeric",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "page_number": {
+          "name": "page_number",
+          "type": "integer",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "sheet_name": {
+          "name": "sheet_name",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "cell_range": {
+          "name": "cell_range",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "artifact_id": {
+          "name": "artifact_id",
+          "type": "uuid",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.content_units",
+              "columns": [
+                "artifact_id"
+              ],
+              "to": "knowledge.artifacts",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "content_units_artifact_id_fkey"
+            }
+          ]
+        },
+        "language": {
+          "name": "language",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "content_status": {
+          "name": "content_status",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": "'USABLE'",
+          "generated": null,
+          "references": []
+        }
+      },
+      "constraints": [
+        {
+          "name": "content_units_pkey",
+          "kind": "CONSTR_PRIMARY",
+          "columns": [
+            "id"
+          ],
+          "sql": "PRIMARY KEY",
+          "column_context": "id"
+        },
+        {
+          "name": "content_units_extraction_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "extraction_id"
+          ],
+          "sql": "REFERENCES knowledge.extractions",
+          "column_context": "extraction_id",
+          "target": "knowledge.extractions",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "content_units_representation_kind_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "representation_kind"
+          ],
+          "sql": "CHECK (representation_kind IN ('SOURCE_TEXT', 'SUPPLIED_TRANSCRIPT', 'GENERATED_TRANSCRIPT', 'OCR', 'GENERATED_DESCRIPTION'))",
+          "column_context": "representation_kind"
+        },
+        {
+          "name": "content_units_locator_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "locator"
+          ],
+          "sql": "CHECK (jsonb_typeof(locator) = 'object')",
+          "column_context": "locator"
+        },
+        {
+          "name": "content_units_content_sha256_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "content_sha256"
+          ],
+          "sql": "CHECK (content_sha256 ~ '^[0-9a-f]{64}$')",
+          "column_context": "content_sha256"
+        },
+        {
+          "name": "content_units_extraction_id_unit_key_key",
+          "kind": "CONSTR_UNIQUE",
+          "columns": [
+            "extraction_id",
+            "unit_key"
+          ],
+          "sql": "UNIQUE (extraction_id, unit_key)",
+          "column_context": null
+        },
+        {
+          "name": "content_units_start_seconds_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "start_seconds"
+          ],
+          "sql": "CHECK (start_seconds >= 0)",
+          "column_context": "start_seconds"
+        },
+        {
+          "name": "content_units_page_number_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "page_number"
+          ],
+          "sql": "CHECK (page_number > 0)",
+          "column_context": "page_number"
+        },
+        {
+          "name": "content_units_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [],
+          "sql": "CHECK (end_seconds IS NULL OR (start_seconds IS NOT NULL AND end_seconds >= start_seconds))",
+          "column_context": null
+        },
+        {
+          "name": "content_units_id_extraction_id_key",
+          "kind": "CONSTR_UNIQUE",
+          "columns": [
+            "id",
+            "extraction_id"
+          ],
+          "sql": "UNIQUE (id, extraction_id)",
+          "column_context": null
+        },
+        {
+          "name": "content_units_parent_unit_id_extraction_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "parent_unit_id",
+            "extraction_id"
+          ],
+          "sql": "FOREIGN KEY (parent_unit_id, extraction_id) REFERENCES knowledge.content_units (id, extraction_id)",
+          "column_context": null,
+          "target": "knowledge.content_units",
+          "target_columns": [
+            "id",
+            "extraction_id"
+          ]
+        },
+        {
+          "name": "content_units_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [],
+          "sql": "CHECK (parent_unit_id IS DISTINCT FROM id)",
+          "column_context": null
+        },
+        {
+          "name": "content_units_artifact_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "artifact_id"
+          ],
+          "sql": "REFERENCES knowledge.artifacts",
+          "column_context": "artifact_id",
+          "target": "knowledge.artifacts",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "content_units_content_status_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "content_status"
+          ],
+          "sql": "CHECK (content_status IN ('USABLE', 'EMPTY', 'UNVERIFIED', 'REDACTED'))",
+          "column_context": "content_status"
+        }
+      ],
+      "indexes": [
+        {
+          "table": "knowledge.content_units",
+          "sql": "CREATE INDEX content_units_text_idx ON knowledge.content_units USING gin (search_text)",
+          "unique": false
+        },
+        {
+          "table": "knowledge.content_units",
+          "sql": "CREATE INDEX units_extraction_idx ON knowledge.content_units (extraction_id)",
+          "unique": false
+        }
+      ]
+    },
+    "knowledge.source_links": {
+      "name": "knowledge.source_links",
+      "short": "source_links",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": "gen_random_uuid()",
+          "generated": null,
+          "references": []
+        },
+        "from_version_id": {
+          "name": "from_version_id",
+          "type": "uuid",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.source_links",
+              "columns": [
+                "from_version_id"
+              ],
+              "to": "knowledge.source_versions",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "source_links_from_version_id_fkey"
+            }
+          ]
+        },
+        "to_source_id": {
+          "name": "to_source_id",
+          "type": "uuid",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.source_links",
+              "columns": [
+                "to_source_id"
+              ],
+              "to": "knowledge.sources",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "source_links_to_source_id_fkey"
+            },
+            {
+              "from": "knowledge.source_links",
+              "columns": [
+                "to_version_id",
+                "to_source_id"
+              ],
+              "to": "knowledge.source_versions",
+              "target_columns": [
+                "id",
+                "source_id"
+              ],
+              "constraint_name": "source_links_to_version_id_to_source_id_fkey"
+            }
+          ]
+        },
+        "target_uri": {
+          "name": "target_uri",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "relationship": {
+          "name": "relationship",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "resolution_status": {
+          "name": "resolution_status",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "to_version_id": {
+          "name": "to_version_id",
+          "type": "uuid",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.source_links",
+              "columns": [
+                "to_version_id",
+                "to_source_id"
+              ],
+              "to": "knowledge.source_versions",
+              "target_columns": [
+                "id",
+                "source_id"
+              ],
+              "constraint_name": "source_links_to_version_id_to_source_id_fkey"
+            }
+          ]
+        }
+      },
+      "constraints": [
+        {
+          "name": "source_links_pkey",
+          "kind": "CONSTR_PRIMARY",
+          "columns": [
+            "id"
+          ],
+          "sql": "PRIMARY KEY",
+          "column_context": "id"
+        },
+        {
+          "name": "source_links_from_version_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "from_version_id"
+          ],
+          "sql": "REFERENCES knowledge.source_versions",
+          "column_context": "from_version_id",
+          "target": "knowledge.source_versions",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "source_links_to_source_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "to_source_id"
+          ],
+          "sql": "REFERENCES knowledge.sources",
+          "column_context": "to_source_id",
+          "target": "knowledge.sources",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "source_links_resolution_status_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "resolution_status"
+          ],
+          "sql": "CHECK (resolution_status IN ('RESOLVED', 'UNRESOLVED', 'UNAVAILABLE'))",
+          "column_context": "resolution_status"
+        },
+        {
+          "name": "source_links_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [],
+          "sql": "CHECK (resolution_status <> 'RESOLVED' OR to_source_id IS NOT NULL)",
+          "column_context": null
+        },
+        {
+          "name": "source_links_from_version_id_target_uri_relationship_key",
+          "kind": "CONSTR_UNIQUE",
+          "columns": [
+            "from_version_id",
+            "target_uri",
+            "relationship"
+          ],
+          "sql": "UNIQUE (from_version_id, target_uri, relationship)",
+          "column_context": null
+        },
+        {
+          "name": "source_links_to_version_id_to_source_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "to_version_id",
+            "to_source_id"
+          ],
+          "sql": "FOREIGN KEY (to_version_id, to_source_id) REFERENCES knowledge.source_versions (id, source_id)",
+          "column_context": null,
+          "target": "knowledge.source_versions",
+          "target_columns": [
+            "id",
+            "source_id"
+          ]
+        }
+      ],
+      "indexes": []
+    },
+    "analysis.runs": {
+      "name": "analysis.runs",
+      "short": "runs",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": "gen_random_uuid()",
+          "generated": null,
+          "references": []
+        },
+        "run_key": {
+          "name": "run_key",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "module": {
+          "name": "module",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "topic": {
+          "name": "topic",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "question": {
+          "name": "question",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "contract_version": {
+          "name": "contract_version",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "agent_a_version": {
+          "name": "agent_a_version",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "agent_b_version": {
+          "name": "agent_b_version",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamptz",
+          "required": true,
+          "pk": false,
+          "default": "now()",
+          "generated": null,
+          "references": []
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamptz",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        }
+      },
+      "constraints": [
+        {
+          "name": "runs_pkey",
+          "kind": "CONSTR_PRIMARY",
+          "columns": [
+            "id"
+          ],
+          "sql": "PRIMARY KEY",
+          "column_context": "id"
+        },
+        {
+          "name": "runs_run_key_key",
+          "kind": "CONSTR_UNIQUE",
+          "columns": [
+            "run_key"
+          ],
+          "sql": "UNIQUE",
+          "column_context": "run_key"
+        },
+        {
+          "name": "runs_status_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "status"
+          ],
+          "sql": "CHECK (status IN ('PENDING', 'PROCESSING', 'COMPLETE', 'PARTIAL', 'FAILED'))",
+          "column_context": "status"
+        }
+      ],
+      "indexes": []
+    },
+    "analysis.run_sources": {
+      "name": "analysis.run_sources",
+      "short": "run_sources",
+      "columns": {
+        "run_id": {
+          "name": "run_id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "analysis.run_sources",
+              "columns": [
+                "run_id"
+              ],
+              "to": "analysis.runs",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "run_sources_run_id_fkey"
+            }
+          ]
+        },
+        "source_version_id": {
+          "name": "source_version_id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "analysis.run_sources",
+              "columns": [
+                "source_version_id"
+              ],
+              "to": "knowledge.source_versions",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "run_sources_source_version_id_fkey"
+            }
+          ]
+        },
+        "coverage_status": {
+          "name": "coverage_status",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "coverage_details": {
+          "name": "coverage_details",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": "'{}'",
+          "generated": null,
+          "references": []
+        },
+        "search_terms": {
+          "name": "search_terms",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": "'[]'",
+          "generated": null,
+          "references": []
+        },
+        "reviewed_scope": {
+          "name": "reviewed_scope",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": "'{}'",
+          "generated": null,
+          "references": []
+        }
+      },
+      "constraints": [
+        {
+          "name": "run_sources_run_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "run_id"
+          ],
+          "sql": "REFERENCES analysis.runs",
+          "column_context": "run_id",
+          "target": "analysis.runs",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "run_sources_source_version_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "source_version_id"
+          ],
+          "sql": "REFERENCES knowledge.source_versions",
+          "column_context": "source_version_id",
+          "target": "knowledge.source_versions",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "run_sources_coverage_status_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "coverage_status"
+          ],
+          "sql": "CHECK (coverage_status IN ('LISTED', 'SEARCHED', 'REVIEWED', 'PARTIAL', 'UNREADABLE'))",
+          "column_context": "coverage_status"
+        },
+        {
+          "name": "run_sources_pkey",
+          "kind": "CONSTR_PRIMARY",
+          "columns": [
+            "run_id",
+            "source_version_id"
+          ],
+          "sql": "PRIMARY KEY (run_id, source_version_id)",
+          "column_context": null
+        }
+      ],
+      "indexes": [
+        {
+          "table": "analysis.run_sources",
+          "sql": "CREATE INDEX run_sources_version_idx ON analysis.run_sources (source_version_id)",
+          "unique": false
+        }
+      ]
+    },
+    "analysis.agent_outputs": {
+      "name": "analysis.agent_outputs",
+      "short": "agent_outputs",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": "gen_random_uuid()",
+          "generated": null,
+          "references": []
+        },
+        "run_id": {
+          "name": "run_id",
+          "type": "uuid",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "analysis.agent_outputs",
+              "columns": [
+                "run_id"
+              ],
+              "to": "analysis.runs",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "agent_outputs_run_id_fkey"
+            }
+          ]
+        },
+        "agent_role": {
+          "name": "agent_role",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "output_json": {
+          "name": "output_json",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "schema_validated": {
+          "name": "schema_validated",
+          "type": "boolean",
+          "required": true,
+          "pk": false,
+          "default": "FALSE",
+          "generated": null,
+          "references": []
+        },
+        "validation_details": {
+          "name": "validation_details",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": "'{}'",
+          "generated": null,
+          "references": []
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamptz",
+          "required": true,
+          "pk": false,
+          "default": "now()",
+          "generated": null,
+          "references": []
+        },
+        "contract_schema_sha256": {
+          "name": "contract_schema_sha256",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "validation_status": {
+          "name": "validation_status",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": "'NOT_VALIDATED'",
+          "generated": null,
+          "references": []
+        },
+        "model_details": {
+          "name": "model_details",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": "'{}'",
+          "generated": null,
+          "references": []
+        },
+        "prompt_sha256": {
+          "name": "prompt_sha256",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        }
+      },
+      "constraints": [
+        {
+          "name": "agent_outputs_pkey",
+          "kind": "CONSTR_PRIMARY",
+          "columns": [
+            "id"
+          ],
+          "sql": "PRIMARY KEY",
+          "column_context": "id"
+        },
+        {
+          "name": "agent_outputs_run_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "run_id"
+          ],
+          "sql": "REFERENCES analysis.runs",
+          "column_context": "run_id",
+          "target": "analysis.runs",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "agent_outputs_agent_role_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "agent_role"
+          ],
+          "sql": "CHECK (agent_role IN ('CURRENT_STATE', 'ARTICLE_REVIEW'))",
+          "column_context": "agent_role"
+        },
+        {
+          "name": "agent_outputs_output_json_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "output_json"
+          ],
+          "sql": "CHECK (jsonb_typeof(output_json) = 'object')",
+          "column_context": "output_json"
+        },
+        {
+          "name": "agent_outputs_id_run_id_key",
+          "kind": "CONSTR_UNIQUE",
+          "columns": [
+            "id",
+            "run_id"
+          ],
+          "sql": "UNIQUE (id, run_id)",
+          "column_context": null
+        },
+        {
+          "name": "agent_outputs_contract_schema_sha256_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "contract_schema_sha256"
+          ],
+          "sql": "CHECK (contract_schema_sha256 ~ '^[0-9a-f]{64}$')",
+          "column_context": "contract_schema_sha256"
+        },
+        {
+          "name": "agent_outputs_validation_status_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "validation_status"
+          ],
+          "sql": "CHECK (validation_status IN ('NOT_VALIDATED', 'VALID', 'INVALID'))",
+          "column_context": "validation_status"
+        },
+        {
+          "name": "agent_outputs_prompt_sha256_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "prompt_sha256"
+          ],
+          "sql": "CHECK (prompt_sha256 ~ '^[0-9a-f]{64}$')",
+          "column_context": "prompt_sha256"
+        },
+        {
+          "name": "agent_outputs_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [],
+          "sql": "CHECK (schema_validated = (validation_status = 'VALID'))",
+          "column_context": null
+        }
+      ],
+      "indexes": []
+    },
+    "analysis.records": {
+      "name": "analysis.records",
+      "short": "records",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": "gen_random_uuid()",
+          "generated": null,
+          "references": []
+        },
+        "run_id": {
+          "name": "run_id",
+          "type": "uuid",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "analysis.records",
+              "columns": [
+                "run_id"
+              ],
+              "to": "analysis.runs",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "records_run_id_fkey"
+            },
+            {
+              "from": "analysis.records",
+              "columns": [
+                "agent_output_id",
+                "run_id"
+              ],
+              "to": "analysis.agent_outputs",
+              "target_columns": [
+                "id",
+                "run_id"
+              ],
+              "constraint_name": "records_agent_output_id_run_id_fkey"
+            }
+          ]
+        },
+        "agent_output_id": {
+          "name": "agent_output_id",
+          "type": "uuid",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "analysis.records",
+              "columns": [
+                "agent_output_id",
+                "run_id"
+              ],
+              "to": "analysis.agent_outputs",
+              "target_columns": [
+                "id",
+                "run_id"
+              ],
+              "constraint_name": "records_agent_output_id_run_id_fkey"
+            }
+          ]
+        },
+        "record_key": {
+          "name": "record_key",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "record_type": {
+          "name": "record_type",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "subject_version_id": {
+          "name": "subject_version_id",
+          "type": "uuid",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "analysis.records",
+              "columns": [
+                "subject_version_id"
+              ],
+              "to": "knowledge.source_versions",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "records_subject_version_id_fkey"
+            }
+          ]
+        },
+        "topic": {
+          "name": "topic",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "statement": {
+          "name": "statement",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "evidence_level": {
+          "name": "evidence_level",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "currency_status": {
+          "name": "currency_status",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "quality_status": {
+          "name": "quality_status",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "finding_type": {
+          "name": "finding_type",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "review_status": {
+          "name": "review_status",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": "'AGENT_PROPOSED'",
+          "generated": null,
+          "references": []
+        },
+        "supersedes_record_id": {
+          "name": "supersedes_record_id",
+          "type": "uuid",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "analysis.records",
+              "columns": [
+                "supersedes_record_id"
+              ],
+              "to": "analysis.records",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "records_supersedes_record_id_fkey"
+            }
+          ]
+        },
+        "details": {
+          "name": "details",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": "'{}'",
+          "generated": null,
+          "references": []
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamptz",
+          "required": true,
+          "pk": false,
+          "default": "now()",
+          "generated": null,
+          "references": []
+        }
+      },
+      "constraints": [
+        {
+          "name": "records_pkey",
+          "kind": "CONSTR_PRIMARY",
+          "columns": [
+            "id"
+          ],
+          "sql": "PRIMARY KEY",
+          "column_context": "id"
+        },
+        {
+          "name": "records_run_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "run_id"
+          ],
+          "sql": "REFERENCES analysis.runs",
+          "column_context": "run_id",
+          "target": "analysis.runs",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "records_record_type_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "record_type"
+          ],
+          "sql": "CHECK (record_type IN ('OBSERVATION', 'ARTICLE_ASSESSMENT', 'FINDING'))",
+          "column_context": "record_type"
+        },
+        {
+          "name": "records_subject_version_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "subject_version_id"
+          ],
+          "sql": "REFERENCES knowledge.source_versions",
+          "column_context": "subject_version_id",
+          "target": "knowledge.source_versions",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "records_currency_status_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "currency_status"
+          ],
+          "sql": "CHECK (currency_status IN ('MATCHES_RECORDED_SCOPE', 'UPDATE_REQUIRED', 'CONFLICTED', 'UNVERIFIED'))",
+          "column_context": "currency_status"
+        },
+        {
+          "name": "records_quality_status_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "quality_status"
+          ],
+          "sql": "CHECK (quality_status IN ('ACCEPTABLE', 'IMPROVEMENT_NEEDED', 'INDETERMINATE'))",
+          "column_context": "quality_status"
+        },
+        {
+          "name": "records_review_status_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "review_status"
+          ],
+          "sql": "CHECK (review_status IN ('AGENT_PROPOSED', 'CONFIRMED', 'REJECTED', 'NEEDS_EVIDENCE'))",
+          "column_context": "review_status"
+        },
+        {
+          "name": "records_supersedes_record_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "supersedes_record_id"
+          ],
+          "sql": "REFERENCES analysis.records",
+          "column_context": "supersedes_record_id",
+          "target": "analysis.records",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "records_run_id_record_key_key",
+          "kind": "CONSTR_UNIQUE",
+          "columns": [
+            "run_id",
+            "record_key"
+          ],
+          "sql": "UNIQUE (run_id, record_key)",
+          "column_context": null
+        },
+        {
+          "name": "records_agent_output_id_run_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "agent_output_id",
+            "run_id"
+          ],
+          "sql": "FOREIGN KEY (agent_output_id, run_id) REFERENCES analysis.agent_outputs (id, run_id)",
+          "column_context": null,
+          "target": "analysis.agent_outputs",
+          "target_columns": [
+            "id",
+            "run_id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "table": "analysis.records",
+          "sql": "CREATE INDEX records_subject_idx ON analysis.records (subject_version_id)",
+          "unique": false
+        },
+        {
+          "table": "analysis.records",
+          "sql": "CREATE INDEX records_run_idx ON analysis.records (run_id)",
+          "unique": false
+        },
+        {
+          "table": "analysis.records",
+          "sql": "CREATE INDEX records_status_idx ON analysis.records (currency_status, review_status)",
+          "unique": false
+        }
+      ]
+    },
+    "analysis.record_evidence": {
+      "name": "analysis.record_evidence",
+      "short": "record_evidence",
+      "columns": {
+        "record_id": {
+          "name": "record_id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "analysis.record_evidence",
+              "columns": [
+                "record_id"
+              ],
+              "to": "analysis.records",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "record_evidence_record_id_fkey"
+            }
+          ]
+        },
+        "content_unit_id": {
+          "name": "content_unit_id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "analysis.record_evidence",
+              "columns": [
+                "content_unit_id"
+              ],
+              "to": "knowledge.content_units",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "record_evidence_content_unit_id_fkey"
+            }
+          ]
+        },
+        "relationship": {
+          "name": "relationship",
+          "type": "text",
+          "required": true,
+          "pk": true,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "locator": {
+          "name": "locator",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "excerpt": {
+          "name": "excerpt",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        }
+      },
+      "constraints": [
+        {
+          "name": "record_evidence_record_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "record_id"
+          ],
+          "sql": "REFERENCES analysis.records",
+          "column_context": "record_id",
+          "target": "analysis.records",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "record_evidence_content_unit_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "content_unit_id"
+          ],
+          "sql": "REFERENCES knowledge.content_units",
+          "column_context": "content_unit_id",
+          "target": "knowledge.content_units",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "record_evidence_relationship_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "relationship"
+          ],
+          "sql": "CHECK (relationship IN ('SUPPORTS', 'CONTRADICTS', 'CONTEXT'))",
+          "column_context": "relationship"
+        },
+        {
+          "name": "record_evidence_pkey",
+          "kind": "CONSTR_PRIMARY",
+          "columns": [
+            "record_id",
+            "content_unit_id",
+            "relationship"
+          ],
+          "sql": "PRIMARY KEY (record_id, content_unit_id, relationship)",
+          "column_context": null
+        }
+      ],
+      "indexes": [
+        {
+          "table": "analysis.record_evidence",
+          "sql": "CREATE INDEX evidence_unit_idx ON analysis.record_evidence (content_unit_id)",
+          "unique": false
+        }
+      ]
+    },
+    "retrieval.embedding_profiles": {
+      "name": "retrieval.embedding_profiles",
+      "short": "embedding_profiles",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": "gen_random_uuid()",
+          "generated": null,
+          "references": []
+        },
+        "profile_key": {
+          "name": "profile_key",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "provider": {
+          "name": "provider",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "model": {
+          "name": "model",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "model_revision": {
+          "name": "model_revision",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "dimensions": {
+          "name": "dimensions",
+          "type": "integer",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "distance_metric": {
+          "name": "distance_metric",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "preprocessing_version": {
+          "name": "preprocessing_version",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        }
+      },
+      "constraints": [
+        {
+          "name": "embedding_profiles_pkey",
+          "kind": "CONSTR_PRIMARY",
+          "columns": [
+            "id"
+          ],
+          "sql": "PRIMARY KEY",
+          "column_context": "id"
+        },
+        {
+          "name": "embedding_profiles_profile_key_key",
+          "kind": "CONSTR_UNIQUE",
+          "columns": [
+            "profile_key"
+          ],
+          "sql": "UNIQUE",
+          "column_context": "profile_key"
+        },
+        {
+          "name": "embedding_profiles_dimensions_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "dimensions"
+          ],
+          "sql": "CHECK (dimensions > 0)",
+          "column_context": "dimensions"
+        },
+        {
+          "name": "embedding_profiles_distance_metric_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "distance_metric"
+          ],
+          "sql": "CHECK (distance_metric IN ('COSINE', 'L2', 'INNER_PRODUCT'))",
+          "column_context": "distance_metric"
+        },
+        {
+          "name": "embedding_profiles_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [],
+          "sql": "CHECK (dimensions <= 16000)",
+          "column_context": null
+        }
+      ],
+      "indexes": []
+    },
+    "retrieval.content_embeddings": {
+      "name": "retrieval.content_embeddings",
+      "short": "content_embeddings",
+      "columns": {
+        "content_unit_id": {
+          "name": "content_unit_id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "retrieval.content_embeddings",
+              "columns": [
+                "content_unit_id"
+              ],
+              "to": "knowledge.content_units",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "content_embeddings_content_unit_id_fkey"
+            }
+          ]
+        },
+        "profile_id": {
+          "name": "profile_id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "retrieval.content_embeddings",
+              "columns": [
+                "profile_id"
+              ],
+              "to": "retrieval.embedding_profiles",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "content_embeddings_profile_id_fkey"
+            }
+          ]
+        },
+        "input_sha256": {
+          "name": "input_sha256",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "embedding": {
+          "name": "embedding",
+          "type": "vector",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamptz",
+          "required": true,
+          "pk": false,
+          "default": "now()",
+          "generated": null,
+          "references": []
+        },
+        "embedded_text": {
+          "name": "embedded_text",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        }
+      },
+      "constraints": [
+        {
+          "name": "content_embeddings_content_unit_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "content_unit_id"
+          ],
+          "sql": "REFERENCES knowledge.content_units",
+          "column_context": "content_unit_id",
+          "target": "knowledge.content_units",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "content_embeddings_profile_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "profile_id"
+          ],
+          "sql": "REFERENCES retrieval.embedding_profiles",
+          "column_context": "profile_id",
+          "target": "retrieval.embedding_profiles",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "content_embeddings_input_sha256_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "input_sha256"
+          ],
+          "sql": "CHECK (input_sha256 ~ '^[0-9a-f]{64}$')",
+          "column_context": "input_sha256"
+        },
+        {
+          "name": "content_embeddings_pkey",
+          "kind": "CONSTR_PRIMARY",
+          "columns": [
+            "content_unit_id",
+            "profile_id"
+          ],
+          "sql": "PRIMARY KEY (content_unit_id, profile_id)",
+          "column_context": null
+        },
+        {
+          "name": "content_embeddings_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [],
+          "sql": "CHECK (length(pg_catalog.btrim(embedded_text)) > 0)",
+          "column_context": null
+        },
+        {
+          "name": "content_embeddings_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [],
+          "sql": "CHECK (input_sha256 = encode(sha256(convert_to(embedded_text, 'UTF8')), 'hex'))",
+          "column_context": null
+        }
+      ],
+      "indexes": []
+    },
+    "retrieval.analysis_embeddings": {
+      "name": "retrieval.analysis_embeddings",
+      "short": "analysis_embeddings",
+      "columns": {
+        "record_id": {
+          "name": "record_id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "retrieval.analysis_embeddings",
+              "columns": [
+                "record_id"
+              ],
+              "to": "analysis.records",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "analysis_embeddings_record_id_fkey"
+            }
+          ]
+        },
+        "profile_id": {
+          "name": "profile_id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "retrieval.analysis_embeddings",
+              "columns": [
+                "profile_id"
+              ],
+              "to": "retrieval.embedding_profiles",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "analysis_embeddings_profile_id_fkey"
+            }
+          ]
+        },
+        "input_sha256": {
+          "name": "input_sha256",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "embedding": {
+          "name": "embedding",
+          "type": "vector",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamptz",
+          "required": true,
+          "pk": false,
+          "default": "now()",
+          "generated": null,
+          "references": []
+        },
+        "embedded_text": {
+          "name": "embedded_text",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        }
+      },
+      "constraints": [
+        {
+          "name": "analysis_embeddings_record_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "record_id"
+          ],
+          "sql": "REFERENCES analysis.records",
+          "column_context": "record_id",
+          "target": "analysis.records",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "analysis_embeddings_profile_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "profile_id"
+          ],
+          "sql": "REFERENCES retrieval.embedding_profiles",
+          "column_context": "profile_id",
+          "target": "retrieval.embedding_profiles",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "analysis_embeddings_input_sha256_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "input_sha256"
+          ],
+          "sql": "CHECK (input_sha256 ~ '^[0-9a-f]{64}$')",
+          "column_context": "input_sha256"
+        },
+        {
+          "name": "analysis_embeddings_pkey",
+          "kind": "CONSTR_PRIMARY",
+          "columns": [
+            "record_id",
+            "profile_id"
+          ],
+          "sql": "PRIMARY KEY (record_id, profile_id)",
+          "column_context": null
+        },
+        {
+          "name": "analysis_embeddings_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [],
+          "sql": "CHECK (length(pg_catalog.btrim(embedded_text)) > 0)",
+          "column_context": null
+        },
+        {
+          "name": "analysis_embeddings_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [],
+          "sql": "CHECK (input_sha256 = encode(sha256(convert_to(embedded_text, 'UTF8')), 'hex'))",
+          "column_context": null
+        }
+      ],
+      "indexes": []
+    },
+    "knowledge.source_groups": {
+      "name": "knowledge.source_groups",
+      "short": "source_groups",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": "gen_random_uuid()",
+          "generated": null,
+          "references": []
+        },
+        "group_key": {
+          "name": "group_key",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "evidence_role": {
+          "name": "evidence_role",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "drive_folder_id": {
+          "name": "drive_folder_id",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "folder_url": {
+          "name": "folder_url",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "sync_cursor": {
+          "name": "sync_cursor",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "last_successful_scan_at": {
+          "name": "last_successful_scan_at",
+          "type": "timestamptz",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": "'{}'",
+          "generated": null,
+          "references": []
+        }
+      },
+      "constraints": [
+        {
+          "name": "source_groups_pkey",
+          "kind": "CONSTR_PRIMARY",
+          "columns": [
+            "id"
+          ],
+          "sql": "PRIMARY KEY",
+          "column_context": "id"
+        },
+        {
+          "name": "source_groups_group_key_key",
+          "kind": "CONSTR_UNIQUE",
+          "columns": [
+            "group_key"
+          ],
+          "sql": "UNIQUE",
+          "column_context": "group_key"
+        },
+        {
+          "name": "source_groups_evidence_role_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "evidence_role"
+          ],
+          "sql": "CHECK (evidence_role IN ('CURRENT_STATE', 'EXISTING_ASSET'))",
+          "column_context": "evidence_role"
+        },
+        {
+          "name": "source_groups_drive_folder_id_key",
+          "kind": "CONSTR_UNIQUE",
+          "columns": [
+            "drive_folder_id"
+          ],
+          "sql": "UNIQUE",
+          "column_context": "drive_folder_id"
+        },
+        {
+          "name": "source_groups_id_evidence_role_key",
+          "kind": "CONSTR_UNIQUE",
+          "columns": [
+            "id",
+            "evidence_role"
+          ],
+          "sql": "UNIQUE (id, evidence_role)",
+          "column_context": null
+        }
+      ],
+      "indexes": []
+    },
+    "knowledge.storage_objects": {
+      "name": "knowledge.storage_objects",
+      "short": "storage_objects",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": "gen_random_uuid()",
+          "generated": null,
+          "references": []
+        },
+        "group_id": {
+          "name": "group_id",
+          "type": "uuid",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.storage_objects",
+              "columns": [
+                "group_id"
+              ],
+              "to": "knowledge.source_groups",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "storage_objects_group_id_fkey"
+            },
+            {
+              "from": "knowledge.storage_objects",
+              "columns": [
+                "parent_object_id",
+                "group_id"
+              ],
+              "to": "knowledge.storage_objects",
+              "target_columns": [
+                "id",
+                "group_id"
+              ],
+              "constraint_name": "storage_objects_parent_object_id_group_id_fkey"
+            }
+          ]
+        },
+        "object_key": {
+          "name": "object_key",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "object_kind": {
+          "name": "object_kind",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "drive_file_id": {
+          "name": "drive_file_id",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "parent_object_id": {
+          "name": "parent_object_id",
+          "type": "uuid",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.storage_objects",
+              "columns": [
+                "parent_object_id"
+              ],
+              "to": "knowledge.storage_objects",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "storage_objects_parent_object_id_fkey"
+            },
+            {
+              "from": "knowledge.storage_objects",
+              "columns": [
+                "parent_object_id",
+                "group_id"
+              ],
+              "to": "knowledge.storage_objects",
+              "target_columns": [
+                "id",
+                "group_id"
+              ],
+              "constraint_name": "storage_objects_parent_object_id_group_id_fkey"
+            }
+          ]
+        },
+        "member_path": {
+          "name": "member_path",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "mime_type": {
+          "name": "mime_type",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "original_url": {
+          "name": "original_url",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "availability": {
+          "name": "availability",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": "'AVAILABLE'",
+          "generated": null,
+          "references": []
+        },
+        "last_seen_at": {
+          "name": "last_seen_at",
+          "type": "timestamptz",
+          "required": true,
+          "pk": false,
+          "default": "now()",
+          "generated": null,
+          "references": []
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": "'{}'",
+          "generated": null,
+          "references": []
+        },
+        "detected_mime_type": {
+          "name": "detected_mime_type",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "format_details": {
+          "name": "format_details",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": "'{}'",
+          "generated": null,
+          "references": []
+        }
+      },
+      "constraints": [
+        {
+          "name": "storage_objects_pkey",
+          "kind": "CONSTR_PRIMARY",
+          "columns": [
+            "id"
+          ],
+          "sql": "PRIMARY KEY",
+          "column_context": "id"
+        },
+        {
+          "name": "storage_objects_group_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "group_id"
+          ],
+          "sql": "REFERENCES knowledge.source_groups",
+          "column_context": "group_id",
+          "target": "knowledge.source_groups",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "storage_objects_object_kind_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "object_kind"
+          ],
+          "sql": "CHECK (object_kind IN ('DRIVE_FILE', 'ARCHIVE_MEMBER'))",
+          "column_context": "object_kind"
+        },
+        {
+          "name": "storage_objects_parent_object_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "parent_object_id"
+          ],
+          "sql": "REFERENCES knowledge.storage_objects",
+          "column_context": "parent_object_id",
+          "target": "knowledge.storage_objects",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "storage_objects_availability_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "availability"
+          ],
+          "sql": "CHECK (availability IN ('AVAILABLE', 'TRASHED', 'MISSING', 'INACCESSIBLE'))",
+          "column_context": "availability"
+        },
+        {
+          "name": "storage_objects_group_id_object_key_key",
+          "kind": "CONSTR_UNIQUE",
+          "columns": [
+            "group_id",
+            "object_key"
+          ],
+          "sql": "UNIQUE (group_id, object_key)",
+          "column_context": null
+        },
+        {
+          "name": "storage_objects_id_group_id_key",
+          "kind": "CONSTR_UNIQUE",
+          "columns": [
+            "id",
+            "group_id"
+          ],
+          "sql": "UNIQUE (id, group_id)",
+          "column_context": null
+        },
+        {
+          "name": "storage_objects_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [],
+          "sql": "CHECK ((object_kind = 'DRIVE_FILE' AND drive_file_id IS NOT NULL AND parent_object_id IS NULL AND member_path IS NULL) OR (object_kind = 'ARCHIVE_MEMBER' AND drive_file_id IS NULL AND parent_object_id IS NOT NULL AND member_path IS NOT NULL))",
+          "column_context": null
+        },
+        {
+          "name": "storage_objects_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [],
+          "sql": "CHECK (parent_object_id IS DISTINCT FROM id)",
+          "column_context": null
+        },
+        {
+          "name": "storage_objects_parent_object_id_group_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "parent_object_id",
+            "group_id"
+          ],
+          "sql": "FOREIGN KEY (parent_object_id, group_id) REFERENCES knowledge.storage_objects (id, group_id)",
+          "column_context": null,
+          "target": "knowledge.storage_objects",
+          "target_columns": [
+            "id",
+            "group_id"
+          ]
+        }
+      ],
+      "indexes": []
+    },
+    "knowledge.object_versions": {
+      "name": "knowledge.object_versions",
+      "short": "object_versions",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": "gen_random_uuid()",
+          "generated": null,
+          "references": []
+        },
+        "object_id": {
+          "name": "object_id",
+          "type": "uuid",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.object_versions",
+              "columns": [
+                "object_id"
+              ],
+              "to": "knowledge.storage_objects",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "object_versions_object_id_fkey"
+            }
+          ]
+        },
+        "version_key": {
+          "name": "version_key",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "provider_revision": {
+          "name": "provider_revision",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "provider_modified_at": {
+          "name": "provider_modified_at",
+          "type": "timestamptz",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "byte_size": {
+          "name": "byte_size",
+          "type": "bigint",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "sha256": {
+          "name": "sha256",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "parent_archive_version_id": {
+          "name": "parent_archive_version_id",
+          "type": "uuid",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.object_versions",
+              "columns": [
+                "parent_archive_version_id"
+              ],
+              "to": "knowledge.object_versions",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "object_versions_parent_archive_version_id_fkey"
+            }
+          ]
+        },
+        "archive_entry_index": {
+          "name": "archive_entry_index",
+          "type": "integer",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "crc32": {
+          "name": "crc32",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "registered_at": {
+          "name": "registered_at",
+          "type": "timestamptz",
+          "required": true,
+          "pk": false,
+          "default": "now()",
+          "generated": null,
+          "references": []
+        },
+        "storage_uri": {
+          "name": "storage_uri",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "read_status": {
+          "name": "read_status",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": "'REGISTERED'",
+          "generated": null,
+          "references": []
+        },
+        "error_details": {
+          "name": "error_details",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": "'{}'",
+          "generated": null,
+          "references": []
+        }
+      },
+      "constraints": [
+        {
+          "name": "object_versions_pkey",
+          "kind": "CONSTR_PRIMARY",
+          "columns": [
+            "id"
+          ],
+          "sql": "PRIMARY KEY",
+          "column_context": "id"
+        },
+        {
+          "name": "object_versions_object_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "object_id"
+          ],
+          "sql": "REFERENCES knowledge.storage_objects",
+          "column_context": "object_id",
+          "target": "knowledge.storage_objects",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "object_versions_byte_size_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "byte_size"
+          ],
+          "sql": "CHECK (byte_size >= 0)",
+          "column_context": "byte_size"
+        },
+        {
+          "name": "object_versions_sha256_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "sha256"
+          ],
+          "sql": "CHECK (sha256 ~ '^[0-9a-f]{64}$')",
+          "column_context": "sha256"
+        },
+        {
+          "name": "object_versions_parent_archive_version_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "parent_archive_version_id"
+          ],
+          "sql": "REFERENCES knowledge.object_versions",
+          "column_context": "parent_archive_version_id",
+          "target": "knowledge.object_versions",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "object_versions_archive_entry_index_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "archive_entry_index"
+          ],
+          "sql": "CHECK (archive_entry_index >= 0)",
+          "column_context": "archive_entry_index"
+        },
+        {
+          "name": "object_versions_read_status_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "read_status"
+          ],
+          "sql": "CHECK (read_status IN ('REGISTERED', 'READABLE', 'SIZE_BLOCKED', 'CORRUPT', 'ENCRYPTED', 'UNSUPPORTED', 'FAILED'))",
+          "column_context": "read_status"
+        },
+        {
+          "name": "object_versions_object_id_version_key_key",
+          "kind": "CONSTR_UNIQUE",
+          "columns": [
+            "object_id",
+            "version_key"
+          ],
+          "sql": "UNIQUE (object_id, version_key)",
+          "column_context": null
+        },
+        {
+          "name": "object_versions_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [],
+          "sql": "CHECK ((parent_archive_version_id IS NULL) = (archive_entry_index IS NULL))",
+          "column_context": null
+        },
+        {
+          "name": "object_versions_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [],
+          "sql": "CHECK (parent_archive_version_id IS DISTINCT FROM id)",
+          "column_context": null
+        }
+      ],
+      "indexes": [
+        {
+          "table": "knowledge.object_versions",
+          "sql": "CREATE INDEX object_versions_parent_idx ON knowledge.object_versions (parent_archive_version_id)",
+          "unique": false
+        }
+      ]
+    },
+    "knowledge.version_representations": {
+      "name": "knowledge.version_representations",
+      "short": "version_representations",
+      "columns": {
+        "source_version_id": {
+          "name": "source_version_id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.version_representations",
+              "columns": [
+                "source_version_id"
+              ],
+              "to": "knowledge.source_versions",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "version_representations_source_version_id_fkey"
+            }
+          ]
+        },
+        "object_version_id": {
+          "name": "object_version_id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.version_representations",
+              "columns": [
+                "object_version_id"
+              ],
+              "to": "knowledge.object_versions",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "version_representations_object_version_id_fkey"
+            }
+          ]
+        },
+        "representation_role": {
+          "name": "representation_role",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": "'{}'",
+          "generated": null,
+          "references": []
+        }
+      },
+      "constraints": [
+        {
+          "name": "version_representations_source_version_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "source_version_id"
+          ],
+          "sql": "REFERENCES knowledge.source_versions",
+          "column_context": "source_version_id",
+          "target": "knowledge.source_versions",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "version_representations_object_version_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "object_version_id"
+          ],
+          "sql": "REFERENCES knowledge.object_versions",
+          "column_context": "object_version_id",
+          "target": "knowledge.object_versions",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "version_representations_representation_role_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "representation_role"
+          ],
+          "sql": "CHECK (representation_role IN ('PRIMARY', 'ALTERNATE_EXPORT', 'ATTACHMENT', 'TRANSCRIPT', 'SCREENSHOT'))",
+          "column_context": "representation_role"
+        },
+        {
+          "name": "version_representations_pkey",
+          "kind": "CONSTR_PRIMARY",
+          "columns": [
+            "source_version_id",
+            "object_version_id"
+          ],
+          "sql": "PRIMARY KEY (source_version_id, object_version_id)",
+          "column_context": null
+        }
+      ],
+      "indexes": [
+        {
+          "table": "knowledge.version_representations",
+          "sql": "CREATE UNIQUE INDEX primary_representation_idx ON knowledge.version_representations (source_version_id) WHERE representation_role = 'PRIMARY'",
+          "unique": true
+        },
+        {
+          "table": "knowledge.version_representations",
+          "sql": "CREATE INDEX representations_object_idx ON knowledge.version_representations (object_version_id)",
+          "unique": false
+        }
+      ]
+    },
+    "knowledge.ingestion_jobs": {
+      "name": "knowledge.ingestion_jobs",
+      "short": "ingestion_jobs",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": "gen_random_uuid()",
+          "generated": null,
+          "references": []
+        },
+        "object_version_id": {
+          "name": "object_version_id",
+          "type": "uuid",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.ingestion_jobs",
+              "columns": [
+                "object_version_id"
+              ],
+              "to": "knowledge.object_versions",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "ingestion_jobs_object_version_id_fkey"
+            }
+          ]
+        },
+        "operation": {
+          "name": "operation",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "processor_version": {
+          "name": "processor_version",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "config_sha256": {
+          "name": "config_sha256",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "attempt": {
+          "name": "attempt",
+          "type": "integer",
+          "required": true,
+          "pk": false,
+          "default": "1",
+          "generated": null,
+          "references": []
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamptz",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "finished_at": {
+          "name": "finished_at",
+          "type": "timestamptz",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "error_details": {
+          "name": "error_details",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": "'{}'",
+          "generated": null,
+          "references": []
+        }
+      },
+      "constraints": [
+        {
+          "name": "ingestion_jobs_pkey",
+          "kind": "CONSTR_PRIMARY",
+          "columns": [
+            "id"
+          ],
+          "sql": "PRIMARY KEY",
+          "column_context": "id"
+        },
+        {
+          "name": "ingestion_jobs_object_version_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "object_version_id"
+          ],
+          "sql": "REFERENCES knowledge.object_versions",
+          "column_context": "object_version_id",
+          "target": "knowledge.object_versions",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "ingestion_jobs_config_sha256_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "config_sha256"
+          ],
+          "sql": "CHECK (config_sha256 ~ '^[0-9a-f]{64}$')",
+          "column_context": "config_sha256"
+        },
+        {
+          "name": "ingestion_jobs_attempt_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "attempt"
+          ],
+          "sql": "CHECK (attempt > 0)",
+          "column_context": "attempt"
+        },
+        {
+          "name": "ingestion_jobs_status_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "status"
+          ],
+          "sql": "CHECK (status IN ('PENDING', 'PROCESSING', 'COMPLETE', 'PARTIAL', 'BLOCKED', 'FAILED'))",
+          "column_context": "status"
+        },
+        {
+          "name": "ingestion_jobs_object_version_id_operation_processor_version_config_sha256_attempt_key",
+          "kind": "CONSTR_UNIQUE",
+          "columns": [
+            "object_version_id",
+            "operation",
+            "processor_version",
+            "config_sha256",
+            "attempt"
+          ],
+          "sql": "UNIQUE (object_version_id, operation, processor_version, config_sha256, attempt)",
+          "column_context": null
+        },
+        {
+          "name": "ingestion_jobs_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [],
+          "sql": "CHECK (operation IN ('ENUMERATE', 'EXTRACT', 'CONVERT', 'RENDER', 'OCR', 'TRANSCRIBE', 'DESCRIBE', 'CHUNK', 'EMBED', 'VALIDATE'))",
+          "column_context": null
+        }
+      ],
+      "indexes": [
+        {
+          "table": "knowledge.ingestion_jobs",
+          "sql": "CREATE INDEX jobs_status_idx ON knowledge.ingestion_jobs (status)",
+          "unique": false
+        }
+      ]
+    },
+    "knowledge.unit_links": {
+      "name": "knowledge.unit_links",
+      "short": "unit_links",
+      "columns": {
+        "from_unit_id": {
+          "name": "from_unit_id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.unit_links",
+              "columns": [
+                "from_unit_id"
+              ],
+              "to": "knowledge.content_units",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "unit_links_from_unit_id_fkey"
+            }
+          ]
+        },
+        "to_unit_id": {
+          "name": "to_unit_id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.unit_links",
+              "columns": [
+                "to_unit_id"
+              ],
+              "to": "knowledge.content_units",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "unit_links_to_unit_id_fkey"
+            }
+          ]
+        },
+        "relationship": {
+          "name": "relationship",
+          "type": "text",
+          "required": true,
+          "pk": true,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "details": {
+          "name": "details",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": "'{}'",
+          "generated": null,
+          "references": []
+        }
+      },
+      "constraints": [
+        {
+          "name": "unit_links_from_unit_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "from_unit_id"
+          ],
+          "sql": "REFERENCES knowledge.content_units",
+          "column_context": "from_unit_id",
+          "target": "knowledge.content_units",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "unit_links_to_unit_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "to_unit_id"
+          ],
+          "sql": "REFERENCES knowledge.content_units",
+          "column_context": "to_unit_id",
+          "target": "knowledge.content_units",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "unit_links_relationship_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "relationship"
+          ],
+          "sql": "CHECK (relationship IN ('ILLUSTRATES', 'TRANSCRIBES', 'DERIVED_FROM', 'NEXT', 'ATTACHMENT'))",
+          "column_context": "relationship"
+        },
+        {
+          "name": "unit_links_pkey",
+          "kind": "CONSTR_PRIMARY",
+          "columns": [
+            "from_unit_id",
+            "to_unit_id",
+            "relationship"
+          ],
+          "sql": "PRIMARY KEY (from_unit_id, to_unit_id, relationship)",
+          "column_context": null
+        },
+        {
+          "name": "unit_links_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [],
+          "sql": "CHECK (from_unit_id <> to_unit_id)",
+          "column_context": null
+        }
+      ],
+      "indexes": []
+    },
+    "analysis.stages": {
+      "name": "analysis.stages",
+      "short": "stages",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": "gen_random_uuid()",
+          "generated": null,
+          "references": []
+        },
+        "run_id": {
+          "name": "run_id",
+          "type": "uuid",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "analysis.stages",
+              "columns": [
+                "run_id"
+              ],
+              "to": "analysis.runs",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "stages_run_id_fkey"
+            }
+          ]
+        },
+        "stage": {
+          "name": "stage",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "attempt": {
+          "name": "attempt",
+          "type": "integer",
+          "required": true,
+          "pk": false,
+          "default": "1",
+          "generated": null,
+          "references": []
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "profile_id": {
+          "name": "profile_id",
+          "type": "uuid",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "analysis.stages",
+              "columns": [
+                "profile_id"
+              ],
+              "to": "retrieval.embedding_profiles",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "stages_profile_id_fkey"
+            }
+          ]
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamptz",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamptz",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "details": {
+          "name": "details",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": "'{}'",
+          "generated": null,
+          "references": []
+        }
+      },
+      "constraints": [
+        {
+          "name": "stages_pkey",
+          "kind": "CONSTR_PRIMARY",
+          "columns": [
+            "id"
+          ],
+          "sql": "PRIMARY KEY",
+          "column_context": "id"
+        },
+        {
+          "name": "stages_run_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "run_id"
+          ],
+          "sql": "REFERENCES analysis.runs",
+          "column_context": "run_id",
+          "target": "analysis.runs",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "stages_stage_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "stage"
+          ],
+          "sql": "CHECK (stage IN ('SOURCE_EMBED', 'AGENT_A', 'A_EMBED', 'AGENT_B', 'B_EMBED', 'RETRIEVAL_READY'))",
+          "column_context": "stage"
+        },
+        {
+          "name": "stages_attempt_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "attempt"
+          ],
+          "sql": "CHECK (attempt > 0)",
+          "column_context": "attempt"
+        },
+        {
+          "name": "stages_status_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "status"
+          ],
+          "sql": "CHECK (status IN ('PENDING', 'PROCESSING', 'COMPLETE', 'PARTIAL', 'FAILED', 'BLOCKED'))",
+          "column_context": "status"
+        },
+        {
+          "name": "stages_profile_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "profile_id"
+          ],
+          "sql": "REFERENCES retrieval.embedding_profiles",
+          "column_context": "profile_id",
+          "target": "retrieval.embedding_profiles",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "stages_run_id_stage_attempt_key",
+          "kind": "CONSTR_UNIQUE",
+          "columns": [
+            "run_id",
+            "stage",
+            "attempt"
+          ],
+          "sql": "UNIQUE (run_id, stage, attempt)",
+          "column_context": null
+        }
+      ],
+      "indexes": []
+    },
+    "analysis.record_links": {
+      "name": "analysis.record_links",
+      "short": "record_links",
+      "columns": {
+        "from_record_id": {
+          "name": "from_record_id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "analysis.record_links",
+              "columns": [
+                "from_record_id"
+              ],
+              "to": "analysis.records",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "record_links_from_record_id_fkey"
+            }
+          ]
+        },
+        "to_record_id": {
+          "name": "to_record_id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "analysis.record_links",
+              "columns": [
+                "to_record_id"
+              ],
+              "to": "analysis.records",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "record_links_to_record_id_fkey"
+            }
+          ]
+        },
+        "relationship": {
+          "name": "relationship",
+          "type": "text",
+          "required": true,
+          "pk": true,
+          "default": null,
+          "generated": null,
+          "references": []
+        }
+      },
+      "constraints": [
+        {
+          "name": "record_links_from_record_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "from_record_id"
+          ],
+          "sql": "REFERENCES analysis.records",
+          "column_context": "from_record_id",
+          "target": "analysis.records",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "record_links_to_record_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "to_record_id"
+          ],
+          "sql": "REFERENCES analysis.records",
+          "column_context": "to_record_id",
+          "target": "analysis.records",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "record_links_relationship_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "relationship"
+          ],
+          "sql": "CHECK (relationship IN ('ASSESSES', 'SUPPORTS', 'CONTRADICTS', 'SUPERSEDES'))",
+          "column_context": "relationship"
+        },
+        {
+          "name": "record_links_pkey",
+          "kind": "CONSTR_PRIMARY",
+          "columns": [
+            "from_record_id",
+            "to_record_id",
+            "relationship"
+          ],
+          "sql": "PRIMARY KEY (from_record_id, to_record_id, relationship)",
+          "column_context": null
+        },
+        {
+          "name": "record_links_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [],
+          "sql": "CHECK (from_record_id <> to_record_id)",
+          "column_context": null
+        }
+      ],
+      "indexes": [
+        {
+          "table": "analysis.record_links",
+          "sql": "CREATE INDEX record_links_target_idx ON analysis.record_links (to_record_id)",
+          "unique": false
+        }
+      ]
+    },
+    "analysis.human_reviews": {
+      "name": "analysis.human_reviews",
+      "short": "human_reviews",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": "gen_random_uuid()",
+          "generated": null,
+          "references": []
+        },
+        "record_id": {
+          "name": "record_id",
+          "type": "uuid",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "analysis.human_reviews",
+              "columns": [
+                "record_id"
+              ],
+              "to": "analysis.records",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "human_reviews_record_id_fkey"
+            }
+          ]
+        },
+        "reviewer_identity": {
+          "name": "reviewer_identity",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "reviewed_at": {
+          "name": "reviewed_at",
+          "type": "timestamptz",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "decision": {
+          "name": "decision",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "rationale": {
+          "name": "rationale",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "evidence_uri": {
+          "name": "evidence_uri",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamptz",
+          "required": true,
+          "pk": false,
+          "default": "now()",
+          "generated": null,
+          "references": []
+        }
+      },
+      "constraints": [
+        {
+          "name": "human_reviews_pkey",
+          "kind": "CONSTR_PRIMARY",
+          "columns": [
+            "id"
+          ],
+          "sql": "PRIMARY KEY",
+          "column_context": "id"
+        },
+        {
+          "name": "human_reviews_record_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "record_id"
+          ],
+          "sql": "REFERENCES analysis.records",
+          "column_context": "record_id",
+          "target": "analysis.records",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "human_reviews_reviewer_identity_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "reviewer_identity"
+          ],
+          "sql": "CHECK (length(pg_catalog.btrim(reviewer_identity)) > 0)",
+          "column_context": "reviewer_identity"
+        },
+        {
+          "name": "human_reviews_decision_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "decision"
+          ],
+          "sql": "CHECK (decision IN ('CONFIRMED', 'REJECTED', 'NEEDS_EVIDENCE'))",
+          "column_context": "decision"
+        }
+      ],
+      "indexes": []
+    },
+    "knowledge.intake_batches": {
+      "name": "knowledge.intake_batches",
+      "short": "intake_batches",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": "gen_random_uuid()",
+          "generated": null,
+          "references": []
+        },
+        "batch_key": {
+          "name": "batch_key",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "manifest_object_version_id": {
+          "name": "manifest_object_version_id",
+          "type": "uuid",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.intake_batches",
+              "columns": [
+                "manifest_object_version_id"
+              ],
+              "to": "knowledge.object_versions",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "intake_batches_manifest_object_version_id_fkey"
+            }
+          ]
+        },
+        "declared_scope": {
+          "name": "declared_scope",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": "'{}'",
+          "generated": null,
+          "references": []
+        },
+        "discovered_at": {
+          "name": "discovered_at",
+          "type": "timestamptz",
+          "required": true,
+          "pk": false,
+          "default": "now()",
+          "generated": null,
+          "references": []
+        },
+        "scan_status": {
+          "name": "scan_status",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "manifest_reconciliation": {
+          "name": "manifest_reconciliation",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "notes": {
+          "name": "notes",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": "'{}'",
+          "generated": null,
+          "references": []
+        }
+      },
+      "constraints": [
+        {
+          "name": "intake_batches_pkey",
+          "kind": "CONSTR_PRIMARY",
+          "columns": [
+            "id"
+          ],
+          "sql": "PRIMARY KEY",
+          "column_context": "id"
+        },
+        {
+          "name": "intake_batches_batch_key_key",
+          "kind": "CONSTR_UNIQUE",
+          "columns": [
+            "batch_key"
+          ],
+          "sql": "UNIQUE",
+          "column_context": "batch_key"
+        },
+        {
+          "name": "intake_batches_manifest_object_version_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "manifest_object_version_id"
+          ],
+          "sql": "REFERENCES knowledge.object_versions",
+          "column_context": "manifest_object_version_id",
+          "target": "knowledge.object_versions",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "intake_batches_scan_status_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "scan_status"
+          ],
+          "sql": "CHECK (scan_status IN ('PENDING', 'PROCESSING', 'COMPLETE', 'PARTIAL', 'FAILED'))",
+          "column_context": "scan_status"
+        },
+        {
+          "name": "intake_batches_manifest_reconciliation_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "manifest_reconciliation"
+          ],
+          "sql": "CHECK (manifest_reconciliation IN ('NOT_CHECKED', 'MATCHES_SUPPLIED_PARTS', 'MISMATCH', 'NO_MANIFEST'))",
+          "column_context": "manifest_reconciliation"
+        }
+      ],
+      "indexes": []
+    },
+    "knowledge.intake_entries": {
+      "name": "knowledge.intake_entries",
+      "short": "intake_entries",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": "gen_random_uuid()",
+          "generated": null,
+          "references": []
+        },
+        "batch_id": {
+          "name": "batch_id",
+          "type": "uuid",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.intake_entries",
+              "columns": [
+                "batch_id"
+              ],
+              "to": "knowledge.intake_batches",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "intake_entries_batch_id_fkey"
+            }
+          ]
+        },
+        "group_id": {
+          "name": "group_id",
+          "type": "uuid",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.intake_entries",
+              "columns": [
+                "group_id"
+              ],
+              "to": "knowledge.source_groups",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "intake_entries_group_id_fkey"
+            }
+          ]
+        },
+        "entry_key": {
+          "name": "entry_key",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "container_name": {
+          "name": "container_name",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "member_path": {
+          "name": "member_path",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "expected_bytes": {
+          "name": "expected_bytes",
+          "type": "bigint",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "expected_sha256": {
+          "name": "expected_sha256",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "observed_object_version_id": {
+          "name": "observed_object_version_id",
+          "type": "uuid",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.intake_entries",
+              "columns": [
+                "observed_object_version_id"
+              ],
+              "to": "knowledge.object_versions",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "intake_entries_observed_object_version_id_fkey"
+            }
+          ]
+        },
+        "presence_status": {
+          "name": "presence_status",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "review_status": {
+          "name": "review_status",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "details": {
+          "name": "details",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": "'{}'",
+          "generated": null,
+          "references": []
+        }
+      },
+      "constraints": [
+        {
+          "name": "intake_entries_pkey",
+          "kind": "CONSTR_PRIMARY",
+          "columns": [
+            "id"
+          ],
+          "sql": "PRIMARY KEY",
+          "column_context": "id"
+        },
+        {
+          "name": "intake_entries_batch_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "batch_id"
+          ],
+          "sql": "REFERENCES knowledge.intake_batches",
+          "column_context": "batch_id",
+          "target": "knowledge.intake_batches",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "intake_entries_group_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "group_id"
+          ],
+          "sql": "REFERENCES knowledge.source_groups",
+          "column_context": "group_id",
+          "target": "knowledge.source_groups",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "intake_entries_expected_bytes_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "expected_bytes"
+          ],
+          "sql": "CHECK (expected_bytes >= 0)",
+          "column_context": "expected_bytes"
+        },
+        {
+          "name": "intake_entries_expected_sha256_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "expected_sha256"
+          ],
+          "sql": "CHECK (expected_sha256 ~ '^[0-9a-f]{64}$')",
+          "column_context": "expected_sha256"
+        },
+        {
+          "name": "intake_entries_observed_object_version_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "observed_object_version_id"
+          ],
+          "sql": "REFERENCES knowledge.object_versions",
+          "column_context": "observed_object_version_id",
+          "target": "knowledge.object_versions",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "intake_entries_presence_status_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "presence_status"
+          ],
+          "sql": "CHECK (presence_status IN ('PRESENT', 'EXCLUDED', 'MISSING', 'UNREADABLE'))",
+          "column_context": "presence_status"
+        },
+        {
+          "name": "intake_entries_review_status_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "review_status"
+          ],
+          "sql": "CHECK (review_status IN ('INVENTORIED', 'STRUCTURE_CHECKED', 'SAMPLED', 'CONTENT_REVIEWED', 'NEEDS_CONVERSION', 'BLOCKED'))",
+          "column_context": "review_status"
+        },
+        {
+          "name": "intake_entries_batch_id_entry_key_key",
+          "kind": "CONSTR_UNIQUE",
+          "columns": [
+            "batch_id",
+            "entry_key"
+          ],
+          "sql": "UNIQUE (batch_id, entry_key)",
+          "column_context": null
+        },
+        {
+          "name": "intake_entries_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [],
+          "sql": "CHECK (presence_status <> 'PRESENT' OR observed_object_version_id IS NOT NULL)",
+          "column_context": null
+        },
+        {
+          "name": "intake_entries_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [],
+          "sql": "CHECK (presence_status = 'PRESENT' OR reason IS NOT NULL)",
+          "column_context": null
+        }
+      ],
+      "indexes": [
+        {
+          "table": "knowledge.intake_entries",
+          "sql": "CREATE INDEX intake_entries_presence_idx ON knowledge.intake_entries (batch_id, presence_status, review_status)",
+          "unique": false
+        }
+      ]
+    },
+    "knowledge.artifacts": {
+      "name": "knowledge.artifacts",
+      "short": "artifacts",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": "gen_random_uuid()",
+          "generated": null,
+          "references": []
+        },
+        "source_version_id": {
+          "name": "source_version_id",
+          "type": "uuid",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.artifacts",
+              "columns": [
+                "source_version_id"
+              ],
+              "to": "knowledge.source_versions",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "artifacts_source_version_id_fkey"
+            },
+            {
+              "from": "knowledge.artifacts",
+              "columns": [
+                "extraction_id",
+                "source_version_id"
+              ],
+              "to": "knowledge.extractions",
+              "target_columns": [
+                "id",
+                "source_version_id"
+              ],
+              "constraint_name": "artifacts_extraction_id_source_version_id_fkey"
+            },
+            {
+              "from": "knowledge.artifacts",
+              "columns": [
+                "parent_artifact_id",
+                "source_version_id"
+              ],
+              "to": "knowledge.artifacts",
+              "target_columns": [
+                "id",
+                "source_version_id"
+              ],
+              "constraint_name": "artifacts_parent_artifact_id_source_version_id_fkey"
+            }
+          ]
+        },
+        "extraction_id": {
+          "name": "extraction_id",
+          "type": "uuid",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.artifacts",
+              "columns": [
+                "extraction_id",
+                "source_version_id"
+              ],
+              "to": "knowledge.extractions",
+              "target_columns": [
+                "id",
+                "source_version_id"
+              ],
+              "constraint_name": "artifacts_extraction_id_source_version_id_fkey"
+            }
+          ]
+        },
+        "origin_object_version_id": {
+          "name": "origin_object_version_id",
+          "type": "uuid",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.artifacts",
+              "columns": [
+                "origin_object_version_id"
+              ],
+              "to": "knowledge.object_versions",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "artifacts_origin_object_version_id_fkey"
+            }
+          ]
+        },
+        "parent_artifact_id": {
+          "name": "parent_artifact_id",
+          "type": "uuid",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.artifacts",
+              "columns": [
+                "parent_artifact_id",
+                "source_version_id"
+              ],
+              "to": "knowledge.artifacts",
+              "target_columns": [
+                "id",
+                "source_version_id"
+              ],
+              "constraint_name": "artifacts_parent_artifact_id_source_version_id_fkey"
+            }
+          ]
+        },
+        "artifact_key": {
+          "name": "artifact_key",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "artifact_kind": {
+          "name": "artifact_kind",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "mime_type": {
+          "name": "mime_type",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "storage_uri": {
+          "name": "storage_uri",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "inline_data": {
+          "name": "inline_data",
+          "type": "jsonb",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "sha256": {
+          "name": "sha256",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "locator": {
+          "name": "locator",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": "'{}'",
+          "generated": null,
+          "references": []
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": "'{}'",
+          "generated": null,
+          "references": []
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamptz",
+          "required": true,
+          "pk": false,
+          "default": "now()",
+          "generated": null,
+          "references": []
+        }
+      },
+      "constraints": [
+        {
+          "name": "artifacts_pkey",
+          "kind": "CONSTR_PRIMARY",
+          "columns": [
+            "id"
+          ],
+          "sql": "PRIMARY KEY",
+          "column_context": "id"
+        },
+        {
+          "name": "artifacts_source_version_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "source_version_id"
+          ],
+          "sql": "REFERENCES knowledge.source_versions",
+          "column_context": "source_version_id",
+          "target": "knowledge.source_versions",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "artifacts_origin_object_version_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "origin_object_version_id"
+          ],
+          "sql": "REFERENCES knowledge.object_versions",
+          "column_context": "origin_object_version_id",
+          "target": "knowledge.object_versions",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "artifacts_artifact_kind_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "artifact_kind"
+          ],
+          "sql": "CHECK (artifact_kind IN ('EXTRACTED_TEXT', 'RENDERED_IMAGE', 'VIDEO_FRAME', 'TRANSCRIPT', 'STRUCTURED_DATA', 'CONVERTED_DOCUMENT', 'TRANSCODED_MEDIA'))",
+          "column_context": "artifact_kind"
+        },
+        {
+          "name": "artifacts_sha256_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "sha256"
+          ],
+          "sql": "CHECK (sha256 ~ '^[0-9a-f]{64}$')",
+          "column_context": "sha256"
+        },
+        {
+          "name": "artifacts_status_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "status"
+          ],
+          "sql": "CHECK (status IN ('PENDING', 'READY', 'EMPTY', 'BLOCKED', 'FAILED', 'UNAVAILABLE'))",
+          "column_context": "status"
+        },
+        {
+          "name": "artifacts_extraction_id_artifact_key_key",
+          "kind": "CONSTR_UNIQUE",
+          "columns": [
+            "extraction_id",
+            "artifact_key"
+          ],
+          "sql": "UNIQUE (extraction_id, artifact_key)",
+          "column_context": null
+        },
+        {
+          "name": "artifacts_id_source_version_id_key",
+          "kind": "CONSTR_UNIQUE",
+          "columns": [
+            "id",
+            "source_version_id"
+          ],
+          "sql": "UNIQUE (id, source_version_id)",
+          "column_context": null
+        },
+        {
+          "name": "artifacts_extraction_id_source_version_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "extraction_id",
+            "source_version_id"
+          ],
+          "sql": "FOREIGN KEY (extraction_id, source_version_id) REFERENCES knowledge.extractions (id, source_version_id)",
+          "column_context": null,
+          "target": "knowledge.extractions",
+          "target_columns": [
+            "id",
+            "source_version_id"
+          ]
+        },
+        {
+          "name": "artifacts_parent_artifact_id_source_version_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "parent_artifact_id",
+            "source_version_id"
+          ],
+          "sql": "FOREIGN KEY (parent_artifact_id, source_version_id) REFERENCES knowledge.artifacts (id, source_version_id)",
+          "column_context": null,
+          "target": "knowledge.artifacts",
+          "target_columns": [
+            "id",
+            "source_version_id"
+          ]
+        },
+        {
+          "name": "artifacts_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [],
+          "sql": "CHECK (parent_artifact_id IS DISTINCT FROM id)",
+          "column_context": null
+        },
+        {
+          "name": "artifacts_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [],
+          "sql": "CHECK (status <> 'READY' OR (sha256 IS NOT NULL AND (storage_uri IS NOT NULL OR inline_data IS NOT NULL)))",
+          "column_context": null
+        }
+      ],
+      "indexes": [
+        {
+          "table": "knowledge.artifacts",
+          "sql": "CREATE INDEX artifacts_version_idx ON knowledge.artifacts (source_version_id, status)",
+          "unique": false
+        }
+      ]
+    },
+    "knowledge.media_tracks": {
+      "name": "knowledge.media_tracks",
+      "short": "media_tracks",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": "gen_random_uuid()",
+          "generated": null,
+          "references": []
+        },
+        "source_version_id": {
+          "name": "source_version_id",
+          "type": "uuid",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.media_tracks",
+              "columns": [
+                "source_version_id"
+              ],
+              "to": "knowledge.source_versions",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "media_tracks_source_version_id_fkey"
+            }
+          ]
+        },
+        "stream_index": {
+          "name": "stream_index",
+          "type": "integer",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "track_type": {
+          "name": "track_type",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "codec": {
+          "name": "codec",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "duration_seconds": {
+          "name": "duration_seconds",
+          "type": "numeric",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "width": {
+          "name": "width",
+          "type": "integer",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "height": {
+          "name": "height",
+          "type": "integer",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "sample_rate": {
+          "name": "sample_rate",
+          "type": "integer",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "channels": {
+          "name": "channels",
+          "type": "integer",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "frame_rate_numerator": {
+          "name": "frame_rate_numerator",
+          "type": "bigint",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "frame_rate_denominator": {
+          "name": "frame_rate_denominator",
+          "type": "bigint",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "language": {
+          "name": "language",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "time_base": {
+          "name": "time_base",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": "'{}'",
+          "generated": null,
+          "references": []
+        }
+      },
+      "constraints": [
+        {
+          "name": "media_tracks_pkey",
+          "kind": "CONSTR_PRIMARY",
+          "columns": [
+            "id"
+          ],
+          "sql": "PRIMARY KEY",
+          "column_context": "id"
+        },
+        {
+          "name": "media_tracks_source_version_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "source_version_id"
+          ],
+          "sql": "REFERENCES knowledge.source_versions",
+          "column_context": "source_version_id",
+          "target": "knowledge.source_versions",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "media_tracks_stream_index_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "stream_index"
+          ],
+          "sql": "CHECK (stream_index >= 0)",
+          "column_context": "stream_index"
+        },
+        {
+          "name": "media_tracks_track_type_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "track_type"
+          ],
+          "sql": "CHECK (track_type IN ('VIDEO', 'AUDIO', 'SUBTITLE', 'DATA', 'OTHER'))",
+          "column_context": "track_type"
+        },
+        {
+          "name": "media_tracks_duration_seconds_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "duration_seconds"
+          ],
+          "sql": "CHECK (duration_seconds >= 0)",
+          "column_context": "duration_seconds"
+        },
+        {
+          "name": "media_tracks_width_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "width"
+          ],
+          "sql": "CHECK (width > 0)",
+          "column_context": "width"
+        },
+        {
+          "name": "media_tracks_height_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "height"
+          ],
+          "sql": "CHECK (height > 0)",
+          "column_context": "height"
+        },
+        {
+          "name": "media_tracks_sample_rate_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "sample_rate"
+          ],
+          "sql": "CHECK (sample_rate > 0)",
+          "column_context": "sample_rate"
+        },
+        {
+          "name": "media_tracks_channels_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "channels"
+          ],
+          "sql": "CHECK (channels > 0)",
+          "column_context": "channels"
+        },
+        {
+          "name": "media_tracks_frame_rate_denominator_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "frame_rate_denominator"
+          ],
+          "sql": "CHECK (frame_rate_denominator > 0)",
+          "column_context": "frame_rate_denominator"
+        },
+        {
+          "name": "media_tracks_source_version_id_stream_index_key",
+          "kind": "CONSTR_UNIQUE",
+          "columns": [
+            "source_version_id",
+            "stream_index"
+          ],
+          "sql": "UNIQUE (source_version_id, stream_index)",
+          "column_context": null
+        }
+      ],
+      "indexes": []
+    },
+    "knowledge.api_operations": {
+      "name": "knowledge.api_operations",
+      "short": "api_operations",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": "gen_random_uuid()",
+          "generated": null,
+          "references": []
+        },
+        "source_version_id": {
+          "name": "source_version_id",
+          "type": "uuid",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.api_operations",
+              "columns": [
+                "source_version_id"
+              ],
+              "to": "knowledge.source_versions",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "api_operations_source_version_id_fkey"
+            }
+          ]
+        },
+        "operation_key": {
+          "name": "operation_key",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "method_raw": {
+          "name": "method_raw",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "path_raw": {
+          "name": "path_raw",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "request_url_raw": {
+          "name": "request_url_raw",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "audience_label": {
+          "name": "audience_label",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "environment_label": {
+          "name": "environment_label",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "api_version_label": {
+          "name": "api_version_label",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "source_locator": {
+          "name": "source_locator",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "raw_definition": {
+          "name": "raw_definition",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": "'{}'",
+          "generated": null,
+          "references": []
+        }
+      },
+      "constraints": [
+        {
+          "name": "api_operations_pkey",
+          "kind": "CONSTR_PRIMARY",
+          "columns": [
+            "id"
+          ],
+          "sql": "PRIMARY KEY",
+          "column_context": "id"
+        },
+        {
+          "name": "api_operations_source_version_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "source_version_id"
+          ],
+          "sql": "REFERENCES knowledge.source_versions",
+          "column_context": "source_version_id",
+          "target": "knowledge.source_versions",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "api_operations_source_version_id_operation_key_key",
+          "kind": "CONSTR_UNIQUE",
+          "columns": [
+            "source_version_id",
+            "operation_key"
+          ],
+          "sql": "UNIQUE (source_version_id, operation_key)",
+          "column_context": null
+        }
+      ],
+      "indexes": [
+        {
+          "table": "knowledge.api_operations",
+          "sql": "CREATE INDEX api_operations_lookup_idx ON knowledge.api_operations (method_raw, path_raw)",
+          "unique": false
+        }
+      ]
+    },
+    "knowledge.api_examples": {
+      "name": "knowledge.api_examples",
+      "short": "api_examples",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": "gen_random_uuid()",
+          "generated": null,
+          "references": []
+        },
+        "operation_id": {
+          "name": "operation_id",
+          "type": "uuid",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.api_examples",
+              "columns": [
+                "operation_id"
+              ],
+              "to": "knowledge.api_operations",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "api_examples_operation_id_fkey"
+            }
+          ]
+        },
+        "example_key": {
+          "name": "example_key",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "example_kind": {
+          "name": "example_kind",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "context": {
+          "name": "context",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "language": {
+          "name": "language",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "status_label_raw": {
+          "name": "status_label_raw",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "http_status": {
+          "name": "http_status",
+          "type": "integer",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "content_type": {
+          "name": "content_type",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "body_text": {
+          "name": "body_text",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "structured_body": {
+          "name": "structured_body",
+          "type": "jsonb",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "payload_status": {
+          "name": "payload_status",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "source_object_version_id": {
+          "name": "source_object_version_id",
+          "type": "uuid",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.api_examples",
+              "columns": [
+                "source_object_version_id"
+              ],
+              "to": "knowledge.object_versions",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "api_examples_source_object_version_id_fkey"
+            }
+          ]
+        },
+        "content_unit_id": {
+          "name": "content_unit_id",
+          "type": "uuid",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.api_examples",
+              "columns": [
+                "content_unit_id"
+              ],
+              "to": "knowledge.content_units",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "api_examples_content_unit_id_fkey"
+            }
+          ]
+        },
+        "source_locator": {
+          "name": "source_locator",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": "'{}'",
+          "generated": null,
+          "references": []
+        }
+      },
+      "constraints": [
+        {
+          "name": "api_examples_pkey",
+          "kind": "CONSTR_PRIMARY",
+          "columns": [
+            "id"
+          ],
+          "sql": "PRIMARY KEY",
+          "column_context": "id"
+        },
+        {
+          "name": "api_examples_operation_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "operation_id"
+          ],
+          "sql": "REFERENCES knowledge.api_operations",
+          "column_context": "operation_id",
+          "target": "knowledge.api_operations",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "api_examples_example_kind_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "example_kind"
+          ],
+          "sql": "CHECK (example_kind IN ('REQUEST', 'RESPONSE', 'CODE_SAMPLE', 'TRYIT_CAPTURE'))",
+          "column_context": "example_kind"
+        },
+        {
+          "name": "api_examples_context_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "context"
+          ],
+          "sql": "CHECK (context IN ('REFERENCE', 'TRYIT', 'OTHER'))",
+          "column_context": "context"
+        },
+        {
+          "name": "api_examples_http_status_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "http_status"
+          ],
+          "sql": "CHECK (http_status BETWEEN 100 AND 599)",
+          "column_context": "http_status"
+        },
+        {
+          "name": "api_examples_payload_status_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "payload_status"
+          ],
+          "sql": "CHECK (payload_status IN ('PRESENT', 'EMPTY', 'NOT_CAPTURED', 'UNREADABLE'))",
+          "column_context": "payload_status"
+        },
+        {
+          "name": "api_examples_source_object_version_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "source_object_version_id"
+          ],
+          "sql": "REFERENCES knowledge.object_versions",
+          "column_context": "source_object_version_id",
+          "target": "knowledge.object_versions",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "api_examples_content_unit_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "content_unit_id"
+          ],
+          "sql": "REFERENCES knowledge.content_units",
+          "column_context": "content_unit_id",
+          "target": "knowledge.content_units",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "api_examples_operation_id_example_key_key",
+          "kind": "CONSTR_UNIQUE",
+          "columns": [
+            "operation_id",
+            "example_key"
+          ],
+          "sql": "UNIQUE (operation_id, example_key)",
+          "column_context": null
+        },
+        {
+          "name": "api_examples_id_operation_id_key",
+          "kind": "CONSTR_UNIQUE",
+          "columns": [
+            "id",
+            "operation_id"
+          ],
+          "sql": "UNIQUE (id, operation_id)",
+          "column_context": null
+        },
+        {
+          "name": "api_examples_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [],
+          "sql": "CHECK (example_kind = 'RESPONSE' OR (status_label_raw IS NULL AND http_status IS NULL))",
+          "column_context": null
+        }
+      ],
+      "indexes": [
+        {
+          "table": "knowledge.api_examples",
+          "sql": "CREATE INDEX api_examples_operation_idx ON knowledge.api_examples (operation_id, example_kind, context)",
+          "unique": false
+        }
+      ]
+    },
+    "knowledge.api_parameters": {
+      "name": "knowledge.api_parameters",
+      "short": "api_parameters",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "required": true,
+          "pk": true,
+          "default": "gen_random_uuid()",
+          "generated": null,
+          "references": []
+        },
+        "operation_id": {
+          "name": "operation_id",
+          "type": "uuid",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.api_parameters",
+              "columns": [
+                "operation_id"
+              ],
+              "to": "knowledge.api_operations",
+              "target_columns": [
+                "id"
+              ],
+              "constraint_name": "api_parameters_operation_id_fkey"
+            },
+            {
+              "from": "knowledge.api_parameters",
+              "columns": [
+                "parent_parameter_id",
+                "operation_id",
+                "location"
+              ],
+              "to": "knowledge.api_parameters",
+              "target_columns": [
+                "id",
+                "operation_id",
+                "location"
+              ],
+              "constraint_name": "api_parameters_parent_parameter_id_operation_id_location_fkey"
+            },
+            {
+              "from": "knowledge.api_parameters",
+              "columns": [
+                "response_example_id",
+                "operation_id"
+              ],
+              "to": "knowledge.api_examples",
+              "target_columns": [
+                "id",
+                "operation_id"
+              ],
+              "constraint_name": "api_parameters_response_example_id_operation_id_fkey"
+            }
+          ]
+        },
+        "response_example_id": {
+          "name": "response_example_id",
+          "type": "uuid",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.api_parameters",
+              "columns": [
+                "response_example_id",
+                "operation_id"
+              ],
+              "to": "knowledge.api_examples",
+              "target_columns": [
+                "id",
+                "operation_id"
+              ],
+              "constraint_name": "api_parameters_response_example_id_operation_id_fkey"
+            }
+          ]
+        },
+        "parent_parameter_id": {
+          "name": "parent_parameter_id",
+          "type": "uuid",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.api_parameters",
+              "columns": [
+                "parent_parameter_id",
+                "operation_id",
+                "location"
+              ],
+              "to": "knowledge.api_parameters",
+              "target_columns": [
+                "id",
+                "operation_id",
+                "location"
+              ],
+              "constraint_name": "api_parameters_parent_parameter_id_operation_id_location_fkey"
+            }
+          ]
+        },
+        "parameter_key": {
+          "name": "parameter_key",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "location": {
+          "name": "location",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": [
+            {
+              "from": "knowledge.api_parameters",
+              "columns": [
+                "parent_parameter_id",
+                "operation_id",
+                "location"
+              ],
+              "to": "knowledge.api_parameters",
+              "target_columns": [
+                "id",
+                "operation_id",
+                "location"
+              ],
+              "constraint_name": "api_parameters_parent_parameter_id_operation_id_location_fkey"
+            }
+          ]
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "data_type_raw": {
+          "name": "data_type_raw",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "required_claim": {
+          "name": "required_claim",
+          "type": "boolean",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "example_value": {
+          "name": "example_value",
+          "type": "jsonb",
+          "required": false,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "ordinal": {
+          "name": "ordinal",
+          "type": "integer",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "source_locator": {
+          "name": "source_locator",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        },
+        "raw_definition": {
+          "name": "raw_definition",
+          "type": "jsonb",
+          "required": true,
+          "pk": false,
+          "default": null,
+          "generated": null,
+          "references": []
+        }
+      },
+      "constraints": [
+        {
+          "name": "api_parameters_pkey",
+          "kind": "CONSTR_PRIMARY",
+          "columns": [
+            "id"
+          ],
+          "sql": "PRIMARY KEY",
+          "column_context": "id"
+        },
+        {
+          "name": "api_parameters_operation_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "operation_id"
+          ],
+          "sql": "REFERENCES knowledge.api_operations",
+          "column_context": "operation_id",
+          "target": "knowledge.api_operations",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "api_parameters_location_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "location"
+          ],
+          "sql": "CHECK (location IN ('HEADER', 'PATH', 'QUERY', 'BODY', 'RESPONSE'))",
+          "column_context": "location"
+        },
+        {
+          "name": "api_parameters_ordinal_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [
+            "ordinal"
+          ],
+          "sql": "CHECK (ordinal >= 0)",
+          "column_context": "ordinal"
+        },
+        {
+          "name": "api_parameters_operation_id_parameter_key_key",
+          "kind": "CONSTR_UNIQUE",
+          "columns": [
+            "operation_id",
+            "parameter_key"
+          ],
+          "sql": "UNIQUE (operation_id, parameter_key)",
+          "column_context": null
+        },
+        {
+          "name": "api_parameters_id_operation_id_location_key",
+          "kind": "CONSTR_UNIQUE",
+          "columns": [
+            "id",
+            "operation_id",
+            "location"
+          ],
+          "sql": "UNIQUE (id, operation_id, location)",
+          "column_context": null
+        },
+        {
+          "name": "api_parameters_parent_parameter_id_operation_id_location_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "parent_parameter_id",
+            "operation_id",
+            "location"
+          ],
+          "sql": "FOREIGN KEY (parent_parameter_id, operation_id, location) REFERENCES knowledge.api_parameters (id, operation_id, location)",
+          "column_context": null,
+          "target": "knowledge.api_parameters",
+          "target_columns": [
+            "id",
+            "operation_id",
+            "location"
+          ]
+        },
+        {
+          "name": "api_parameters_response_example_id_operation_id_fkey",
+          "kind": "CONSTR_FOREIGN",
+          "columns": [
+            "response_example_id",
+            "operation_id"
+          ],
+          "sql": "FOREIGN KEY (response_example_id, operation_id) REFERENCES knowledge.api_examples (id, operation_id)",
+          "column_context": null,
+          "target": "knowledge.api_examples",
+          "target_columns": [
+            "id",
+            "operation_id"
+          ]
+        },
+        {
+          "name": "api_parameters_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [],
+          "sql": "CHECK (parent_parameter_id IS DISTINCT FROM id)",
+          "column_context": null
+        },
+        {
+          "name": "api_parameters_check",
+          "kind": "CONSTR_CHECK",
+          "columns": [],
+          "sql": "CHECK (location <> 'RESPONSE' OR response_example_id IS NOT NULL)",
+          "column_context": null
+        }
+      ],
+      "indexes": [
+        {
+          "table": "knowledge.api_parameters",
+          "sql": "CREATE INDEX api_parameters_operation_idx ON knowledge.api_parameters (operation_id, location)",
+          "unique": false
+        }
+      ]
+    }
+  },
+  "relationships": [
+    {
+      "from": "knowledge.source_versions",
+      "columns": [
+        "source_id"
+      ],
+      "to": "knowledge.sources",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "source_versions_source_id_fkey"
+    },
+    {
+      "from": "knowledge.source_versions",
+      "columns": [
+        "group_id"
+      ],
+      "to": "knowledge.source_groups",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "source_versions_group_id_fkey"
+    },
+    {
+      "from": "knowledge.source_versions",
+      "columns": [
+        "group_id",
+        "evidence_role"
+      ],
+      "to": "knowledge.source_groups",
+      "target_columns": [
+        "id",
+        "evidence_role"
+      ],
+      "constraint_name": "source_versions_group_id_evidence_role_fkey"
+    },
+    {
+      "from": "knowledge.extractions",
+      "columns": [
+        "source_version_id"
+      ],
+      "to": "knowledge.source_versions",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "extractions_source_version_id_fkey"
+    },
+    {
+      "from": "knowledge.extractions",
+      "columns": [
+        "input_artifact_id",
+        "source_version_id"
+      ],
+      "to": "knowledge.artifacts",
+      "target_columns": [
+        "id",
+        "source_version_id"
+      ],
+      "constraint_name": "extractions_input_artifact_id_source_version_id_fkey"
+    },
+    {
+      "from": "knowledge.content_units",
+      "columns": [
+        "extraction_id"
+      ],
+      "to": "knowledge.extractions",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "content_units_extraction_id_fkey"
+    },
+    {
+      "from": "knowledge.content_units",
+      "columns": [
+        "parent_unit_id",
+        "extraction_id"
+      ],
+      "to": "knowledge.content_units",
+      "target_columns": [
+        "id",
+        "extraction_id"
+      ],
+      "constraint_name": "content_units_parent_unit_id_extraction_id_fkey"
+    },
+    {
+      "from": "knowledge.content_units",
+      "columns": [
+        "artifact_id"
+      ],
+      "to": "knowledge.artifacts",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "content_units_artifact_id_fkey"
+    },
+    {
+      "from": "knowledge.source_links",
+      "columns": [
+        "from_version_id"
+      ],
+      "to": "knowledge.source_versions",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "source_links_from_version_id_fkey"
+    },
+    {
+      "from": "knowledge.source_links",
+      "columns": [
+        "to_source_id"
+      ],
+      "to": "knowledge.sources",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "source_links_to_source_id_fkey"
+    },
+    {
+      "from": "knowledge.source_links",
+      "columns": [
+        "to_version_id",
+        "to_source_id"
+      ],
+      "to": "knowledge.source_versions",
+      "target_columns": [
+        "id",
+        "source_id"
+      ],
+      "constraint_name": "source_links_to_version_id_to_source_id_fkey"
+    },
+    {
+      "from": "analysis.run_sources",
+      "columns": [
+        "run_id"
+      ],
+      "to": "analysis.runs",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "run_sources_run_id_fkey"
+    },
+    {
+      "from": "analysis.run_sources",
+      "columns": [
+        "source_version_id"
+      ],
+      "to": "knowledge.source_versions",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "run_sources_source_version_id_fkey"
+    },
+    {
+      "from": "analysis.agent_outputs",
+      "columns": [
+        "run_id"
+      ],
+      "to": "analysis.runs",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "agent_outputs_run_id_fkey"
+    },
+    {
+      "from": "analysis.records",
+      "columns": [
+        "run_id"
+      ],
+      "to": "analysis.runs",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "records_run_id_fkey"
+    },
+    {
+      "from": "analysis.records",
+      "columns": [
+        "subject_version_id"
+      ],
+      "to": "knowledge.source_versions",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "records_subject_version_id_fkey"
+    },
+    {
+      "from": "analysis.records",
+      "columns": [
+        "supersedes_record_id"
+      ],
+      "to": "analysis.records",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "records_supersedes_record_id_fkey"
+    },
+    {
+      "from": "analysis.records",
+      "columns": [
+        "agent_output_id",
+        "run_id"
+      ],
+      "to": "analysis.agent_outputs",
+      "target_columns": [
+        "id",
+        "run_id"
+      ],
+      "constraint_name": "records_agent_output_id_run_id_fkey"
+    },
+    {
+      "from": "analysis.record_evidence",
+      "columns": [
+        "record_id"
+      ],
+      "to": "analysis.records",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "record_evidence_record_id_fkey"
+    },
+    {
+      "from": "analysis.record_evidence",
+      "columns": [
+        "content_unit_id"
+      ],
+      "to": "knowledge.content_units",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "record_evidence_content_unit_id_fkey"
+    },
+    {
+      "from": "retrieval.content_embeddings",
+      "columns": [
+        "content_unit_id"
+      ],
+      "to": "knowledge.content_units",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "content_embeddings_content_unit_id_fkey"
+    },
+    {
+      "from": "retrieval.content_embeddings",
+      "columns": [
+        "profile_id"
+      ],
+      "to": "retrieval.embedding_profiles",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "content_embeddings_profile_id_fkey"
+    },
+    {
+      "from": "retrieval.analysis_embeddings",
+      "columns": [
+        "record_id"
+      ],
+      "to": "analysis.records",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "analysis_embeddings_record_id_fkey"
+    },
+    {
+      "from": "retrieval.analysis_embeddings",
+      "columns": [
+        "profile_id"
+      ],
+      "to": "retrieval.embedding_profiles",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "analysis_embeddings_profile_id_fkey"
+    },
+    {
+      "from": "knowledge.storage_objects",
+      "columns": [
+        "group_id"
+      ],
+      "to": "knowledge.source_groups",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "storage_objects_group_id_fkey"
+    },
+    {
+      "from": "knowledge.storage_objects",
+      "columns": [
+        "parent_object_id"
+      ],
+      "to": "knowledge.storage_objects",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "storage_objects_parent_object_id_fkey"
+    },
+    {
+      "from": "knowledge.storage_objects",
+      "columns": [
+        "parent_object_id",
+        "group_id"
+      ],
+      "to": "knowledge.storage_objects",
+      "target_columns": [
+        "id",
+        "group_id"
+      ],
+      "constraint_name": "storage_objects_parent_object_id_group_id_fkey"
+    },
+    {
+      "from": "knowledge.object_versions",
+      "columns": [
+        "object_id"
+      ],
+      "to": "knowledge.storage_objects",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "object_versions_object_id_fkey"
+    },
+    {
+      "from": "knowledge.object_versions",
+      "columns": [
+        "parent_archive_version_id"
+      ],
+      "to": "knowledge.object_versions",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "object_versions_parent_archive_version_id_fkey"
+    },
+    {
+      "from": "knowledge.version_representations",
+      "columns": [
+        "source_version_id"
+      ],
+      "to": "knowledge.source_versions",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "version_representations_source_version_id_fkey"
+    },
+    {
+      "from": "knowledge.version_representations",
+      "columns": [
+        "object_version_id"
+      ],
+      "to": "knowledge.object_versions",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "version_representations_object_version_id_fkey"
+    },
+    {
+      "from": "knowledge.ingestion_jobs",
+      "columns": [
+        "object_version_id"
+      ],
+      "to": "knowledge.object_versions",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "ingestion_jobs_object_version_id_fkey"
+    },
+    {
+      "from": "knowledge.unit_links",
+      "columns": [
+        "from_unit_id"
+      ],
+      "to": "knowledge.content_units",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "unit_links_from_unit_id_fkey"
+    },
+    {
+      "from": "knowledge.unit_links",
+      "columns": [
+        "to_unit_id"
+      ],
+      "to": "knowledge.content_units",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "unit_links_to_unit_id_fkey"
+    },
+    {
+      "from": "analysis.stages",
+      "columns": [
+        "run_id"
+      ],
+      "to": "analysis.runs",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "stages_run_id_fkey"
+    },
+    {
+      "from": "analysis.stages",
+      "columns": [
+        "profile_id"
+      ],
+      "to": "retrieval.embedding_profiles",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "stages_profile_id_fkey"
+    },
+    {
+      "from": "analysis.record_links",
+      "columns": [
+        "from_record_id"
+      ],
+      "to": "analysis.records",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "record_links_from_record_id_fkey"
+    },
+    {
+      "from": "analysis.record_links",
+      "columns": [
+        "to_record_id"
+      ],
+      "to": "analysis.records",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "record_links_to_record_id_fkey"
+    },
+    {
+      "from": "analysis.human_reviews",
+      "columns": [
+        "record_id"
+      ],
+      "to": "analysis.records",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "human_reviews_record_id_fkey"
+    },
+    {
+      "from": "knowledge.intake_batches",
+      "columns": [
+        "manifest_object_version_id"
+      ],
+      "to": "knowledge.object_versions",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "intake_batches_manifest_object_version_id_fkey"
+    },
+    {
+      "from": "knowledge.intake_entries",
+      "columns": [
+        "batch_id"
+      ],
+      "to": "knowledge.intake_batches",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "intake_entries_batch_id_fkey"
+    },
+    {
+      "from": "knowledge.intake_entries",
+      "columns": [
+        "group_id"
+      ],
+      "to": "knowledge.source_groups",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "intake_entries_group_id_fkey"
+    },
+    {
+      "from": "knowledge.intake_entries",
+      "columns": [
+        "observed_object_version_id"
+      ],
+      "to": "knowledge.object_versions",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "intake_entries_observed_object_version_id_fkey"
+    },
+    {
+      "from": "knowledge.artifacts",
+      "columns": [
+        "source_version_id"
+      ],
+      "to": "knowledge.source_versions",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "artifacts_source_version_id_fkey"
+    },
+    {
+      "from": "knowledge.artifacts",
+      "columns": [
+        "origin_object_version_id"
+      ],
+      "to": "knowledge.object_versions",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "artifacts_origin_object_version_id_fkey"
+    },
+    {
+      "from": "knowledge.artifacts",
+      "columns": [
+        "extraction_id",
+        "source_version_id"
+      ],
+      "to": "knowledge.extractions",
+      "target_columns": [
+        "id",
+        "source_version_id"
+      ],
+      "constraint_name": "artifacts_extraction_id_source_version_id_fkey"
+    },
+    {
+      "from": "knowledge.artifacts",
+      "columns": [
+        "parent_artifact_id",
+        "source_version_id"
+      ],
+      "to": "knowledge.artifacts",
+      "target_columns": [
+        "id",
+        "source_version_id"
+      ],
+      "constraint_name": "artifacts_parent_artifact_id_source_version_id_fkey"
+    },
+    {
+      "from": "knowledge.media_tracks",
+      "columns": [
+        "source_version_id"
+      ],
+      "to": "knowledge.source_versions",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "media_tracks_source_version_id_fkey"
+    },
+    {
+      "from": "knowledge.api_operations",
+      "columns": [
+        "source_version_id"
+      ],
+      "to": "knowledge.source_versions",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "api_operations_source_version_id_fkey"
+    },
+    {
+      "from": "knowledge.api_examples",
+      "columns": [
+        "operation_id"
+      ],
+      "to": "knowledge.api_operations",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "api_examples_operation_id_fkey"
+    },
+    {
+      "from": "knowledge.api_examples",
+      "columns": [
+        "source_object_version_id"
+      ],
+      "to": "knowledge.object_versions",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "api_examples_source_object_version_id_fkey"
+    },
+    {
+      "from": "knowledge.api_examples",
+      "columns": [
+        "content_unit_id"
+      ],
+      "to": "knowledge.content_units",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "api_examples_content_unit_id_fkey"
+    },
+    {
+      "from": "knowledge.api_parameters",
+      "columns": [
+        "operation_id"
+      ],
+      "to": "knowledge.api_operations",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "api_parameters_operation_id_fkey"
+    },
+    {
+      "from": "knowledge.api_parameters",
+      "columns": [
+        "parent_parameter_id",
+        "operation_id",
+        "location"
+      ],
+      "to": "knowledge.api_parameters",
+      "target_columns": [
+        "id",
+        "operation_id",
+        "location"
+      ],
+      "constraint_name": "api_parameters_parent_parameter_id_operation_id_location_fkey"
+    },
+    {
+      "from": "knowledge.api_parameters",
+      "columns": [
+        "response_example_id",
+        "operation_id"
+      ],
+      "to": "knowledge.api_examples",
+      "target_columns": [
+        "id",
+        "operation_id"
+      ],
+      "constraint_name": "api_parameters_response_example_id_operation_id_fkey"
+    }
+  ]
+}

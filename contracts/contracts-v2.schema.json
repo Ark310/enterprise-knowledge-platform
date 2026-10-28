@@ -1,0 +1,1173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:contoso:td-doc-review:2.0",
+  "title": "TD current-state first article review v2",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/START_CURRENT_STATE"
+    },
+    {
+      "$ref": "#/$defs/CURRENT_STATE_HANDOFF"
+    },
+    {
+      "$ref": "#/$defs/ARTICLE_ASSESSMENT"
+    },
+    {
+      "$ref": "#/$defs/HUMAN_REVIEW"
+    },
+    {
+      "$ref": "#/$defs/CONTRACT_ERROR"
+    }
+  ],
+  "$defs": {
+    "citation": {
+      "type": "object",
+      "properties": {
+        "source_type": {
+          "type": "string",
+          "enum": [
+            "RECORDING_VISUAL",
+            "RECORDING_AUDIO_TRANSCRIPT",
+            "ARTICLE_TEXT",
+            "ARTICLE_IMAGE",
+            "HUMAN_REVIEW"
+          ]
+        },
+        "archive": {
+          "type": "string",
+          "minLength": 1
+        },
+        "file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "locator": {
+          "type": "string",
+          "minLength": 1
+        },
+        "excerpt_or_observation": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "source_type",
+        "archive",
+        "file",
+        "locator",
+        "excerpt_or_observation"
+      ],
+      "additionalProperties": false
+    },
+    "range": {
+      "type": "object",
+      "properties": {
+        "start_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "end_seconds": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "start_seconds",
+        "end_seconds"
+      ],
+      "additionalProperties": false
+    },
+    "request": {
+      "type": "object",
+      "properties": {
+        "current_state_zip": {
+          "type": "string",
+          "minLength": 1
+        },
+        "existing_assets_zip": {
+          "type": "string",
+          "minLength": 1
+        },
+        "recording_member": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_context": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_element": {
+          "type": "string",
+          "minLength": 1
+        },
+        "question": {
+          "type": "string",
+          "minLength": 1
+        },
+        "review_ranges": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/range"
+          },
+          "maxItems": 2,
+          "minItems": 1
+        },
+        "search_aliases": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "maxItems": 10
+        },
+        "max_observations": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        }
+      },
+      "required": [
+        "current_state_zip",
+        "existing_assets_zip",
+        "recording_member",
+        "target_context",
+        "target_element",
+        "question",
+        "review_ranges",
+        "search_aliases",
+        "max_observations"
+      ],
+      "additionalProperties": false
+    },
+    "question": {
+      "type": "object",
+      "properties": {
+        "question_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "question": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "needed_evidence": {
+          "type": "string",
+          "minLength": 1
+        },
+        "blocking": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "question_id",
+        "question",
+        "reason",
+        "needed_evidence",
+        "blocking"
+      ],
+      "additionalProperties": false
+    },
+    "media_coverage": {
+      "type": "object",
+      "properties": {
+        "archive": {
+          "type": "string",
+          "minLength": 1
+        },
+        "file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "visual_reviewed": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "audio_reviewed": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "not_reviewed": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "archive",
+        "file",
+        "visual_reviewed",
+        "audio_reviewed",
+        "not_reviewed"
+      ],
+      "additionalProperties": false
+    },
+    "observation": {
+      "type": "object",
+      "properties": {
+        "observation_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "element": {
+          "type": "string",
+          "minLength": 1
+        },
+        "statement": {
+          "type": "string",
+          "minLength": 1
+        },
+        "level": {
+          "type": "string",
+          "enum": [
+            "OBSERVED_VISUAL",
+            "NARRATED_ONLY",
+            "CORROBORATED"
+          ]
+        },
+        "citations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/citation"
+          },
+          "minItems": 1
+        },
+        "unverified_points": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "observation_id",
+        "element",
+        "statement",
+        "level",
+        "citations",
+        "unverified_points"
+      ],
+      "additionalProperties": false
+    },
+    "current_payload": {
+      "type": "object",
+      "properties": {
+        "request": {
+          "$ref": "#/$defs/request"
+        },
+        "media_coverage": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/media_coverage"
+          }
+        },
+        "observations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/observation"
+          },
+          "maxItems": 8
+        },
+        "human_questions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/question"
+          },
+          "maxItems": 5
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "request",
+        "media_coverage",
+        "observations",
+        "human_questions",
+        "limitations"
+      ],
+      "additionalProperties": false
+    },
+    "upstream_review": {
+      "type": "object",
+      "properties": {
+        "observation_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "assessment": {
+          "type": "string",
+          "enum": [
+            "SUPPORTED",
+            "QUALIFY",
+            "CONTRADICTED",
+            "UNVERIFIED"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "citations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/citation"
+          }
+        }
+      },
+      "required": [
+        "observation_id",
+        "assessment",
+        "reason",
+        "citations"
+      ],
+      "additionalProperties": false
+    },
+    "inventory": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "enum": [
+            "FOUND",
+            "NOT_FOUND_IN_REVIEWED_SCOPE",
+            "INDETERMINATE"
+          ]
+        },
+        "review_scope": {
+          "type": "string",
+          "minLength": 1
+        },
+        "search_coverage": {
+          "type": "string",
+          "enum": [
+            "COMPLETE_FOR_TARGET_SEARCH",
+            "PARTIAL",
+            "NOT_SEARCHED"
+          ]
+        },
+        "queries": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "articles_screened": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unread_relevant_sources": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "result",
+        "review_scope",
+        "search_coverage",
+        "queries",
+        "articles_screened",
+        "unread_relevant_sources",
+        "limitations"
+      ],
+      "additionalProperties": false
+    },
+    "quality_check": {
+      "type": "object",
+      "properties": {
+        "criterion": {
+          "type": "string",
+          "enum": [
+            "PURPOSE_AND_SCOPE",
+            "PREREQUISITES_WHERE_RELEVANT",
+            "NAVIGATION_AND_LABELS",
+            "STEPS_AND_SETTINGS",
+            "EXPECTED_RESULT_AND_VERIFICATION",
+            "EXCEPTIONS_WHERE_RELEVANT",
+            "READABILITY_AND_TERMINOLOGY"
+          ]
+        },
+        "rating": {
+          "type": "string",
+          "enum": [
+            "MET",
+            "PARTLY_MET",
+            "NOT_MET",
+            "NOT_APPLICABLE",
+            "UNVERIFIED"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "citations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/citation"
+          }
+        }
+      },
+      "required": [
+        "criterion",
+        "rating",
+        "reason",
+        "citations"
+      ],
+      "additionalProperties": false
+    },
+    "currency": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "MATCHES_RECORDED_SCOPE",
+            "UPDATE_REQUIRED",
+            "CONFLICTED",
+            "UNVERIFIED"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "citations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/citation"
+          }
+        }
+      },
+      "required": [
+        "status",
+        "reason",
+        "citations"
+      ],
+      "additionalProperties": false
+    },
+    "quality": {
+      "type": "object",
+      "properties": {
+        "overall": {
+          "type": "string",
+          "enum": [
+            "ACCEPTABLE",
+            "IMPROVEMENT_NEEDED",
+            "INDETERMINATE"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/quality_check"
+          },
+          "maxItems": 7,
+          "minItems": 7
+        }
+      },
+      "required": [
+        "overall",
+        "reason",
+        "checks"
+      ],
+      "additionalProperties": false
+    },
+    "article": {
+      "type": "object",
+      "properties": {
+        "article_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "archive": {
+          "type": "string",
+          "minLength": 1
+        },
+        "file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "match": {
+          "type": "string",
+          "enum": [
+            "EXACT",
+            "PARTIAL",
+            "POSSIBLE"
+          ]
+        },
+        "why_relevant": {
+          "type": "string",
+          "minLength": 1
+        },
+        "existence_citations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/citation"
+          },
+          "minItems": 1
+        },
+        "currency": {
+          "$ref": "#/$defs/currency"
+        },
+        "quality": {
+          "$ref": "#/$defs/quality"
+        }
+      },
+      "required": [
+        "article_id",
+        "title",
+        "archive",
+        "file",
+        "source_url",
+        "match",
+        "why_relevant",
+        "existence_citations",
+        "currency",
+        "quality"
+      ],
+      "additionalProperties": false
+    },
+    "recommendation": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "KEEP",
+            "UPDATE_EXISTING",
+            "PROPOSE_NEW_ARTICLE",
+            "HUMAN_REVIEW_REQUIRED"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "citations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/citation"
+          }
+        }
+      },
+      "required": [
+        "action",
+        "reason",
+        "citations"
+      ],
+      "additionalProperties": false
+    },
+    "writing_task": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "CREATE",
+            "UPDATE"
+          ]
+        },
+        "article_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scope_outline": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "supporting_observation_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "human_confirmations_needed": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "task_id",
+        "kind",
+        "article_id",
+        "title",
+        "scope_outline",
+        "supporting_observation_ids",
+        "human_confirmations_needed"
+      ],
+      "additionalProperties": false
+    },
+    "decision": {
+      "type": "object",
+      "properties": {
+        "target_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "decision": {
+          "type": "string",
+          "enum": [
+            "CONFIRM",
+            "REJECT",
+            "NEED_MORE_EVIDENCE"
+          ]
+        },
+        "reviewer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "citations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/citation"
+          }
+        }
+      },
+      "required": [
+        "target_id",
+        "decision",
+        "reviewer",
+        "reason",
+        "citations"
+      ],
+      "additionalProperties": false
+    },
+    "assessment_payload": {
+      "type": "object",
+      "properties": {
+        "request": {
+          "$ref": "#/$defs/request"
+        },
+        "upstream_review": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/upstream_review"
+          },
+          "maxItems": 8
+        },
+        "inventory": {
+          "$ref": "#/$defs/inventory"
+        },
+        "articles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/article"
+          },
+          "maxItems": 3
+        },
+        "recommendation": {
+          "$ref": "#/$defs/recommendation"
+        },
+        "writing_backlog": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/writing_task"
+          },
+          "maxItems": 2
+        },
+        "human_questions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/question"
+          },
+          "maxItems": 5
+        },
+        "human_reviews": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/decision"
+          }
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "report_markdown": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "request",
+        "upstream_review",
+        "inventory",
+        "articles",
+        "recommendation",
+        "writing_backlog",
+        "human_questions",
+        "human_reviews",
+        "limitations",
+        "report_markdown"
+      ],
+      "additionalProperties": false
+    },
+    "human_payload": {
+      "type": "object",
+      "properties": {
+        "base_assessment": {
+          "$ref": "#/$defs/ARTICLE_ASSESSMENT"
+        },
+        "decisions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/decision"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "base_assessment",
+        "decisions"
+      ],
+      "additionalProperties": false
+    },
+    "error_payload": {
+      "type": "object",
+      "properties": {
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "expected_message_type": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "errors",
+        "expected_message_type"
+      ],
+      "additionalProperties": false
+    },
+    "START_CURRENT_STATE": {
+      "type": "object",
+      "properties": {
+        "contract_version": {
+          "type": "string",
+          "enum": [
+            "td-doc-review-2.0"
+          ]
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "test_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "module": {
+          "type": "string",
+          "minLength": 1
+        },
+        "topic": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message_type": {
+          "type": "string",
+          "enum": [
+            "START_CURRENT_STATE"
+          ]
+        },
+        "sender": {
+          "type": "string",
+          "enum": [
+            "HUMAN"
+          ]
+        },
+        "recipient": {
+          "type": "string",
+          "enum": [
+            "CURRENT_STATE"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "READY"
+          ]
+        },
+        "payload": {
+          "$ref": "#/$defs/request"
+        },
+        "next_action": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_version",
+        "run_id",
+        "test_id",
+        "module",
+        "topic",
+        "message_type",
+        "sender",
+        "recipient",
+        "status",
+        "payload",
+        "next_action"
+      ],
+      "additionalProperties": false
+    },
+    "CURRENT_STATE_HANDOFF": {
+      "type": "object",
+      "properties": {
+        "contract_version": {
+          "type": "string",
+          "enum": [
+            "td-doc-review-2.0"
+          ]
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "test_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "module": {
+          "type": "string",
+          "minLength": 1
+        },
+        "topic": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message_type": {
+          "type": "string",
+          "enum": [
+            "CURRENT_STATE_HANDOFF"
+          ]
+        },
+        "sender": {
+          "type": "string",
+          "enum": [
+            "CURRENT_STATE"
+          ]
+        },
+        "recipient": {
+          "type": "string",
+          "enum": [
+            "ARTICLE_REVIEW"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "OK",
+            "PARTIAL",
+            "BLOCKED"
+          ]
+        },
+        "payload": {
+          "$ref": "#/$defs/current_payload"
+        },
+        "next_action": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_version",
+        "run_id",
+        "test_id",
+        "module",
+        "topic",
+        "message_type",
+        "sender",
+        "recipient",
+        "status",
+        "payload",
+        "next_action"
+      ],
+      "additionalProperties": false
+    },
+    "ARTICLE_ASSESSMENT": {
+      "type": "object",
+      "properties": {
+        "contract_version": {
+          "type": "string",
+          "enum": [
+            "td-doc-review-2.0"
+          ]
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "test_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "module": {
+          "type": "string",
+          "minLength": 1
+        },
+        "topic": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message_type": {
+          "type": "string",
+          "enum": [
+            "ARTICLE_ASSESSMENT"
+          ]
+        },
+        "sender": {
+          "type": "string",
+          "enum": [
+            "ARTICLE_REVIEW"
+          ]
+        },
+        "recipient": {
+          "type": "string",
+          "enum": [
+            "HUMAN"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "OK",
+            "PARTIAL",
+            "BLOCKED"
+          ]
+        },
+        "payload": {
+          "$ref": "#/$defs/assessment_payload"
+        },
+        "next_action": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_version",
+        "run_id",
+        "test_id",
+        "module",
+        "topic",
+        "message_type",
+        "sender",
+        "recipient",
+        "status",
+        "payload",
+        "next_action"
+      ],
+      "additionalProperties": false
+    },
+    "HUMAN_REVIEW": {
+      "type": "object",
+      "properties": {
+        "contract_version": {
+          "type": "string",
+          "enum": [
+            "td-doc-review-2.0"
+          ]
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "test_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "module": {
+          "type": "string",
+          "minLength": 1
+        },
+        "topic": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message_type": {
+          "type": "string",
+          "enum": [
+            "HUMAN_REVIEW"
+          ]
+        },
+        "sender": {
+          "type": "string",
+          "enum": [
+            "HUMAN"
+          ]
+        },
+        "recipient": {
+          "type": "string",
+          "enum": [
+            "ARTICLE_REVIEW"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "READY"
+          ]
+        },
+        "payload": {
+          "$ref": "#/$defs/human_payload"
+        },
+        "next_action": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_version",
+        "run_id",
+        "test_id",
+        "module",
+        "topic",
+        "message_type",
+        "sender",
+        "recipient",
+        "status",
+        "payload",
+        "next_action"
+      ],
+      "additionalProperties": false
+    },
+    "CONTRACT_ERROR": {
+      "type": "object",
+      "properties": {
+        "contract_version": {
+          "type": "string",
+          "enum": [
+            "td-doc-review-2.0"
+          ]
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "test_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "module": {
+          "type": "string",
+          "minLength": 1
+        },
+        "topic": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message_type": {
+          "type": "string",
+          "enum": [
+            "CONTRACT_ERROR"
+          ]
+        },
+        "sender": {
+          "type": "string",
+          "enum": [
+            "CURRENT_STATE",
+            "ARTICLE_REVIEW"
+          ]
+        },
+        "recipient": {
+          "type": "string",
+          "enum": [
+            "HUMAN"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "INVALID_INPUT"
+          ]
+        },
+        "payload": {
+          "$ref": "#/$defs/error_payload"
+        },
+        "next_action": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_version",
+        "run_id",
+        "test_id",
+        "module",
+        "topic",
+        "message_type",
+        "sender",
+        "recipient",
+        "status",
+        "payload",
+        "next_action"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
