@@ -1,0 +1,1082 @@
+{
+  "schema_version": "0.3.0",
+  "target_database": "knowledge_poc",
+  "tables": {
+    "knowledge.sources": {
+      "columns": [
+        "id",
+        "source_system",
+        "external_key",
+        "source_type",
+        "title",
+        "product",
+        "module",
+        "source_url",
+        "created_at",
+        "external_namespace"
+      ],
+      "column_count": 10
+    },
+    "knowledge.source_versions": {
+      "columns": [
+        "id",
+        "source_id",
+        "revision_key",
+        "evidence_role",
+        "storage_uri",
+        "object_version_id",
+        "mime_type",
+        "byte_size",
+        "content_sha256",
+        "external_revision",
+        "source_modified_at",
+        "ingested_at",
+        "lifecycle_status",
+        "metadata",
+        "applicability",
+        "group_id"
+      ],
+      "column_count": 16
+    },
+    "knowledge.extractions": {
+      "columns": [
+        "id",
+        "source_version_id",
+        "method",
+        "processor_version",
+        "status",
+        "warnings",
+        "created_at",
+        "config_sha256",
+        "is_active",
+        "input_artifact_id"
+      ],
+      "column_count": 10
+    },
+    "knowledge.content_units": {
+      "columns": [
+        "id",
+        "extraction_id",
+        "parent_unit_id",
+        "unit_key",
+        "unit_type",
+        "heading",
+        "content_text",
+        "representation_kind",
+        "locator",
+        "content_sha256",
+        "metadata",
+        "search_text",
+        "artifact_uri",
+        "start_seconds",
+        "end_seconds",
+        "page_number",
+        "sheet_name",
+        "cell_range",
+        "artifact_id",
+        "language",
+        "content_status"
+      ],
+      "column_count": 21
+    },
+    "knowledge.source_links": {
+      "columns": [
+        "id",
+        "from_version_id",
+        "to_source_id",
+        "target_uri",
+        "relationship",
+        "resolution_status",
+        "to_version_id"
+      ],
+      "column_count": 7
+    },
+    "analysis.runs": {
+      "columns": [
+        "id",
+        "run_key",
+        "module",
+        "topic",
+        "question",
+        "contract_version",
+        "agent_a_version",
+        "agent_b_version",
+        "status",
+        "created_at",
+        "completed_at"
+      ],
+      "column_count": 11
+    },
+    "analysis.run_sources": {
+      "columns": [
+        "run_id",
+        "source_version_id",
+        "coverage_status",
+        "coverage_details",
+        "search_terms",
+        "reviewed_scope"
+      ],
+      "column_count": 6
+    },
+    "analysis.agent_outputs": {
+      "columns": [
+        "id",
+        "run_id",
+        "agent_role",
+        "output_json",
+        "schema_validated",
+        "validation_details",
+        "created_at",
+        "contract_schema_sha256",
+        "validation_status",
+        "model_details",
+        "prompt_sha256"
+      ],
+      "column_count": 11
+    },
+    "analysis.records": {
+      "columns": [
+        "id",
+        "run_id",
+        "agent_output_id",
+        "record_key",
+        "record_type",
+        "subject_version_id",
+        "topic",
+        "statement",
+        "evidence_level",
+        "currency_status",
+        "quality_status",
+        "finding_type",
+        "review_status",
+        "supersedes_record_id",
+        "details",
+        "created_at"
+      ],
+      "column_count": 16
+    },
+    "analysis.record_evidence": {
+      "columns": [
+        "record_id",
+        "content_unit_id",
+        "relationship",
+        "locator",
+        "excerpt"
+      ],
+      "column_count": 5
+    },
+    "retrieval.embedding_profiles": {
+      "columns": [
+        "id",
+        "profile_key",
+        "provider",
+        "model",
+        "model_revision",
+        "dimensions",
+        "distance_metric",
+        "preprocessing_version"
+      ],
+      "column_count": 8
+    },
+    "retrieval.content_embeddings": {
+      "columns": [
+        "content_unit_id",
+        "profile_id",
+        "input_sha256",
+        "embedding",
+        "created_at",
+        "embedded_text"
+      ],
+      "column_count": 6
+    },
+    "retrieval.analysis_embeddings": {
+      "columns": [
+        "record_id",
+        "profile_id",
+        "input_sha256",
+        "embedding",
+        "created_at",
+        "embedded_text"
+      ],
+      "column_count": 6
+    },
+    "knowledge.source_groups": {
+      "columns": [
+        "id",
+        "group_key",
+        "evidence_role",
+        "drive_folder_id",
+        "folder_url",
+        "sync_cursor",
+        "last_successful_scan_at",
+        "metadata"
+      ],
+      "column_count": 8
+    },
+    "knowledge.storage_objects": {
+      "columns": [
+        "id",
+        "group_id",
+        "object_key",
+        "object_kind",
+        "drive_file_id",
+        "parent_object_id",
+        "member_path",
+        "title",
+        "mime_type",
+        "original_url",
+        "availability",
+        "last_seen_at",
+        "metadata",
+        "detected_mime_type",
+        "format_details"
+      ],
+      "column_count": 15
+    },
+    "knowledge.object_versions": {
+      "columns": [
+        "id",
+        "object_id",
+        "version_key",
+        "provider_revision",
+        "provider_modified_at",
+        "byte_size",
+        "sha256",
+        "parent_archive_version_id",
+        "archive_entry_index",
+        "crc32",
+        "registered_at",
+        "storage_uri",
+        "read_status",
+        "error_details"
+      ],
+      "column_count": 14
+    },
+    "knowledge.version_representations": {
+      "columns": [
+        "source_version_id",
+        "object_version_id",
+        "representation_role",
+        "metadata"
+      ],
+      "column_count": 4
+    },
+    "knowledge.ingestion_jobs": {
+      "columns": [
+        "id",
+        "object_version_id",
+        "operation",
+        "processor_version",
+        "config_sha256",
+        "attempt",
+        "status",
+        "started_at",
+        "finished_at",
+        "error_details"
+      ],
+      "column_count": 10
+    },
+    "knowledge.unit_links": {
+      "columns": [
+        "from_unit_id",
+        "to_unit_id",
+        "relationship",
+        "details"
+      ],
+      "column_count": 4
+    },
+    "analysis.stages": {
+      "columns": [
+        "id",
+        "run_id",
+        "stage",
+        "attempt",
+        "status",
+        "profile_id",
+        "started_at",
+        "completed_at",
+        "details"
+      ],
+      "column_count": 9
+    },
+    "analysis.record_links": {
+      "columns": [
+        "from_record_id",
+        "to_record_id",
+        "relationship"
+      ],
+      "column_count": 3
+    },
+    "analysis.human_reviews": {
+      "columns": [
+        "id",
+        "record_id",
+        "reviewer_identity",
+        "reviewed_at",
+        "decision",
+        "rationale",
+        "evidence_uri",
+        "created_at"
+      ],
+      "column_count": 8
+    },
+    "knowledge.intake_batches": {
+      "columns": [
+        "id",
+        "batch_key",
+        "manifest_object_version_id",
+        "declared_scope",
+        "discovered_at",
+        "scan_status",
+        "manifest_reconciliation",
+        "notes"
+      ],
+      "column_count": 8
+    },
+    "knowledge.intake_entries": {
+      "columns": [
+        "id",
+        "batch_id",
+        "group_id",
+        "entry_key",
+        "container_name",
+        "member_path",
+        "expected_bytes",
+        "expected_sha256",
+        "observed_object_version_id",
+        "presence_status",
+        "review_status",
+        "reason",
+        "details"
+      ],
+      "column_count": 13
+    },
+    "knowledge.artifacts": {
+      "columns": [
+        "id",
+        "source_version_id",
+        "extraction_id",
+        "origin_object_version_id",
+        "parent_artifact_id",
+        "artifact_key",
+        "artifact_kind",
+        "mime_type",
+        "storage_uri",
+        "inline_data",
+        "sha256",
+        "status",
+        "locator",
+        "metadata",
+        "created_at"
+      ],
+      "column_count": 15
+    },
+    "knowledge.media_tracks": {
+      "columns": [
+        "id",
+        "source_version_id",
+        "stream_index",
+        "track_type",
+        "codec",
+        "duration_seconds",
+        "width",
+        "height",
+        "sample_rate",
+        "channels",
+        "frame_rate_numerator",
+        "frame_rate_denominator",
+        "language",
+        "time_base",
+        "metadata"
+      ],
+      "column_count": 15
+    },
+    "knowledge.api_operations": {
+      "columns": [
+        "id",
+        "source_version_id",
+        "operation_key",
+        "method_raw",
+        "path_raw",
+        "request_url_raw",
+        "audience_label",
+        "environment_label",
+        "api_version_label",
+        "source_locator",
+        "raw_definition",
+        "metadata"
+      ],
+      "column_count": 12
+    },
+    "knowledge.api_examples": {
+      "columns": [
+        "id",
+        "operation_id",
+        "example_key",
+        "example_kind",
+        "context",
+        "language",
+        "status_label_raw",
+        "http_status",
+        "content_type",
+        "body_text",
+        "structured_body",
+        "payload_status",
+        "source_object_version_id",
+        "content_unit_id",
+        "source_locator",
+        "metadata"
+      ],
+      "column_count": 16
+    },
+    "knowledge.api_parameters": {
+      "columns": [
+        "id",
+        "operation_id",
+        "response_example_id",
+        "parent_parameter_id",
+        "parameter_key",
+        "location",
+        "name",
+        "data_type_raw",
+        "required_claim",
+        "description",
+        "example_value",
+        "ordinal",
+        "source_locator",
+        "raw_definition"
+      ],
+      "column_count": 14
+    }
+  },
+  "foreign_keys": [
+    {
+      "from": "knowledge.source_versions",
+      "columns": [
+        "source_id"
+      ],
+      "to": "knowledge.sources",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "source_versions_source_id_fkey"
+    },
+    {
+      "from": "knowledge.source_versions",
+      "columns": [
+        "group_id"
+      ],
+      "to": "knowledge.source_groups",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "source_versions_group_id_fkey"
+    },
+    {
+      "from": "knowledge.source_versions",
+      "columns": [
+        "group_id",
+        "evidence_role"
+      ],
+      "to": "knowledge.source_groups",
+      "target_columns": [
+        "id",
+        "evidence_role"
+      ],
+      "constraint_name": "source_versions_group_id_evidence_role_fkey"
+    },
+    {
+      "from": "knowledge.extractions",
+      "columns": [
+        "source_version_id"
+      ],
+      "to": "knowledge.source_versions",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "extractions_source_version_id_fkey"
+    },
+    {
+      "from": "knowledge.extractions",
+      "columns": [
+        "input_artifact_id",
+        "source_version_id"
+      ],
+      "to": "knowledge.artifacts",
+      "target_columns": [
+        "id",
+        "source_version_id"
+      ],
+      "constraint_name": "extractions_input_artifact_id_source_version_id_fkey"
+    },
+    {
+      "from": "knowledge.content_units",
+      "columns": [
+        "extraction_id"
+      ],
+      "to": "knowledge.extractions",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "content_units_extraction_id_fkey"
+    },
+    {
+      "from": "knowledge.content_units",
+      "columns": [
+        "parent_unit_id",
+        "extraction_id"
+      ],
+      "to": "knowledge.content_units",
+      "target_columns": [
+        "id",
+        "extraction_id"
+      ],
+      "constraint_name": "content_units_parent_unit_id_extraction_id_fkey"
+    },
+    {
+      "from": "knowledge.content_units",
+      "columns": [
+        "artifact_id"
+      ],
+      "to": "knowledge.artifacts",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "content_units_artifact_id_fkey"
+    },
+    {
+      "from": "knowledge.source_links",
+      "columns": [
+        "from_version_id"
+      ],
+      "to": "knowledge.source_versions",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "source_links_from_version_id_fkey"
+    },
+    {
+      "from": "knowledge.source_links",
+      "columns": [
+        "to_source_id"
+      ],
+      "to": "knowledge.sources",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "source_links_to_source_id_fkey"
+    },
+    {
+      "from": "knowledge.source_links",
+      "columns": [
+        "to_version_id",
+        "to_source_id"
+      ],
+      "to": "knowledge.source_versions",
+      "target_columns": [
+        "id",
+        "source_id"
+      ],
+      "constraint_name": "source_links_to_version_id_to_source_id_fkey"
+    },
+    {
+      "from": "analysis.run_sources",
+      "columns": [
+        "run_id"
+      ],
+      "to": "analysis.runs",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "run_sources_run_id_fkey"
+    },
+    {
+      "from": "analysis.run_sources",
+      "columns": [
+        "source_version_id"
+      ],
+      "to": "knowledge.source_versions",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "run_sources_source_version_id_fkey"
+    },
+    {
+      "from": "analysis.agent_outputs",
+      "columns": [
+        "run_id"
+      ],
+      "to": "analysis.runs",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "agent_outputs_run_id_fkey"
+    },
+    {
+      "from": "analysis.records",
+      "columns": [
+        "run_id"
+      ],
+      "to": "analysis.runs",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "records_run_id_fkey"
+    },
+    {
+      "from": "analysis.records",
+      "columns": [
+        "subject_version_id"
+      ],
+      "to": "knowledge.source_versions",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "records_subject_version_id_fkey"
+    },
+    {
+      "from": "analysis.records",
+      "columns": [
+        "supersedes_record_id"
+      ],
+      "to": "analysis.records",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "records_supersedes_record_id_fkey"
+    },
+    {
+      "from": "analysis.records",
+      "columns": [
+        "agent_output_id",
+        "run_id"
+      ],
+      "to": "analysis.agent_outputs",
+      "target_columns": [
+        "id",
+        "run_id"
+      ],
+      "constraint_name": "records_agent_output_id_run_id_fkey"
+    },
+    {
+      "from": "analysis.record_evidence",
+      "columns": [
+        "record_id"
+      ],
+      "to": "analysis.records",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "record_evidence_record_id_fkey"
+    },
+    {
+      "from": "analysis.record_evidence",
+      "columns": [
+        "content_unit_id"
+      ],
+      "to": "knowledge.content_units",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "record_evidence_content_unit_id_fkey"
+    },
+    {
+      "from": "retrieval.content_embeddings",
+      "columns": [
+        "content_unit_id"
+      ],
+      "to": "knowledge.content_units",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "content_embeddings_content_unit_id_fkey"
+    },
+    {
+      "from": "retrieval.content_embeddings",
+      "columns": [
+        "profile_id"
+      ],
+      "to": "retrieval.embedding_profiles",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "content_embeddings_profile_id_fkey"
+    },
+    {
+      "from": "retrieval.analysis_embeddings",
+      "columns": [
+        "record_id"
+      ],
+      "to": "analysis.records",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "analysis_embeddings_record_id_fkey"
+    },
+    {
+      "from": "retrieval.analysis_embeddings",
+      "columns": [
+        "profile_id"
+      ],
+      "to": "retrieval.embedding_profiles",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "analysis_embeddings_profile_id_fkey"
+    },
+    {
+      "from": "knowledge.storage_objects",
+      "columns": [
+        "group_id"
+      ],
+      "to": "knowledge.source_groups",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "storage_objects_group_id_fkey"
+    },
+    {
+      "from": "knowledge.storage_objects",
+      "columns": [
+        "parent_object_id"
+      ],
+      "to": "knowledge.storage_objects",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "storage_objects_parent_object_id_fkey"
+    },
+    {
+      "from": "knowledge.storage_objects",
+      "columns": [
+        "parent_object_id",
+        "group_id"
+      ],
+      "to": "knowledge.storage_objects",
+      "target_columns": [
+        "id",
+        "group_id"
+      ],
+      "constraint_name": "storage_objects_parent_object_id_group_id_fkey"
+    },
+    {
+      "from": "knowledge.object_versions",
+      "columns": [
+        "object_id"
+      ],
+      "to": "knowledge.storage_objects",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "object_versions_object_id_fkey"
+    },
+    {
+      "from": "knowledge.object_versions",
+      "columns": [
+        "parent_archive_version_id"
+      ],
+      "to": "knowledge.object_versions",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "object_versions_parent_archive_version_id_fkey"
+    },
+    {
+      "from": "knowledge.version_representations",
+      "columns": [
+        "source_version_id"
+      ],
+      "to": "knowledge.source_versions",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "version_representations_source_version_id_fkey"
+    },
+    {
+      "from": "knowledge.version_representations",
+      "columns": [
+        "object_version_id"
+      ],
+      "to": "knowledge.object_versions",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "version_representations_object_version_id_fkey"
+    },
+    {
+      "from": "knowledge.ingestion_jobs",
+      "columns": [
+        "object_version_id"
+      ],
+      "to": "knowledge.object_versions",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "ingestion_jobs_object_version_id_fkey"
+    },
+    {
+      "from": "knowledge.unit_links",
+      "columns": [
+        "from_unit_id"
+      ],
+      "to": "knowledge.content_units",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "unit_links_from_unit_id_fkey"
+    },
+    {
+      "from": "knowledge.unit_links",
+      "columns": [
+        "to_unit_id"
+      ],
+      "to": "knowledge.content_units",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "unit_links_to_unit_id_fkey"
+    },
+    {
+      "from": "analysis.stages",
+      "columns": [
+        "run_id"
+      ],
+      "to": "analysis.runs",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "stages_run_id_fkey"
+    },
+    {
+      "from": "analysis.stages",
+      "columns": [
+        "profile_id"
+      ],
+      "to": "retrieval.embedding_profiles",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "stages_profile_id_fkey"
+    },
+    {
+      "from": "analysis.record_links",
+      "columns": [
+        "from_record_id"
+      ],
+      "to": "analysis.records",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "record_links_from_record_id_fkey"
+    },
+    {
+      "from": "analysis.record_links",
+      "columns": [
+        "to_record_id"
+      ],
+      "to": "analysis.records",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "record_links_to_record_id_fkey"
+    },
+    {
+      "from": "analysis.human_reviews",
+      "columns": [
+        "record_id"
+      ],
+      "to": "analysis.records",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "human_reviews_record_id_fkey"
+    },
+    {
+      "from": "knowledge.intake_batches",
+      "columns": [
+        "manifest_object_version_id"
+      ],
+      "to": "knowledge.object_versions",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "intake_batches_manifest_object_version_id_fkey"
+    },
+    {
+      "from": "knowledge.intake_entries",
+      "columns": [
+        "batch_id"
+      ],
+      "to": "knowledge.intake_batches",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "intake_entries_batch_id_fkey"
+    },
+    {
+      "from": "knowledge.intake_entries",
+      "columns": [
+        "group_id"
+      ],
+      "to": "knowledge.source_groups",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "intake_entries_group_id_fkey"
+    },
+    {
+      "from": "knowledge.intake_entries",
+      "columns": [
+        "observed_object_version_id"
+      ],
+      "to": "knowledge.object_versions",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "intake_entries_observed_object_version_id_fkey"
+    },
+    {
+      "from": "knowledge.artifacts",
+      "columns": [
+        "source_version_id"
+      ],
+      "to": "knowledge.source_versions",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "artifacts_source_version_id_fkey"
+    },
+    {
+      "from": "knowledge.artifacts",
+      "columns": [
+        "origin_object_version_id"
+      ],
+      "to": "knowledge.object_versions",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "artifacts_origin_object_version_id_fkey"
+    },
+    {
+      "from": "knowledge.artifacts",
+      "columns": [
+        "extraction_id",
+        "source_version_id"
+      ],
+      "to": "knowledge.extractions",
+      "target_columns": [
+        "id",
+        "source_version_id"
+      ],
+      "constraint_name": "artifacts_extraction_id_source_version_id_fkey"
+    },
+    {
+      "from": "knowledge.artifacts",
+      "columns": [
+        "parent_artifact_id",
+        "source_version_id"
+      ],
+      "to": "knowledge.artifacts",
+      "target_columns": [
+        "id",
+        "source_version_id"
+      ],
+      "constraint_name": "artifacts_parent_artifact_id_source_version_id_fkey"
+    },
+    {
+      "from": "knowledge.media_tracks",
+      "columns": [
+        "source_version_id"
+      ],
+      "to": "knowledge.source_versions",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "media_tracks_source_version_id_fkey"
+    },
+    {
+      "from": "knowledge.api_operations",
+      "columns": [
+        "source_version_id"
+      ],
+      "to": "knowledge.source_versions",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "api_operations_source_version_id_fkey"
+    },
+    {
+      "from": "knowledge.api_examples",
+      "columns": [
+        "operation_id"
+      ],
+      "to": "knowledge.api_operations",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "api_examples_operation_id_fkey"
+    },
+    {
+      "from": "knowledge.api_examples",
+      "columns": [
+        "source_object_version_id"
+      ],
+      "to": "knowledge.object_versions",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "api_examples_source_object_version_id_fkey"
+    },
+    {
+      "from": "knowledge.api_examples",
+      "columns": [
+        "content_unit_id"
+      ],
+      "to": "knowledge.content_units",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "api_examples_content_unit_id_fkey"
+    },
+    {
+      "from": "knowledge.api_parameters",
+      "columns": [
+        "operation_id"
+      ],
+      "to": "knowledge.api_operations",
+      "target_columns": [
+        "id"
+      ],
+      "constraint_name": "api_parameters_operation_id_fkey"
+    },
+    {
+      "from": "knowledge.api_parameters",
+      "columns": [
+        "parent_parameter_id",
+        "operation_id",
+        "location"
+      ],
+      "to": "knowledge.api_parameters",
+      "target_columns": [
+        "id",
+        "operation_id",
+        "location"
+      ],
+      "constraint_name": "api_parameters_parent_parameter_id_operation_id_location_fkey"
+    },
+    {
+      "from": "knowledge.api_parameters",
+      "columns": [
+        "response_example_id",
+        "operation_id"
+      ],
+      "to": "knowledge.api_examples",
+      "target_columns": [
+        "id",
+        "operation_id"
+      ],
+      "constraint_name": "api_parameters_response_example_id_operation_id_fkey"
+    }
+  ],
+  "approved_sql_sha256": "e0ed1043236446e6ee1f85c7eaea75f891fda0c1879231209bf32669c66cf59c"
+}
