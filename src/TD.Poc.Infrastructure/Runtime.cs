@@ -72,7 +72,7 @@ public sealed class Runtime
         if(OperatingSystem.IsWindows() && (executable.Equals("codex",StringComparison.OrdinalIgnoreCase)||executable.EndsWith(".cmd",StringComparison.OrdinalIgnoreCase)))
         {
             // cmd is used only for a trusted installed .cmd shim. User prompts go through stdin.
-            static string Quote(string s){if(s.IndexOfAny(['"','\r','\n','&','|','<','>','%','!'])>=0)throw new Exception("Unsafe character in executable/argument path; extract to a simple path such as C:\\TD-POC-v0.10.");return "\""+s+"\"";}
+            static string Quote(string s){if(s.IndexOfAny(['"','\r','\n','&','|','<','>','%','!'])>=0)throw new Exception("Unsafe character in executable/argument path; extract to a simple path such as C:\\TD-POC-v0.11.");return "\""+s+"\"";}
             start.FileName="cmd.exe";
             start.Arguments="/d /s /c \""+Quote(executable)+" "+string.Join(" ",list.Select(Quote))+"\"";
         }

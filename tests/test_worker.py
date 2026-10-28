@@ -73,4 +73,14 @@ class RegressionTests(unittest.TestCase):
    root=Path(d);(root/'current-state').mkdir();(root/'existing-assets').mkdir();p=root/'existing-assets/x.mp4';p.write_bytes(b'video')
    with self.assertRaises(ValueError):w.safe_path(root/'current-state',(root/'current-state/../existing-assets/x.mp4').resolve())
 
+class SourceCategoryTests(unittest.TestCase):
+ def test_docx_uses_final_schema_document_category(self):
+  self.assertEqual(w.source_type('walkthrough_Transcript.docx'),'DOCUMENT')
+ def test_pdf_uses_final_schema_document_category(self):
+  self.assertEqual(w.source_type('manual.pdf'),'DOCUMENT')
+ def test_all_emitted_categories_are_in_final_schema(self):
+  allowed={'ARTICLE','RELEASE_NOTE','RECORDING','TRANSCRIPT','SCREENSHOT','WORKBOOK','SAMPLE_DATA','DOCUMENT','API_REFERENCE','API_SECTION','API_SPEC','API_COLLECTION','CODE_SAMPLE','EDITABLE_CAPTURE','OTHER'}
+  for ext in ['docx','doc','pdf','srt','mp4','wmv','md','html','json','xlsx','xls','png','jpg','snag','cs','txt']:
+   self.assertIn(w.source_type('sample.'+ext),allowed,ext)
+
 if __name__=='__main__':unittest.main()

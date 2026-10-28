@@ -1,4 +1,4 @@
-# TD POC 0.10 — start here
+# TD POC 0.11 — start here
 
 Built for the supplied machine: Windows Server 2019 x64, Ryzen 7 7700 (8 cores/16 threads), 31.1 GB RAM, RTX 5060 Ti 8 GB, .NET SDK 10.0.403, Visual Studio Community 2026, Codex CLI 0.163.0 and existing Ollama. This is a local single-user POC, not a production service. Live Windows/GPU/Codex acceptance happens on your machine; see VALIDATION.md for what was actually tested by the author.
 
@@ -20,12 +20,12 @@ Your original folders remain unchanged:
 
 ## 2. Extract the solution
 
-Extract the package to `C:\TD-POC-v0.10`. Avoid special characters such as `&`, `%`, `!` in the solution path because Windows command shims need safe quoting. Preserve the package's subfolders. Do not extract over your evidence folder or another project's folder.
+Extract the package to `C:\TD-POC-v0.11`. Avoid special characters such as `&`, `%`, `!` in the solution path because Windows command shims need safe quoting. Preserve the package's subfolders. Do not extract over your evidence folder or another project's folder.
 
 Open CMD:
 
 ```bat
-cd /d C:\TD-POC-v0.10
+cd /d C:\TD-POC-v0.11
 ```
 
 Use the same Windows account that is signed into Codex. Do not run setup under a different account unless you intend to configure that account separately.
@@ -72,7 +72,7 @@ Initialize-Database.cmd
 
 Expected: `010-local-files applied`, database `knowledge_poc`.
 
-You already installed the approved schema. **Do not rerun the fresh installer**. The v0.10 migration only permits explicit LOCAL_FILE storage objects with no fake Drive IDs. It preserves the 29 tables, 301 fields and 55 foreign keys, existing data and original Drive-root mappings. It can be rerun safely. Do not run it against another database. `database\approved-v0.3-fresh-install.sql` is for a completely new database only, retained for reproducibility.
+You already installed the approved schema. **Do not rerun the fresh installer**. The v0.11 migration only permits explicit LOCAL_FILE storage objects with no fake Drive IDs. It preserves the 29 tables, 301 fields and 55 foreign keys, existing data and original Drive-root mappings. It can be rerun safely. Do not run it against another database. `database\approved-v0.3-fresh-install.sql` is for a completely new database only, retained for reproducibility.
 
 ## 6. Start the POC
 
@@ -108,13 +108,13 @@ Then:
 
 This scans again, registers all discovered files, extracts supported content and creates missing vectors. It uses a database advisory lock so only one import worker runs at once. The main window remains available. Use `/status` while it works. Run analysis tests only after relevant processing completes.
 
-Each file gets a physical identity and hash revision. Repeating processing reuses the same revision/units/vectors when unchanged; it retries missing vectors. A changed file gets a new version and the old version becomes SUPERSEDED. Old analysis outputs remain historical proposals; they are not silently rerun or declared current. Missing/deleted files are not automatically deleted or deactivated by v0.10: review them before relying on search. Replacing a file intentionally selects its new local revision; modification time is not proof of universal product truth.
+Each file gets a physical identity and hash revision. Repeating processing reuses the same revision/units/vectors when unchanged; it retries missing vectors. A changed file gets a new version and the old version becomes SUPERSEDED. Old analysis outputs remain historical proposals; they are not silently rerun or declared current. Missing/deleted files are not automatically deleted or deactivated by v0.11: review them before relying on search. Replacing a file intentionally selects its new local revision; modification time is not proof of universal product truth.
 
 Processing summary distinguishes committed registrations/extractions, blocked formats, failed operations and new vectors. `intake_batches.scan_status` describes enumeration; import outcome is stored separately in its `notes.processing_summary`. A scan-complete result does not mean every file was processed successfully.
 
 ### Coverage by asset type
 
-| Asset | v0.10 handling |
+| Asset | v0.11 handling |
 |---|---|
 | SRT | Original cue times and text; supplied narration evidence |
 | Markdown, text, code, CSV, HTML, XML | Text extraction/chunking with locators; never executed |
@@ -126,7 +126,7 @@ Processing summary distinguishes committed registrations/extractions, blocked fo
 | MP4/WMV/other video | Register original; selected test ranges sampled into frames; separately imported SRT provides narration |
 | PNG/JPG/SNAG/legacy DOC/other binary | Register and BLOCK conversion/OCR; no fabricated extraction or successful embedding |
 
-Physical alternate exports remain separate for provenance and can produce duplicate retrieval candidates. v0.10 does not promise canonical article deduplication or exhaustive semantic inventory. Unsupported formats are intentionally visible in status; fully processing your collection will require later OCR/native conversion work. A READY database is not proof of complete document comprehension.
+Physical alternate exports remain separate for provenance and can produce duplicate retrieval candidates. v0.11 does not promise canonical article deduplication or exhaustive semantic inventory. Unsupported formats are intentionally visible in status; fully processing your collection will require later OCR/native conversion work. A READY database is not proof of complete document comprehension.
 
 ## 8. Talk to Agent C
 
@@ -196,7 +196,7 @@ Export-LatestRun.cmd
 
 Upload that ZIP here. It includes the local request, pinned evidence packet, sampled frames, raw A/B outputs, validation results and events. If B did not run, its absence and failure logs are part of the diagnosis. The exported bundle contains internal source excerpts: share with authorised reviewers only.
 
-A useful review request is: “Review this v0.10 T02 run against the original reviewer checks. Check citations, current-state scope, A/B handoff, uncertainty, article-purpose fit and whether PASS/PARTIAL/FAIL is justified.” Repeat for T04 and T05. Do not attach the reviewer-only expected-result files to the runtime agents.
+A useful review request is: “Review this v0.11 T02 run against the original reviewer checks. Check citations, current-state scope, A/B handoff, uncertainty, article-purpose fit and whether PASS/PARTIAL/FAIL is justified.” Repeat for T04 and T05. Do not attach the reviewer-only expected-result files to the runtime agents.
 
 ## 12. Open and understand the solution
 

@@ -1,4 +1,6 @@
-# TD POC 0.10
+# TD POC 0.11
+
+Upgrading from v0.10? Read **UPGRADE-FROM-0.10.md** first.
 
 Start with **docs/START-HERE.md**. Open **docs/architecture-and-tables.html** for the combined workflow/database diagram.
 

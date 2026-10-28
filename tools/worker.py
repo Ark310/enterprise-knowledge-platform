@@ -3,7 +3,8 @@ import sys,os,json,re,hashlib,uuid,datetime,urllib.request,urllib.parse,zipfile,
 from pathlib import Path
 from xml.etree import ElementTree as ET
 BASE=Path(__file__).resolve().parents[1]
-VERSION='0.10.0'
+VERSION='0.11.0'
+EXTRACTION_VERSION='0.10.0' # Parser/chunk semantics unchanged; reuse successful v0.10 extractions
 ROOTS=[('current-state','CURRENT_STATE'),('existing-assets/Confluence Articles','EXISTING_ASSET'),('existing-assets/REST API','EXISTING_ASSET'),('existing-assets/Sharepoint','EXISTING_ASSET'),('existing-assets/VLCs','EXISTING_ASSET')]
 TEXT_EXT={'.txt','.md','.json','.csv','.html','.htm','.xml','.yaml','.yml','.cs','.go','.java','.js','.php','.py','.rb','.sh','.sql','.svg','.srt','.vtt','.log'}
 VIDEO_EXT={'.mp4','.wmv','.mov','.mkv','.avi','.webm'}
@@ -173,7 +174,7 @@ def vector(v):return '['+','.join(str(x) for x in v)+']'
 def source_type(p):
  e=Path(p).suffix.lower()
  if e in VIDEO_EXT:return 'RECORDING'
- return {'.srt':'TRANSCRIPT','.docx':'WORD_DOCUMENT','.doc':'WORD_DOCUMENT','.pdf':'PDF','.xlsx':'WORKBOOK','.xls':'WORKBOOK','.png':'SCREENSHOT','.jpg':'SCREENSHOT','.json':('API_SPEC' if 'REST API' in str(p) else 'OTHER'),'.md':'ARTICLE','.html':'ARTICLE'}.get(e,'OTHER')
+ return {'.srt':'TRANSCRIPT','.docx':'DOCUMENT','.doc':'DOCUMENT','.pdf':'DOCUMENT','.xlsx':'WORKBOOK','.xls':'WORKBOOK','.png':'SCREENSHOT','.jpg':'SCREENSHOT','.json':('API_SPEC' if 'REST API' in str(p) else 'OTHER'),'.md':'ARTICLE','.html':'ARTICLE'}.get(e,'OTHER')
 def mime(p):return __import__('mimetypes').guess_type(str(p))[0] or 'application/octet-stream'
 
 def register(db,f):
@@ -245,13 +246,13 @@ def process(cfg,options):
     with db.transaction():
      sv,ov=register(db,f);totals['registered']+=1
      q(db,"insert into knowledge.intake_entries(batch_id,group_id,entry_key,member_path,expected_bytes,expected_sha256,observed_object_version_id,presence_status,review_status) select %s,group_id,%s,%s,%s,%s,%s,'PRESENT','INVENTORIED' from knowledge.source_versions where id=%s",(batch,f['relative'],f['relative'],f['bytes'],f['sha256'],ov,sv))
-     ex=one(db,"select id,status from knowledge.extractions where source_version_id=%s and is_active and processor_version=%s",(sv,VERSION))
+     ex=one(db,"select id,status from knowledge.extractions where source_version_id=%s and is_active and processor_version=%s",(sv,EXTRACTION_VERSION))
      if not ex:
       data=extract(f['path'])
       if file_hash(f['path'])!=f['sha256']:raise ValueError('File changed while extracting; transaction rolled back')
       if data['metadata'].get('title'):q(db,"update knowledge.sources set title=%s,product=%s,source_url=coalesce(%s,source_url),source_type='ARTICLE' where id=(select source_id from knowledge.source_versions where id=%s)",(data['metadata']['title'],data['metadata'].get('product'),data['metadata'].get('url'),sv))
       status=data['status'];q(db,'update knowledge.extractions set is_active=false where source_version_id=%s',(sv,))
-      ex=one(db,"insert into knowledge.extractions(source_version_id,method,processor_version,status,warnings,is_active) values(%s,'LOCAL_PARSER',%s,%s,%s::jsonb,%s) returning id,status",(sv,VERSION,'PARTIAL' if status=='BLOCKED' else status,j(data['warnings']),status!='BLOCKED'))
+      ex=one(db,"insert into knowledge.extractions(source_version_id,method,processor_version,status,warnings,is_active) values(%s,'LOCAL_PARSER',%s,%s,%s::jsonb,%s) returning id,status",(sv,EXTRACTION_VERSION,'PARTIAL' if status=='BLOCKED' else status,j(data['warnings']),status!='BLOCKED'))
       for n,u in enumerate(data['units']):
        loc=dict(u['locator'],file=f['relative'],source_version_id=str(sv))
        q(db,"""insert into knowledge.content_units(extraction_id,unit_key,unit_type,heading,content_text,representation_kind,locator,content_sha256,start_seconds,end_seconds,page_number,sheet_name,cell_range)
@@ -347,7 +348,7 @@ def prepare_test(db,cfg,options):
  manifest={'request':request,'transcript_file':srt.relative_to(root).as_posix(),'transcript':packet,'frames':frames,'original_audio_listened':False,'visual_limitations':[] if frames else ['ffmpeg unavailable: no visual evidence supplied; no visual/corroborated claims permitted'],'archive_mapping':{'LOCAL_CURRENT_STATE':str(root/'current-state'),'LOCAL_EXISTING_ASSETS':'four approved existing-assets roots'},'recording_sha256':expected_recording_hash,'srt_sha256':expected_srt_hash}
  if file_hash(rec)!=manifest['recording_sha256'] or file_hash(srt)!=manifest['srt_sha256']:raise ValueError('Recording/transcript changed while preparing frames; retry')
  (work/'request.json').write_text(j(request),encoding='utf-8');(work/'evidence-a.json').write_text(j(manifest),encoding='utf-8')
- rid=one(db,"insert into analysis.runs(run_key,module,topic,question,contract_version,agent_a_version,agent_b_version,status) values(%s,%s,%s,%s,%s,'2.1.0+local-0.10','2.1.0+local-0.10','PROCESSING') returning id",(request['run_id'],request['module'],request['topic'],request['payload']['question'],request['contract_version']))['id']
+ rid=one(db,"insert into analysis.runs(run_key,module,topic,question,contract_version,agent_a_version,agent_b_version,status) values(%s,%s,%s,%s,%s,'2.1.0+local-0.11','2.1.0+local-0.11','PROCESSING') returning id",(request['run_id'],request['module'],request['topic'],request['payload']['question'],request['contract_version']))['id']
  for p in [rec,srt]:
   sv=one(db,"select id from knowledge.source_versions where storage_uri=%s and lifecycle_status='ACTIVE'",(p.absolute().as_uri(),))['id'];q(db,"insert into analysis.run_sources(run_id,source_version_id,coverage_status,coverage_details) values(%s,%s,'LISTED',%s::jsonb)",(rid,sv,j({'actual_coverage':'packet supplied; model inspection not independently established'})))
  return {'run_id':rid,'work':str(work),'request':request,'frames':frames,'evidence':manifest}
@@ -400,7 +401,7 @@ def save_output(db,cfg,options):
   if obj.get('payload',{}).get('human_reviews'):errors.append('No attributed human reviews supplied; must be empty')
  rid=one(db,'select id from analysis.runs where run_key=%s',(req['run_id'],))['id'];valid=not errors
  oid=one(db,"""insert into analysis.agent_outputs(run_id,agent_role,output_json,schema_validated,validation_status,validation_details,contract_schema_sha256,prompt_sha256,model_details)
- values(%s,%s,%s::jsonb,%s,%s,%s::jsonb,%s,%s,%s::jsonb) returning id""",(rid,role,j(obj if isinstance(obj,dict) else {'invalid_raw_output':obj}),valid,'VALID' if valid else 'INVALID',j({'errors':errors,'level':'schema + provenance checks; human semantic verification still required'}),sha((BASE/'contracts/contracts-v2.schema.json').read_bytes()),sha((work/('prompt-a.txt' if role=='CURRENT_STATE' else 'prompt-b.txt')).read_bytes()),j({'engine':'Codex CLI','instruction_release':'2.1.0+local-0.10'})))['id']
+ values(%s,%s,%s::jsonb,%s,%s,%s::jsonb,%s,%s,%s::jsonb) returning id""",(rid,role,j(obj if isinstance(obj,dict) else {'invalid_raw_output':obj}),valid,'VALID' if valid else 'INVALID',j({'errors':errors,'level':'schema + provenance checks; human semantic verification still required'}),sha((BASE/'contracts/contracts-v2.schema.json').read_bytes()),sha((work/('prompt-a.txt' if role=='CURRENT_STATE' else 'prompt-b.txt')).read_bytes()),j({'engine':'Codex CLI','instruction_release':'2.1.0+local-0.11'})))['id']
  result={'valid':valid,'errors':errors,'output_id':oid,'run_id':rid};(work/('validation-a.json' if role=='CURRENT_STATE' else 'validation-b.json')).write_text(j(result),encoding='utf-8')
  if not valid:
   stage(db,rid,'AGENT_A' if role=='CURRENT_STATE' else 'AGENT_B','FAILED',result);q(db,"update analysis.runs set status='FAILED',completed_at=now() where id=%s",(rid,));return result
@@ -432,7 +433,7 @@ def main(req):
   try:
    with connect() as db:
     for f in result['files']:
-     r=one(db,"select v.id,exists(select 1 from knowledge.extractions e where e.source_version_id=v.id and e.is_active and e.processor_version=%s) extracted from knowledge.source_versions v where v.storage_uri=%s and v.content_sha256=%s and v.lifecycle_status='ACTIVE'",(VERSION,Path(f['path']).absolute().as_uri(),f['sha256']))
+     r=one(db,"select v.id,exists(select 1 from knowledge.extractions e where e.source_version_id=v.id and e.is_active and e.processor_version=%s) extracted from knowledge.source_versions v where v.storage_uri=%s and v.content_sha256=%s and v.lifecycle_status='ACTIVE'",(EXTRACTION_VERSION,Path(f['path']).absolute().as_uri(),f['sha256']))
      f['state']='UNCHANGED' if r and r['extracted'] else 'NEW_OR_PENDING'
   except Exception:result['database_comparison']='Unavailable; scan still read-only, database health must pass before processing'
   (BASE/'runtime').mkdir(exist_ok=True);(BASE/'runtime/last-scan.json').write_text(j(result),encoding='utf-8');return result

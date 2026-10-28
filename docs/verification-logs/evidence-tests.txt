@@ -16,8 +16,11 @@ test_malformed_payload_returns_errors_instead_of_crashing (test_worker.Regressio
 test_non_object_output_returns_errors (test_worker.RegressionTests.test_non_object_output_returns_errors) ... ok
 test_unsupplied_frame_timestamp_rejected (test_worker.RegressionTests.test_unsupplied_frame_timestamp_rejected) ... ok
 test_visual_level_cannot_use_only_transcript (test_worker.RegressionTests.test_visual_level_cannot_use_only_transcript) ... ok
+test_all_emitted_categories_are_in_final_schema (test_worker.SourceCategoryTests.test_all_emitted_categories_are_in_final_schema) ... ok
+test_docx_uses_final_schema_document_category (test_worker.SourceCategoryTests.test_docx_uses_final_schema_document_category) ... ok
+test_pdf_uses_final_schema_document_category (test_worker.SourceCategoryTests.test_pdf_uses_final_schema_document_category) ... ok
 
 ----------------------------------------------------------------------
-Ran 18 tests in 0.051s
+Ran 21 tests in 0.054s
 
 OK
