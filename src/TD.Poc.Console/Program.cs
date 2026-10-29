@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.Json.Nodes;
 using TD.Poc.Core;
 using TD.Poc.Infrastructure;
+Runtime.DisableQuickEdit();
 Console.OutputEncoding=System.Text.Encoding.UTF8;
 string FindRoot()
 {
@@ -15,16 +16,23 @@ string FindRoot()
 try
 {
     var runtime=new Runtime(FindRoot());runtime.Progress+=Console.WriteLine;var workflow=new Workflow(runtime);
-    if(args.Contains("--version")){Console.WriteLine("TD POC 0.11.0");return;}
+    if(args.Contains("--version")){Console.WriteLine("TD POC 0.12.0");return;}
     await runtime.LoadSecret();
     if(args.Contains("--migrate")){Console.WriteLine(await runtime.Worker("migrate"));return;}
     if(args.Contains("--process")){Console.WriteLine(await runtime.Worker("process",new JsonObject{{"limit",args.Contains("--pilot")?10:0}}));Console.WriteLine("Worker finished. Review totals above; close this window when ready.");return;}
     if(args.Contains("--status")){Console.WriteLine(await runtime.Worker("status"));return;}
-    Console.WriteLine("TD POC 0.11 | Codex A/B/C | local Qwen embeddings | automatic scan, MANUAL processing");
+    if(args.Contains("--preflight")){
+        var loginCheck=await runtime.Run(runtime.Config["CodexExecutable"]!.GetValue<string>(),["login","status"],"",runtime.Root,false,TimeSpan.FromSeconds(30));
+        if(loginCheck.Code!=0)throw new Exception("POC Codex login not ready. Run Setup-POC.cmd.");
+        var check=await runtime.Codex("setup-check","Return exactly {\"ready\":true}. No tools.","Readiness only",Path.Combine(runtime.Root,"runtime","preflight",Guid.NewGuid().ToString("N")));
+        if(check["ready"]?.GetValue<bool>()!=true)throw new Exception("Readiness failed");
+        Console.WriteLine(await runtime.Worker("status"));return;
+    }
+    Console.WriteLine("TD POC 0.12 | Codex A/B/C | local Qwen embeddings | automatic scan, MANUAL processing");
     Console.WriteLine("Checking database...");Console.WriteLine(await runtime.Worker("status"));
     Console.WriteLine("Checking Codex login...");
     var login=await runtime.Run(runtime.Config["CodexExecutable"]!.GetValue<string>(),["login","status"],"",runtime.Root,false,TimeSpan.FromSeconds(30));
-    if(login.Code!=0)throw new Exception("Codex login check failed. Run codex login in CMD first.");
+    if(login.Code!=0)throw new Exception("Codex login check failed. Run Setup-POC.cmd to configure the isolated POC Codex login.");
     Console.WriteLine("Checking controlled Codex invocation (small readiness request, no source content)...");
     var ready=await runtime.Codex("startup-check","Return exactly one JSON object: {\"ready\":true}. Do not use tools.","Readiness check only.",Path.Combine(runtime.Root,"runtime","preflight",Guid.NewGuid().ToString("N")));
     if(ready["ready"]?.GetValue<bool>()!=true)throw new Exception("Codex readiness response was not valid.");

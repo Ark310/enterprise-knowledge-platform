@@ -15,8 +15,12 @@ if($LASTEXITCODE -ne 0){throw 'Virtual environment creation failed'}
 if($LASTEXITCODE -ne 0){throw 'Python dependency install failed'}
 & (Join-Path $PSScriptRoot 'Ensure-Ollama.ps1')
 $config=Get-Content config\appsettings.json -Raw | ConvertFrom-Json
-& ollama pull $config.EmbeddingModel
-if($LASTEXITCODE -ne 0){throw 'Embedding model download failed'}
+$tags=Invoke-RestMethod -Uri ($config.OllamaUrl+'/api/tags') -TimeoutSec 10
+$present=@($tags.models | Where-Object {$_.name -eq $config.EmbeddingModel -or $_.model -eq $config.EmbeddingModel}).Count -gt 0
+if(!$present){
+ & ollama pull $config.EmbeddingModel
+ if($LASTEXITCODE -ne 0){throw 'Embedding model download failed'}
+}else{Write-Host 'Existing embedding model retained; its digest is not updated by setup.'}
 $body=@{model=$config.EmbeddingModel;input='TD model readiness check';truncate=$false;keep_alive='30m';options=@{num_ctx=4096;num_batch=64}}|ConvertTo-Json -Depth 5
 $r=Invoke-RestMethod -Method Post -Uri ($config.OllamaUrl+'/api/embed') -ContentType 'application/json' -Body $body -TimeoutSec 600
 Write-Host ('Model ready. Dimensions: '+$r.embeddings[0].Count)
@@ -24,5 +28,5 @@ Write-Host ('Model ready. Dimensions: '+$r.embeddings[0].Count)
 if($LASTEXITCODE -ne 0){throw 'Solution build failed'}
 & '.\.venv\Scripts\python.exe' -m unittest discover -s tests -v
 if($LASTEXITCODE -ne 0){throw 'Offline evidence tests failed'}
-Write-Host 'Setup passed. Run Configure-Database.cmd, then Initialize-Database.cmd. Existing reasoning models were not changed.'
+Write-Host 'Local setup passed. Setup-POC.cmd continues with connection, migration, video tools and Codex readiness.'
 Write-Host 'For visual frame evidence, ffmpeg must be on PATH or configured as FFmpegExecutable. Run Setup-VideoTools.cmd if needed.'

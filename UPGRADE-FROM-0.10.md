@@ -1,3 +1,5 @@
+> Historical v0.11 upgrade notes. For this release use docs/START-HERE.md and Setup-POC.cmd.
+
 # Upgrade to TD POC 0.11
 
 1. Close the main v0.10 console using /exit. Close any failed/finished worker windows. Do not run old and new versions together while upgrading.

@@ -1,19 +1,18 @@
-# TD POC 0.11
+# TD POC v0.12
 
-Upgrading from v0.10? Read **UPGRADE-FROM-0.10.md** first.
+Start with **docs/START-HERE.md**. Existing approved PostgreSQL schema/data is retained.
 
-Start with **docs/START-HERE.md**. Open **docs/architecture-and-tables.html** for the combined workflow/database diagram.
+One-time setup (CMD):
 
-One machine, three Codex roles, local Qwen3-Embedding 4B, PostgreSQL + pgvector. Automatic startup scan; manual processing. Includes the approved A/B contract, original instructions and User Master regression cases. No agent SDK or separate reasoning API key.
+```cmd
+cd /d C:\TD-POC-v0.12
+Setup-POC.cmd
+```
 
-First time, in this order:
+Daily start: `Start-POC.cmd`. Startup scans only. `/process` explicitly imports and embeds. Wait for that worker before `/test T02`.
 
-1. Setup-LocalModel.cmd
-2. Setup-VideoTools.cmd (if ffmpeg is not already available)
-3. Configure-Database.cmd
-4. Initialize-Database.cmd (local-file constraint migration; existing schema retained)
-5. Start-POC.cmd
+Codex supplies reasoning through a dedicated POC ChatGPT login. Ollama `qwen3-embedding:4b` supplies source, query, A observation and B finding vectors via the same immutable database profile. Agents never receive database passwords.
 
-Inside the main console use `/pilot`, then `/process`, `/status`, `/test T02`, `/test T04`, `/test T05`, or ask Agent C a question. `/run C:\path\request.json` supports a new scoped test request.
+Each invocation opens a read-only PowerShell activity window on Windows. Press Q there, or Ctrl+C in the main console during a Codex call, to cancel that call. Closing a viewer does not cancel it. Logs are live; use Export-LatestRun.cmd even during a test. No private internal model reasoning is exposed.
 
-Read **VALIDATION.md** before treating any run as verified. The package has offline/synthetic verification; native Windows, installed Codex flags, GPU/model performance and actual TD results require target-machine acceptance. Images/SNAG/legacy DOC conversion remains pending and is reported, not silently marked complete.
+Architecture and all tables: docs/architecture-and-tables.html. Agent instructions: agents/. Contracts: contracts/. Diagnosis: docs/DIAGNOSIS-v0.11.md. Verification and platform limits: VALIDATION.md.

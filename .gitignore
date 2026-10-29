@@ -7,3 +7,6 @@ config/*.dpapi
 *.suo
 .vs/
 tools/ffmpeg/
+
+config/codex-home/
+TD-review-*.zip

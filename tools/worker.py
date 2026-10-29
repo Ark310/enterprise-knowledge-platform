@@ -3,7 +3,7 @@ import sys,os,json,re,hashlib,uuid,datetime,urllib.request,urllib.parse,zipfile,
 from pathlib import Path
 from xml.etree import ElementTree as ET
 BASE=Path(__file__).resolve().parents[1]
-VERSION='0.11.1'
+VERSION='0.12.0'
 EXTRACTION_VERSION='0.10.0' # Parser/chunk semantics unchanged; reuse successful v0.10 extractions
 ROOTS=[('current-state','CURRENT_STATE'),('existing-assets/Confluence Articles','EXISTING_ASSET'),('existing-assets/REST API','EXISTING_ASSET'),('existing-assets/Sharepoint','EXISTING_ASSET'),('existing-assets/VLCs','EXISTING_ASSET')]
 TEXT_EXT={'.txt','.md','.json','.csv','.html','.htm','.xml','.yaml','.yml','.cs','.go','.java','.js','.php','.py','.rb','.sh','.sql','.svg','.srt','.vtt','.log'}
@@ -19,11 +19,9 @@ def srt_units(s):
   m=re.search(r'(\d+):(\d\d):(\d\d)[,.](\d{3})\s*-->\s*(\d+):(\d\d):(\d\d)[,.](\d{3})[^\n]*\n(.*)',b,re.S)
   if not m:raise ValueError('Malformed subtitle cue '+str(i+1))
   a=list(map(int,m.groups()[:8]));start=a[0]*3600+a[1]*60+a[2]+a[3]/1000;end=a[4]*3600+a[5]*60+a[6]+a[7]/1000
-  if end<start:raise ValueError(f'Subtitle cue {i+1}: end {end} is earlier than start {start}')
+  if end<=start:raise ValueError('Subtitle end must follow start')
   text=m.group(9).strip()
-  locator={'cue':int(b.splitlines()[0].strip()) if b.splitlines()[0].strip().isdigit() else i+1,'start_seconds':start,'end_seconds':end}
-  if end==start:locator['timing_status']='POINT_ONLY'
-  if text:out.append({'text':text,'start':start,'end':end,'locator':locator,'kind':'SUPPLIED_TRANSCRIPT'})
+  if text:out.append({'text':text,'start':start,'end':end,'locator':{'cue':i+1,'start_seconds':start,'end_seconds':end},'kind':'SUPPLIED_TRANSCRIPT'})
  return out
 
 def safe_path(root,path):
@@ -76,11 +74,7 @@ def extract(path):
   for i,t in enumerate(chunks(text)):
    out.append({'text':t,'locator':dict(loc,part=i+1),**kw})
  if ext in VIDEO_EXT:return {'status':'BLOCKED','units':[],'warnings':['Video registered; visual review is scoped to agent runs. Transcript is separately imported.'],'metadata':{}}
- if ext=='.srt':
-  out=srt_units(decode(p.read_bytes()))
-  for unit in out:
-   if unit['locator'].get('timing_status')=='POINT_ONLY':warnings.append(f"Subtitle cue {unit['locator']['cue']} at {unit['start']} seconds has equal start/end times. Retained as POINT_ONLY; spoken duration is not established and original times are unchanged.")
-  if warnings:status='PARTIAL'
+ if ext=='.srt':out=srt_units(decode(p.read_bytes()))
  elif ext in TEXT_EXT:
   s=decode(p.read_bytes())
   if ext=='.json':
@@ -257,7 +251,6 @@ def process(cfg,options):
       data=extract(f['path'])
       if file_hash(f['path'])!=f['sha256']:raise ValueError('File changed while extracting; transaction rolled back')
       if data['metadata'].get('title'):q(db,"update knowledge.sources set title=%s,product=%s,source_url=coalesce(%s,source_url),source_type='ARTICLE' where id=(select source_id from knowledge.source_versions where id=%s)",(data['metadata']['title'],data['metadata'].get('product'),data['metadata'].get('url'),sv))
-      for warning in data['warnings']:progress('WARNING '+f['relative']+': '+warning)
       status=data['status'];q(db,'update knowledge.extractions set is_active=false where source_version_id=%s',(sv,))
       ex=one(db,"insert into knowledge.extractions(source_version_id,method,processor_version,status,warnings,is_active) values(%s,'LOCAL_PARSER',%s,%s,%s::jsonb,%s) returning id,status",(sv,EXTRACTION_VERSION,'PARTIAL' if status=='BLOCKED' else status,j(data['warnings']),status!='BLOCKED'))
       for n,u in enumerate(data['units']):
@@ -334,13 +327,11 @@ def prepare_test(db,cfg,options):
  request['payload']['current_state_zip']='LOCAL_CURRENT_STATE';request['payload']['existing_assets_zip']='LOCAL_EXISTING_ASSETS';request['payload']['recording_member']=rec.relative_to(root).as_posix()
  request['payload']['target_context']+=' LOCAL ADAPTER: supplied timestamped transcript is '+srt.relative_to(root).as_posix()+'. Both use original-video time; matching name is pairing evidence, not independent alignment verification. Logical archive labels map to local roots in evidence manifest.'
  request['next_action']='Process locally through controlled v0.10 handoff.'
- packet=[];transcript_warnings=[]
+ packet=[]
  for p in [rec,srt]:
   uri=p.absolute().as_uri();sv=one(db,"select id,content_sha256 from knowledge.source_versions where storage_uri=%s and lifecycle_status='ACTIVE' and evidence_role='CURRENT_STATE'",(uri,))
   if not sv or sv['content_sha256']!=file_hash(p):raise ValueError('Recording/SRT not imported at current revision. Select Process first: '+p.name)
   if p==srt:
-   warning_row=one(db,"select warnings from knowledge.extractions where source_version_id=%s and is_active",(sv['id'],))
-   transcript_warnings=warning_row['warnings'] if warning_row else []
    packet=q(db,"select a.id,a.content_text,a.locator,a.start_seconds,a.end_seconds from retrieval.active_content a join knowledge.extractions e on e.id=a.extraction_id where e.source_version_id=%s order by a.start_seconds",(sv['id'],)).fetchall()
  ranges=request['payload']['review_ranges'];packet=[x for x in packet if x['start_seconds'] is not None and any(float(x['end_seconds'])>=r['start_seconds'] and float(x['start_seconds'])<=r['end_seconds'] for r in ranges)]
  if not packet:raise ValueError('No imported SRT cues overlap requested time range')
@@ -354,10 +345,10 @@ def prepare_test(db,cfg,options):
    cmd=[ffmpeg,'-nostdin','-hide_banner','-loglevel','error','-ss',str(r['start_seconds']),'-i',str(rec),'-t',str(duration),'-vf','fps=1/2,scale=1280:-2','-frames:v','80',str(pattern)]
    subprocess.run(cmd,check=True,timeout=180,capture_output=True)
    for i,p in enumerate(sorted(work.glob(f'range{n}-*.jpg'))):frames.append({'path':str(p),'recording_file':rec.relative_to(root).as_posix(),'seconds':r['start_seconds']+i*2,'sampling':'2-second frames; actions between frames unverified'})
- manifest={'request':request,'transcript_timing_warnings':transcript_warnings,'transcript_file':srt.relative_to(root).as_posix(),'transcript':packet,'frames':frames,'original_audio_listened':False,'visual_limitations':[] if frames else ['ffmpeg unavailable: no visual evidence supplied; no visual/corroborated claims permitted'],'archive_mapping':{'LOCAL_CURRENT_STATE':str(root/'current-state'),'LOCAL_EXISTING_ASSETS':'four approved existing-assets roots'},'recording_sha256':expected_recording_hash,'srt_sha256':expected_srt_hash}
+ manifest={'request':request,'transcript_file':srt.relative_to(root).as_posix(),'transcript':packet,'frames':frames,'original_audio_listened':False,'visual_limitations':[] if frames else ['ffmpeg unavailable: no visual evidence supplied; no visual/corroborated claims permitted'],'archive_mapping':{'LOCAL_CURRENT_STATE':str(root/'current-state'),'LOCAL_EXISTING_ASSETS':'four approved existing-assets roots'},'recording_sha256':expected_recording_hash,'srt_sha256':expected_srt_hash}
  if file_hash(rec)!=manifest['recording_sha256'] or file_hash(srt)!=manifest['srt_sha256']:raise ValueError('Recording/transcript changed while preparing frames; retry')
  (work/'request.json').write_text(j(request),encoding='utf-8');(work/'evidence-a.json').write_text(j(manifest),encoding='utf-8')
- rid=one(db,"insert into analysis.runs(run_key,module,topic,question,contract_version,agent_a_version,agent_b_version,status) values(%s,%s,%s,%s,%s,'2.1.0+local-0.11','2.1.0+local-0.11','PROCESSING') returning id",(request['run_id'],request['module'],request['topic'],request['payload']['question'],request['contract_version']))['id']
+ rid=one(db,"insert into analysis.runs(run_key,module,topic,question,contract_version,agent_a_version,agent_b_version,status) values(%s,%s,%s,%s,%s,'2.1.0+local-0.12','2.1.0+local-0.12','PROCESSING') returning id",(request['run_id'],request['module'],request['topic'],request['payload']['question'],request['contract_version']))['id']
  for p in [rec,srt]:
   sv=one(db,"select id from knowledge.source_versions where storage_uri=%s and lifecycle_status='ACTIVE'",(p.absolute().as_uri(),))['id'];q(db,"insert into analysis.run_sources(run_id,source_version_id,coverage_status,coverage_details) values(%s,%s,'LISTED',%s::jsonb)",(rid,sv,j({'actual_coverage':'packet supplied; model inspection not independently established'})))
  return {'run_id':rid,'work':str(work),'request':request,'frames':frames,'evidence':manifest}
@@ -410,13 +401,15 @@ def save_output(db,cfg,options):
   if obj.get('payload',{}).get('human_reviews'):errors.append('No attributed human reviews supplied; must be empty')
  rid=one(db,'select id from analysis.runs where run_key=%s',(req['run_id'],))['id'];valid=not errors
  oid=one(db,"""insert into analysis.agent_outputs(run_id,agent_role,output_json,schema_validated,validation_status,validation_details,contract_schema_sha256,prompt_sha256,model_details)
- values(%s,%s,%s::jsonb,%s,%s,%s::jsonb,%s,%s,%s::jsonb) returning id""",(rid,role,j(obj if isinstance(obj,dict) else {'invalid_raw_output':obj}),valid,'VALID' if valid else 'INVALID',j({'errors':errors,'level':'schema + provenance checks; human semantic verification still required'}),sha((BASE/'contracts/contracts-v2.schema.json').read_bytes()),sha((work/('prompt-a.txt' if role=='CURRENT_STATE' else 'prompt-b.txt')).read_bytes()),j({'engine':'Codex CLI','instruction_release':'2.1.0+local-0.11'})))['id']
+ values(%s,%s,%s::jsonb,%s,%s,%s::jsonb,%s,%s,%s::jsonb) returning id""",(rid,role,j(obj if isinstance(obj,dict) else {'invalid_raw_output':obj}),valid,'VALID' if valid else 'INVALID',j({'errors':errors,'level':'schema + provenance checks; human semantic verification still required'}),sha((BASE/'contracts/contracts-v2.schema.json').read_bytes()),sha((work/('prompt-a.txt' if role=='CURRENT_STATE' else 'prompt-b.txt')).read_bytes()),j({'engine':'Codex CLI','instruction_release':'2.1.0+local-0.12'})))['id']
  result={'valid':valid,'errors':errors,'output_id':oid,'run_id':rid};(work/('validation-a.json' if role=='CURRENT_STATE' else 'validation-b.json')).write_text(j(result),encoding='utf-8')
  if not valid:
   stage(db,rid,'AGENT_A' if role=='CURRENT_STATE' else 'AGENT_B','FAILED',result);q(db,"update analysis.runs set status='FAILED',completed_at=now() where id=%s",(rid,));return result
  obs=obj['payload'].get('observations',[]);records=[]
  if role=='CURRENT_STATE':records=[(o['observation_id'],'OBSERVATION',o['statement'],o.get('level'),o) for o in obs]
  else:records=[(x['article_id'],'ARTICLE_ASSESSMENT',j({'title':x['title'],'currency':x['currency'],'quality':x['quality'],'why_relevant':x['why_relevant']})[:3000],None,x) for x in obj['payload'].get('articles',[])]+[('recommendation','FINDING',j({'recommendation':obj['payload']['recommendation'],'writing_backlog':obj['payload']['writing_backlog'],'limitations':obj['payload']['limitations']})[:3000],None,obj['payload'])]
+ profile=model_profile(db,cfg)
+ progress(f"{role}: saving {len(records)} records; local embedding model {cfg['EmbeddingModel']}, profile {profile['id']}")
  for key,kind,text,level,details in records:
   rec=one(db,"insert into analysis.records(run_id,agent_output_id,record_key,record_type,topic,statement,evidence_level,details) values(%s,%s,%s,%s,%s,%s,%s,%s::jsonb) returning id",(rid,oid,role+':'+key,kind,req['topic'],text,level,j(details)))['id']
   # Store links only for literal excerpt matches from actual supplied units.
@@ -426,7 +419,8 @@ def save_output(db,cfg,options):
     if cite['file']==p['locator']['file'] and cite['excerpt_or_observation'] in p['content_text']:
      q(db,"insert into analysis.record_evidence(record_id,content_unit_id,relationship,locator,excerpt) values(%s,%s,'SUPPORTS',%s::jsonb,%s) on conflict do nothing",(rec,p['id'],j(p['locator']),cite['excerpt_or_observation']))
   db.commit()
-  profile=model_profile(db,cfg);v=embed(cfg,text)
+  progress(f"{role}: embedding record {key} with the shared local profile")
+  v=embed(cfg,text)
   q(db,"insert into retrieval.analysis_embeddings(record_id,profile_id,input_sha256,embedding,embedded_text) values(%s,%s,%s,%s::vector,%s)",(rec,profile['id'],sha(text),vector(v),text));db.commit()
  stage(db,rid,'AGENT_A' if role=='CURRENT_STATE' else 'AGENT_B','PARTIAL' if obj['status']!='OK' else 'COMPLETE',result)
  stage(db,rid,'A_EMBED' if role=='CURRENT_STATE' else 'B_EMBED','COMPLETE',{'records':len(records)})

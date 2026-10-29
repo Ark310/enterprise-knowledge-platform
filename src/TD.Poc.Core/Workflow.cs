@@ -48,6 +48,7 @@ public sealed class Workflow(Runtime runtime)
             if(a["status"]!.GetValue<string>()=="BLOCKED"){runtime.Log("A is BLOCKED: B not started");await runtime.Worker("fail_run",new JsonObject{{"run_key",runKey}});return work;}
             runtime.Log("A validated and saved → observations embedded → B evidence retrieval");
             var bp=await runtime.Worker("prepare_b",new JsonObject{{"work",work}});
+            bp.AsObject().Remove("upstream"); // Already supplied once as upstream_handoff; retain original evidence-b packet on disk.
             var bcontext=new JsonObject{{"upstream_handoff",a.DeepClone()},{"existing_evidence",bp},{"current_evidence",prep["evidence"]!.DeepClone()}};
             var b=await runtime.Codex("b",Instructions("agent-b-documentation-review.md")+"\n"+common,bcontext.ToJsonString(),work,images);
             File.WriteAllText(Path.Combine(work,"agent-b.json"),b.ToJsonString());
