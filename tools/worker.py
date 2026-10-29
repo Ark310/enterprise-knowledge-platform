@@ -3,7 +3,7 @@ import sys,os,json,re,hashlib,uuid,datetime,urllib.request,urllib.parse,zipfile,
 from pathlib import Path
 from xml.etree import ElementTree as ET
 BASE=Path(__file__).resolve().parents[1]
-VERSION='0.14.0'
+VERSION='0.15.0'
 EXTRACTION_VERSION='0.10.0' # Parser/chunk semantics unchanged; reuse successful v0.10 extractions
 ROOTS=[('current-state','CURRENT_STATE'),('existing-assets/Confluence Articles','EXISTING_ASSET'),('existing-assets/REST API','EXISTING_ASSET'),('existing-assets/Sharepoint','EXISTING_ASSET'),('existing-assets/VLCs','EXISTING_ASSET')]
 TEXT_EXT={'.txt','.md','.json','.csv','.html','.htm','.xml','.yaml','.yml','.cs','.go','.java','.js','.php','.py','.rb','.sh','.sql','.svg','.srt','.vtt','.log'}
@@ -463,8 +463,18 @@ def main(req):
     q(db,"insert into analysis.run_sources(run_id,source_version_id,coverage_status,search_terms,coverage_details) values(%s,%s,'SEARCHED',%s::jsonb,%s::jsonb) on conflict(run_id,source_version_id) do nothing",(rid,p['version_id'],j([terms]),j({'bounded_candidate_packet':True})))
    (work/'evidence-b.json').write_text(j(data),encoding='utf-8');return data
   raise ValueError('Unknown operation')
+def configure_stdio():
+ # Explicit protocol encoding, independent of Windows' console/pipe locale.
+ for stream in (sys.stdin,sys.stdout,sys.stderr):
+  if hasattr(stream,'reconfigure'):stream.reconfigure(encoding='utf-8',errors='strict')
+
+def wire_result(value):
+ # ASCII-safe JSON is also valid UTF-8. Escapes preserve every Unicode codepoint.
+ return json.dumps(value,ensure_ascii=True,default=str)
+
 if __name__=='__main__':
+ configure_stdio()
  try:
-  r=main(json.load(sys.stdin));print(j({'ok':True,'result':r}))
+  r=main(json.load(sys.stdin));print(wire_result({'ok':True,'result':r}))
  except Exception as e:
-  print(j({'ok':False,'error':str(e)}));sys.exit(1)
+  print(wire_result({'ok':False,'error':str(e)}));sys.exit(1)

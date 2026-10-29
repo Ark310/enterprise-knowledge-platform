@@ -16,7 +16,7 @@ public sealed class ModuleReview(Runtime runtime)
         Selected=await runtime.Worker("module_results",new JsonObject{{"run_key",key}});
         return Selected;
     }
-    public static string Display(JsonNode report)
+    public static string Display(JsonNode report,bool detailed=false)
     {
         var text=$"Run: {report["run_key"]}\nStatus: {report["status"]}\n";
         if(report["rows"] is not JsonArray rows)return text+(report["message"]?.ToString()??"No final gap report.");
@@ -24,7 +24,9 @@ public sealed class ModuleReview(Runtime runtime)
         text+="Summary: "+report["summary"]+"\n";
         foreach(var row in rows)
         {
-            text+=$"\n{row!["topic_id"]} | {row["module"]} / {row["title"]} | {row["coverage"]}\n{row["reason"]}\n";
+            text+=$"\n{row!["topic_id"]} | {row["coverage"]} | {row["title"]}\n";
+            if(!detailed)continue;
+            text+=$"{row["module"]}: {row["reason"]}\n";
             foreach(var cite in row["article_citations"]!.AsArray())text+="Article: "+cite!["article_title"]+" | "+cite["locator"]+"\nExcerpt: "+cite["excerpt"]+"\n";
             foreach(var action in row["actions"]!.AsArray())text+="Action: "+action+"\n";
         }
@@ -39,17 +41,32 @@ public sealed class ModuleReview(Runtime runtime)
         if(answer["action"]?.ToString()!="NONE")throw new Exception("Run answer attempted an unsupported action");
         return answer["reply"]?.ToString()??throw new Exception("No run answer");
     }
+    private string stage="idle";
+    private void Stage(string work,string value)
+    {
+        stage=value;File.WriteAllText(Path.Combine(work,"workflow-state.json"),new JsonObject{{"stage",stage},{"updated_at",DateTimeOffset.Now.ToString("o")}}.ToJsonString());
+        runtime.RoleLog(value);
+    }
+    private async Task Fail(string work,string key,Exception error)
+    {
+        runtime.RecordFailure(work,stage,error);
+        runtime.RoleLog("ERROR: "+error.Message);
+        runtime.EndRole(false,$"Stopped at {stage}; full details are in failure.json.");
+        File.WriteAllText(Path.Combine(work,"workflow-state.json"),new JsonObject{{"stage",stage},{"status","FAILED"},{"error",error.Message}}.ToJsonString());
+        try{await runtime.Worker("fail_run",new JsonObject{{"run_key",key},{"work",work}});}catch{}
+    }
     public async Task<JsonNode> Review(string recording)
     {
         Selected=null;
         var start=await runtime.Worker("module_start",new JsonObject{{"recording",recording.Replace('\\','/')}});
         var work=start["work"]!.ToString();var key=start["run_key"]!.ToString();
-        runtime.Log($"Whole-recording review {key}: {start["sections"]!.AsArray().Count} sections; frames sampled every two seconds. This takes longer than a targeted test.");
+        runtime.Log("Review: "+key);
         try
         {
+            runtime.BeginRole(work,"A");
             foreach(var section in start["sections"]!.AsArray())
             {
-                var id=section!["id"]!.ToString();runtime.Log($"A section {id}: {section["start"]}–{section["end"]} seconds");
+                var id=section!["id"]!.ToString();Stage(work,$"A section {id} of {start["sections"]!.AsArray().Count}: {section["start"]}–{section["end"]} seconds");
                 var packet=await runtime.Worker("module_section",new JsonObject{{"work",work},{"section_id",id}});
                 var context=new JsonObject{{"envelope",Envelope(key,"CURRENT_STATE_SECTION")},{"evidence",packet.DeepClone()}};
                 var images=packet["frames"]!.AsArray().Select(x=>x!["path"]!.ToString());
@@ -57,48 +74,58 @@ public sealed class ModuleReview(Runtime runtime)
                 var valid=await runtime.Worker("module_check_section",new JsonObject{{"work",work},{"section_id",id}});
                 if(valid["valid"]?.GetValue<bool>()!=true)throw new Exception("A section validation failed: "+valid);
             }
-            return await Finish(work,key);
+            await FinishA(work,key);
+            return await FinishB(work,key);
         }
-        catch
-        {
-            try{await runtime.Worker("fail_run",new JsonObject{{"run_key",key}});}catch{}
-            throw;
-        }
+        catch(Exception e){await Fail(work,key,e);throw;}
     }
     public async Task<JsonNode> Resume(string work)
     {
         Selected=null;
         var resume=await runtime.Worker("module_resume_start",new JsonObject{{"work",Path.GetFullPath(work)}});
         var key=resume["run_key"]!.ToString();work=resume["work"]!.ToString();
-        runtime.Log($"Resuming {key}: reusing {resume["reused_sections"]} validated sections; restarting consolidation only.");
-        try{return await Finish(work,key);}
-        catch{try{await runtime.Worker("fail_run",new JsonObject{{"run_key",key}});}catch{}throw;}
+        runtime.Log("Resuming "+key+" from "+resume["checkpoint"]);
+        try
+        {
+            if(resume["checkpoint"]!.ToString()!="A_SAVED_AND_EMBEDDED")
+            {runtime.BeginRole(work,"A");await FinishA(work,key);}
+            else runtime.Log("Agent A's stored records and vectors verified; reusing them unchanged.");
+            return await FinishB(work,key);
+        }
+        catch(Exception e){await Fail(work,key,e);throw;}
     }
-    private async Task<JsonNode> Finish(string work,string key)
+    private async Task FinishA(string work,string key)
     {
-            var collected=await runtime.Worker("module_collect",new JsonObject{{"work",work}});
-            var index=await runtime.Codex("index",Instructions("agent-a-module.md"),new JsonObject{{"envelope",Envelope(key,"TOPIC_INDEX")},{"validated_observations",collected.DeepClone()}}.ToJsonString(),work);
-            File.WriteAllText(Path.Combine(work,"topic-index.json"),index.ToJsonString());
-            runtime.Log("A topic index → validation, PostgreSQL save and shared local embeddings");
-            await runtime.Worker("module_save_a",new JsonObject{{"work",work}});
-            var evidence=await runtime.Worker("module_retrieve",new JsonObject{{"work",work}});
-            var topics=evidence["topics"]!.AsArray();var batches=Path.Combine(work,"batches");Directory.CreateDirectory(batches);
-            for(var offset=0;offset<topics.Count;offset+=3)
-            {
-                var id=$"batch-{offset/3+1:D3}";var slice=topics.Skip(offset).Take(3).ToArray();
-                var ids=new JsonArray(slice.Select(x=>JsonValue.Create(x!["topic"]!["topic_id"]!.ToString())).ToArray());
-                File.WriteAllText(Path.Combine(batches,id+".json"),new JsonObject{{"topic_ids",ids.DeepClone()}}.ToJsonString());
-                var context=new JsonObject{{"envelope",Envelope(key,"DOCUMENTATION_GAP_BATCH")},{"topics",new JsonArray(slice.Select(x=>x!.DeepClone()).ToArray())}};
-                runtime.Log($"B {id}: coverage for {string.Join(", ",ids.Select(x=>x!.ToString()))}");
-                await runtime.Codex("b",Instructions("agent-b-gaps.md"),context.ToJsonString(),Path.Combine(batches,id));
-                var valid=await runtime.Worker("module_check_batch",new JsonObject{{"work",work},{"batch_id",id},{"topic_ids",ids.DeepClone()}});
-                if(valid["valid"]?.GetValue<bool>()!=true)throw new Exception("B gap batch validation failed: "+valid);
-            }
-            Selected=await runtime.Worker("module_finalize",new JsonObject{{"work",work}});
-            File.WriteAllText(Path.Combine(work,"gap-list.json"),Selected.ToJsonString());
-            File.WriteAllText(Path.Combine(work,"gap-list.txt"),Display(Selected));
-            runtime.Log("Gap list saved and embedded. Use /results latest or ask a question about the selected run.");
-            return Selected;
+        Stage(work,"A consolidating supported topics");
+        var collected=await runtime.Worker("module_collect",new JsonObject{{"work",work}});
+        var index=await runtime.Codex("index",Instructions("agent-a-module.md"),new JsonObject{{"envelope",Envelope(key,"TOPIC_INDEX")},{"validated_observations",collected.DeepClone()}}.ToJsonString(),work);
+        File.WriteAllText(Path.Combine(work,"topic-index.json"),index.ToJsonString());
+        Stage(work,"A validating handoff, saving records and embedding observations");
+        var saved=await runtime.Worker("module_save_a",new JsonObject{{"work",work}});
+        runtime.EndRole(true,$"Validated, saved and embedded {saved["records"]} observations.");
     }
-
+    private async Task<JsonNode> FinishB(string work,string key)
+    {
+        runtime.BeginRole(work,"B");Stage(work,"B retrieving documentation separately for each topic");
+        var evidence=await runtime.Worker("module_retrieve",new JsonObject{{"work",work}});
+        var topics=evidence["topics"]!.AsArray();var batches=Path.Combine(work,"batches");Directory.CreateDirectory(batches);
+        for(var offset=0;offset<topics.Count;offset+=3)
+        {
+            var id=$"batch-{offset/3+1:D3}";var slice=topics.Skip(offset).Take(3).ToArray();
+            var ids=new JsonArray(slice.Select(x=>JsonValue.Create(x!["topic"]!["topic_id"]!.ToString())).ToArray());
+            File.WriteAllText(Path.Combine(batches,id+".json"),new JsonObject{{"topic_ids",ids.DeepClone()}}.ToJsonString());
+            var context=new JsonObject{{"envelope",Envelope(key,"DOCUMENTATION_GAP_BATCH")},{"topics",new JsonArray(slice.Select(x=>x!.DeepClone()).ToArray())}};
+            Stage(work,$"B {id}: {Math.Min(offset+3,topics.Count)} of {topics.Count} topics");
+            await runtime.Codex("b",Instructions("agent-b-gaps.md"),context.ToJsonString(),Path.Combine(batches,id));
+            var valid=await runtime.Worker("module_check_batch",new JsonObject{{"work",work},{"batch_id",id},{"topic_ids",ids.DeepClone()}});
+            if(valid["valid"]?.GetValue<bool>()!=true)throw new Exception("B gap batch validation failed: "+valid);
+        }
+        Stage(work,"B validating final gap list, saving records and embedding findings");
+        Selected=await runtime.Worker("module_finalize",new JsonObject{{"work",work}});
+        File.WriteAllText(Path.Combine(work,"gap-list.json"),Selected.ToJsonString());
+        File.WriteAllText(Path.Combine(work,"gap-list.txt"),Display(Selected,true));
+        runtime.EndRole(true,"Gap list validated, saved and embedded.");Stage(work,"RESULTS_READY");
+        runtime.Log("Results ready. /results latest shows the summary; /ask discusses this run.");
+        return Selected;
+    }
 }

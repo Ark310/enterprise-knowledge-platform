@@ -42,7 +42,7 @@ class ModuleDatabaseTest(unittest.TestCase):
     rec=root/'current-state/demo.mp4'
     subprocess.run(['ffmpeg','-loglevel','error','-f','lavfi','-i','color=c=blue:s=320x240:r=25','-t','3','-y',str(rec)],check=True)
     rec.with_suffix('.srt').write_text('1\n00:00:00,000 --> 00:00:02,000\nSynthetic fixture setting description.\n')
-    (root/'existing-assets/Confluence Articles/demo.md').write_text('Synthetic fixture setting description. This article explains the fixture setting.')
+    (root/'existing-assets/Confluence Articles/demo.md').write_text('Synthetic fixture setting description. □ ₹ العربية 中文. This article explains the fixture setting.')
     cfg=dict(DataRoot=str(root),EmbeddingModel='qwen3-embedding:4b',OllamaUrl='http://127.0.0.1:'+str(service.server_port))
     self.assertEqual(w.process(cfg,{})['failed'],0)
     with w.connect() as db:start=m.start(db,cfg,dict(recording='current-state/demo.mp4'))
@@ -66,7 +66,15 @@ class ModuleDatabaseTest(unittest.TestCase):
     with w.connect() as db:m.save_a(db,cfg,work)
     self.assertEqual(m.read(work,'agent-a.json')['payload']['topics'][0]['module'],'Fixture')
     self.assertEqual(m.read(work,'index-normalization.json')[0]['proposed_module'],'Rewritten Fixture Heading')
+    with w.connect() as db:
+     before=w.one(db,'select count(*) n from retrieval.analysis_embeddings')['n']
+     w.q(db,"update analysis.runs set status='FAILED' where run_key=%s",(key,))
+    with w.connect() as db:after_a=m.resume_start(db,cfg,work)
+    self.assertEqual(after_a['checkpoint'],'A_SAVED_AND_EMBEDDED')
+    with w.connect() as db:self.assertEqual(w.one(db,'select count(*) n from retrieval.analysis_embeddings')['n'],before)
     with w.connect() as db:evidence=m.retrieve(db,cfg,work)
+    self.assertIn('□',w.j(evidence))
+    self.assertEqual(json.loads(w.wire_result(evidence).encode('cp1252')),json.loads(w.j(evidence)))
     unit=evidence['topics'][0]['passages'][0]
     batches=Path(work)/'batches';batches.mkdir();m.write(batches,'batch-001.json',dict(topic_ids=['T1']));(batches/'batch-001').mkdir()
     row=dict(topic_id='T1',coverage='COVERED',reason='Synthetic article covers fixture.',article_citations=[dict(unit_id=str(unit['id']),excerpt='Synthetic fixture setting description.')],actions=[],unread_relevant_sources=[],limitations=['Synthetic'])
@@ -82,7 +90,7 @@ class ModuleDatabaseTest(unittest.TestCase):
      self.assertEqual(m.results(db,'latest')['run_key'],key)
      self.assertEqual(w.one(db,'select count(*) n from retrieval.embedding_profiles')['n'],1)
      w.q(db,"update analysis.runs set status='FAILED' where run_key=%s",(key,));db.commit()
-     with self.assertRaisesRegex(ValueError,'existing outputs'):
+     with self.assertRaisesRegex(ValueError,'Existing outputs'):
       m.resume_start(db,cfg,work)
      w.q(db,"update analysis.runs set status='PARTIAL' where run_key=%s",(key,))
   finally:

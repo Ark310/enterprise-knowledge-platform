@@ -61,7 +61,7 @@ public sealed partial class Runtime
                 {
                     stderr.AppendLine(line);errors.WriteLine(line);Note("stderr: "+line);
                     if(!connectorWarningShown && line.Contains("rmcp",StringComparison.OrdinalIgnoreCase))
-                    {connectorWarningShown=true;PublishActivity("External MCP startup warning received; full stderr retained. This does not by itself establish that the agent failed.");}
+                    {connectorWarningShown=true;ConnectorNotice();}
                     continue;
                 }
                 stdout.AppendLine(line);events.WriteLine(line);
@@ -84,7 +84,7 @@ public sealed partial class Runtime
                 while(!monitoring.IsCancellationRequested)
                 {
                     await Task.Delay(TimeSpan.FromSeconds(1),monitoring.Token);
-                    if(File.Exists(prefix+".cancel"))manual.Cancel();
+                    if(File.Exists(prefix+".cancel") || (RoleCancel is {} roleCancel && File.Exists(roleCancel)))manual.Cancel();
                     if((int)clock.Elapsed.TotalSeconds%10==0)
                     {
                         State("RUNNING");

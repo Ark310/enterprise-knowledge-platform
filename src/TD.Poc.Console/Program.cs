@@ -16,7 +16,7 @@ string FindRoot()
 try
 {
     var runtime=new Runtime(FindRoot());runtime.Progress+=Console.WriteLine;var workflow=new Workflow(runtime);var moduleReview=new ModuleReview(runtime);
-    if(args.Contains("--version")){Console.WriteLine("TD POC 0.14.0");return;}
+    if(args.Contains("--version")){Console.WriteLine("TD POC 0.15.0");return;}
     await runtime.LoadSecret();
     if(args.Contains("--migrate")){Console.WriteLine(await runtime.Worker("migrate"));return;}
     if(args.Contains("--process")){Console.WriteLine(await runtime.Worker("process",new JsonObject{{"limit",args.Contains("--pilot")?10:0}}));Console.WriteLine("Worker finished. Review totals above; close this window when ready.");return;}
@@ -28,8 +28,9 @@ try
         if(check["ready"]?.GetValue<bool>()!=true)throw new Exception("Readiness failed");
         Console.WriteLine(await runtime.Worker("status"));return;
     }
-    Console.WriteLine("TD POC 0.14 | Codex A/B/C | local Qwen embeddings | automatic scan, MANUAL processing");
-    Console.WriteLine("Checking database...");Console.WriteLine(await runtime.Worker("status"));
+    Console.WriteLine("TD POC 0.15 | Codex A/B/C | local Qwen embeddings | automatic scan, MANUAL processing");
+    Console.WriteLine("Checking database...");var dbStatus=await runtime.Worker("status");
+    Console.WriteLine($"Database ready: {dbStatus["sources"]} sources; {dbStatus["vectors"]} source vectors.");
     Console.WriteLine("Checking Codex login...");
     var login=await runtime.Run(runtime.Config["CodexExecutable"]!.GetValue<string>(),["login","status"],"",runtime.Root,false,TimeSpan.FromSeconds(30));
     if(login.Code!=0)throw new Exception("Codex login check failed. Run Setup-POC.cmd to configure the isolated POC Codex login.");
@@ -37,7 +38,7 @@ try
     var ready=await runtime.Codex("startup-check","Return exactly one JSON object: {\"ready\":true}. Do not use tools.","Readiness check only.",Path.Combine(runtime.Root,"runtime","preflight",Guid.NewGuid().ToString("N")));
     if(ready["ready"]?.GetValue<bool>()!=true)throw new Exception("Codex readiness response was not valid.");
     Console.WriteLine("Loading embedding model (no source files processed)...");
-    try {Console.WriteLine(await runtime.Worker("warm"));}catch(Exception e){Console.WriteLine("MODEL NOT READY: "+e.Message+" Run Setup-LocalModel.cmd. Scanning remains available.");}
+    try {var warm=await runtime.Worker("warm");Console.WriteLine($"Local embeddings ready: {warm["model"]}, {warm["dimensions"]} dimensions.");}catch(Exception e){Console.WriteLine("MODEL NOT READY: "+e.Message+" Run Setup-LocalModel.cmd. Scanning remains available.");}
     async Task Scan()
     {
         var s=await runtime.Worker("scan");var files=s["files"]!.AsArray();
@@ -59,7 +60,7 @@ try
         Console.WriteLine("Run output: "+path+"\nBring agent-a.json, agent-b.json and validation files here for review.");
     }
     await Scan();
-    Console.WriteLine("Commands: /review | /resume run-folder | /results latest | /ask question | /scan | /process | /pilot | /status | /search question | /test T02 | /test T04 | /test T05 | /help | /exit");
+    Console.WriteLine("Commands: /review | /results latest | /ask question | /help | /exit");
     Console.WriteLine("Or type a question for Agent C. Processing requires your explicit /process or /pilot command.");
     while(true)
     {
@@ -103,7 +104,7 @@ try
                 case "PROCESS":Console.WriteLine("To retain manual control, type /process (all) or /pilot (10 files). No processing started.");break;
             }
         }
-        catch(Exception e){Console.WriteLine("STOPPED: "+e.Message+"\nNo successful handoff is claimed. Check runtime logs.");}
+        catch(Exception e){var message=e.Message.Length>350?e.Message[..350]+"…":e.Message;Console.WriteLine("STOPPED: "+message+"\nNo final success is claimed. Export-LatestRun.cmd includes failure.json and complete worker logs.");}
     }
 }
 catch(Exception e){Console.Error.WriteLine("STARTUP/WORKER FAILED: "+e.Message);Environment.ExitCode=1;}

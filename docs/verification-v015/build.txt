@@ -1,0 +1,12 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  TD.Poc.Infrastructure -> /workspace/scratch/aed6c87a9d4c/v015/TD-POC-v0.15/src/TD.Poc.Infrastructure/bin/Release/net10.0/TD.Poc.Infrastructure.dll
+  TD.Poc.Core -> /workspace/scratch/aed6c87a9d4c/v015/TD-POC-v0.15/src/TD.Poc.Core/bin/Release/net10.0/TD.Poc.Core.dll
+  TD.Poc.Console -> /workspace/scratch/aed6c87a9d4c/v015/TD-POC-v0.15/src/TD.Poc.Console/bin/Release/net10.0/TD.Poc.Console.dll
+  TD.Poc.HostTests -> /workspace/scratch/aed6c87a9d4c/v015/TD-POC-v0.15/tests/TD.Poc.HostTests/bin/Release/net10.0/TD.Poc.HostTests.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:05.39

@@ -11,7 +11,7 @@ function Snapshot([string]$source,[string]$target){
  try {
   New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent)|Out-Null
   # Read sharing permits export while the host is appending live logs.
-  $inputStream=[IO.File]::Open($source,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::ReadWrite)
+  $inputStream=[IO.File]::Open($source,[IO.FileMode]::Open,[IO.FileAccess]::Read,([IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete))
   $outputStream=[IO.File]::Create($target)
   # Bound the snapshot to the length observed at open, rather than following a growing file.
   $remaining=$inputStream.Length;$buffer=New-Object byte[] 65536

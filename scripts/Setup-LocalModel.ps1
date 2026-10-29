@@ -28,5 +28,5 @@ Write-Host ('Model ready. Dimensions: '+$r.embeddings[0].Count)
 if($LASTEXITCODE -ne 0){throw 'Solution build failed'}
 & '.\.venv\Scripts\python.exe' -m unittest discover -s tests -v
 if($LASTEXITCODE -ne 0){throw 'Offline evidence tests failed'}
-Write-Host 'Local setup passed. Setup-POC.cmd continues with connection, migration, video tools and Codex readiness.'
+Write-Host 'Local dependencies, embedding model and build checks passed.'
 Write-Host 'For visual frame evidence, ffmpeg must be on PATH or configured as FFmpegExecutable. Run Setup-VideoTools.cmd if needed.'

@@ -1,17 +1,19 @@
-# TD POC v0.14
+# TD POC v0.15
 
-Fixes v0.13 consolidation failures caused by exact module-label equality and removes all automatic per-call activity windows. Includes the v0.13.1 FFmpeg compatibility/error-log fix.
+Read docs/START-HERE.md. Fresh run:
 
 ```cmd
-cd /d C:\TD-POC-v0.14
+cd /d C:\TD-POC-v0.15
 Setup-POC.cmd
 Start-POC.cmd
 ```
 
-Read docs/START-HERE.md. Keep the v0.13 run folder: `/resume C:\TD-POC-v0.13\runtime\runs\TD-MODULE-20261029142006-735a56` reuses eligible completed sections from the reported failed run. Otherwise `/review` starts a new whole-recording review.
+At You>: `/review`, then `current-state\System Admin_ Security_User Master Walkthrough.mp4`.
 
-Every topic retains source-derived module attribution; formatting aliases are reconciled conservatively, distinct source modules are split, and the mapping is audited. Unknown/missing/duplicate observation references still fail. The host saves/embeds A/B results with the same existing local profile. /results latest and /ask retrieve/discuss one exact saved gap run.
+Main console: start/stage completion and compact results. One A activity window follows ALL sections/consolidation/save/embedding; one B window follows ALL searches/batches/save/embedding. No per-call viewer windows. Startup and C chat do not open A/B windows. Q in the active role window or Ctrl+C in main cancels active work. Closing a viewer alone does not cancel it.
 
-Main-console progress/events/elapsed heartbeat; Ctrl+C cancels the active Codex call. Complete event/stderr/status files stay on disk. No separate Codex viewers open automatically. /process still opens its separate import worker by explicit request.
+Explicit UTF-8 and ASCII-safe JSON fix the Windows Python/C# Unicode handoff defect. Content is preserved, not replaced. Every worker's stdout/stderr and exceptions are saved; failure.json and workflow-state.json identify the failing phase. Agent handoffs pass validation before DB storage/embedding. B rows link to A records and cited source units under the existing local profile. No schema reset or forced reimport.
 
-No database reset, schema migration change, reimport or model change is required. Source-backed memory is not model training. Findings remain AGENT_PROPOSED with sampled-video/bounded-search limitations. Existing MCP startup noise is not claimed fully resolved; no Firecrawl key is needed for supplied-evidence review. See VALIDATION.md for actual tests and native Windows limits.
+/results latest selects one saved gap report; /ask and subsequent ordinary questions use it. /search remains general cross-run retrieval. Full results: gap-list.json and gap-list.txt. Export-LatestRun.cmd includes the diagnostics. Optional guarded /resume supports eligible failures before or after A save, verifying sources/records/vectors and refusing ambiguous/B-already-saved states; see guide. Start fresh for the requested first v0.15 test.
+
+51 Python tests and host/database verification are described in VALIDATION.md. Native Windows execution and live semantic quality still need the first server run. Codex reasons using ChatGPT login; Qwen3-Embedding 4B embeds locally. Stored findings are proposed retrievable memory, not model training.

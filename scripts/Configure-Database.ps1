@@ -12,5 +12,5 @@ try {
  $connection='host='+(Quote-Libpq $server)+' port='+(Quote-Libpq $port)+' dbname=knowledge_poc user='+(Quote-Libpq $user)+' password='+(Quote-Libpq $plain)
  $secure=ConvertTo-SecureString $connection -AsPlainText -Force
  $secure | ConvertFrom-SecureString | Set-Content -LiteralPath (Join-Path $root 'config\database.dpapi') -Encoding ASCII
- Write-Host 'Saved. Next run Initialize-Database.cmd, then Start-POC.cmd.'
+ Write-Host 'Database connection saved securely.'
 } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr);$plain=$null;$connection=$null }

@@ -36,30 +36,33 @@ public sealed class Workflow(Runtime runtime)
         var work=prep["work"]!.GetValue<string>();var runKey=prep["request"]!["run_id"]!.GetValue<string>();
         try
         {
+            runtime.BeginRole(work,"A");
             var schema=File.ReadAllText(Path.Combine(runtime.Root,"contracts","contracts-v2.schema.json"));
             var common=Instructions("shared-guardrails.md")+"\nAPPROVED JSON SCHEMA:\n"+schema;
             var images=prep["frames"]!.AsArray().Select(x=>x!["path"]!.GetValue<string>()).ToArray();
             // Use distinct names for host validation; original agent prompts retained alongside local adapter.
             var a=await runtime.Codex("a",Instructions("agent-a-current-state.md")+"\n"+common,prep["evidence"]!.ToJsonString(),work,images);
             File.WriteAllText(Path.Combine(work,"agent-a.json"),a.ToJsonString());
-            runtime.Log("A → validation gate");
+            runtime.RoleLog("A → validation gate");
             var av=await runtime.Worker("save_output",new JsonObject{{"work",work},{"role","CURRENT_STATE"},{"output",Path.Combine(work,"agent-a.json")}});
             if(av["valid"]!.GetValue<bool>()!=true)throw new Exception("Agent A failed validation. Handoff stopped. See validation-a.json.");
-            if(a["status"]!.GetValue<string>()=="BLOCKED"){runtime.Log("A is BLOCKED: B not started");await runtime.Worker("fail_run",new JsonObject{{"run_key",runKey}});return work;}
-            runtime.Log("A validated and saved → observations embedded → B evidence retrieval");
+            if(a["status"]!.GetValue<string>()=="BLOCKED"){runtime.EndRole(true,"A is BLOCKED: B not started");await runtime.Worker("fail_run",new JsonObject{{"run_key",runKey}});return work;}
+            runtime.EndRole(true,"Validated, saved and observations embedded.");
+            runtime.BeginRole(work,"B");runtime.RoleLog("Retrieving documentation evidence");
             var bp=await runtime.Worker("prepare_b",new JsonObject{{"work",work}});
             bp.AsObject().Remove("upstream"); // Already supplied once as upstream_handoff; retain original evidence-b packet on disk.
             var bcontext=new JsonObject{{"upstream_handoff",a.DeepClone()},{"existing_evidence",bp},{"current_evidence",prep["evidence"]!.DeepClone()}};
             var b=await runtime.Codex("b",Instructions("agent-b-documentation-review.md")+"\n"+common,bcontext.ToJsonString(),work,images);
             File.WriteAllText(Path.Combine(work,"agent-b.json"),b.ToJsonString());
-            runtime.Log("B → validation gate");
+            runtime.RoleLog("B → validation gate");
             var bv=await runtime.Worker("save_output",new JsonObject{{"work",work},{"role","ARTICLE_REVIEW"},{"output",Path.Combine(work,"agent-b.json")}});
             if(!bv["valid"]!.GetValue<bool>())throw new Exception("Agent B failed validation. See validation-b.json.");
-            runtime.Log("B saved → findings embedded. Structural checks passed; factual review remains human work.");
+            runtime.EndRole(true,"Saved and findings embedded. Factual review remains human work.");
             return work;
         }
-        catch
+        catch(Exception e)
         {
+            runtime.RecordFailure(work,"targeted-test",e);runtime.RoleLog(e.Message);runtime.EndRole(false,"See failure.json in the run folder.");
             try {await runtime.Worker("fail_run",new JsonObject{{"run_key",runKey}});}catch { }
             throw;
         }

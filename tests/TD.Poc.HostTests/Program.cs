@@ -46,6 +46,31 @@ try
         var failure=await r.Run("python3",["-c","import sys; print('fixture failure',file=sys.stderr);sys.exit(7)"],"",dir,true,TimeSpan.FromSeconds(10),true,failed);
         Check(failure.Code==7 && JsonNode.Parse(File.ReadAllText(failed+"-status.json"))!["state"]!.GetValue<string>()=="FAILED","nonzero exit status and stderr retained");
     }
+    if(!OperatingSystem.IsWindows())
+    {
+        r.Config["PythonExecutable"]="/usr/bin/python3";
+        var python=Path.Combine(dir,"tools");Directory.CreateDirectory(python);
+        var unicode="□ ₹ العربية 中文 café 😀";
+        File.WriteAllText(Path.Combine(python,"worker.py"),"import sys,json,os\nassert os.environ.get('PYTHONUTF8')=='1' and os.environ.get('PYTHONIOENCODING')=='utf-8'\nr=json.load(sys.stdin)\nif r['op']=='bad': print('not json');sys.exit(1)\nif r['op']=='packet': print(json.dumps({'ok':True,'result':json.load(open(os.environ['TD_TEST_PACKET'],encoding='utf-8'))},ensure_ascii=False));sys.exit(0)\nprint(json.dumps({'ok':True,'result':{'text':'□ ₹ العربية 中文 café 😀','large':('□ ₹ العربية 中文 '*20000)}},ensure_ascii=False))\n");
+        var packet=await r.Worker("unicode",new JsonObject{{"query",unicode}});
+        Check(packet["text"]!.ToString()==unicode && packet["large"]!.ToString().Length>100000,"UTF-8 C#/Python worker roundtrip with large non-ASCII packet");
+        var actualPacketPath=Environment.GetEnvironmentVariable("TD_TEST_PACKET");
+        if(!string.IsNullOrEmpty(actualPacketPath))
+        {
+            var actualPacket=await r.Worker("packet");
+            Check(JsonNode.DeepEquals(actualPacket,JsonNode.Parse(File.ReadAllText(actualPacketPath))),"actual failed-run retrieval packet survives C#/Python process boundary");
+        }
+        var failedWork=Path.Combine(dir,"bad-worker");
+        try{await r.Worker("bad",new JsonObject{{"work",failedWork}});throw new Exception("Expected bad worker failure");}catch(Exception e) when(e.Message.Contains("invalid JSON")){}
+        Check(File.Exists(Path.Combine(failedWork,"failure.json")) && Directory.GetFiles(Path.Combine(failedWork,"workers"),"*-stdout.json").Length==1,"worker exception and raw output persisted");
+        var roleWork=Path.Combine(dir,"role-work");
+        r.BeginRole(roleWork,"A");r.RoleLog("Section 1 of 2");await r.Codex("a","fixture","section",Path.Combine(roleWork,"S1"));r.RoleLog("Section 2 of 2");await r.Codex("index","fixture","index",roleWork);r.EndRole(true,"A saved and embedded (fixture)");
+        r.BeginRole(roleWork,"B");await r.Codex("b","fixture","batch",Path.Combine(roleWork,"batch"));r.EndRole(true,"B saved and embedded (fixture)");
+        Check(Directory.GetFiles(Path.Combine(roleWork,"activity"),"*.status.json").Length==2,"one aggregate status stream per A/B role");
+        var roleLog=File.ReadAllText(Path.Combine(roleWork,"activity","agent-a.log"));
+        Check(roleLog.Contains("Section 1 of 2") && roleLog.Contains("Section 2 of 2"),"A sections share one activity stream");
+        Check(JsonNode.Parse(File.ReadAllText(Path.Combine(roleWork,"activity","agent-b.status.json")))!["state"]!.ToString()=="COMPLETE","B aggregate completion recorded");
+    }
     Console.WriteLine($"Host tests passed: {passed}");
 }
 finally{Directory.Delete(dir,true);}

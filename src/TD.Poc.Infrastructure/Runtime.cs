@@ -10,7 +10,11 @@ public sealed partial class Runtime
     public JsonObject Config { get; }
     public event Action<string>? Progress;
     private readonly Channel<string> consoleActivity=Channel.CreateBounded<string>(new BoundedChannelOptions(64){SingleReader=true,FullMode=BoundedChannelFullMode.DropOldest});
-    private void PublishActivity(string text)=>consoleActivity.Writer.TryWrite($"[{DateTimeOffset.Now:HH:mm:ss}] {text}");
+    private void PublishActivity(string text)
+    {
+        bool active;lock(roleGate)active=currentRole is not null;
+        if(active)RoleLog(text);else consoleActivity.Writer.TryWrite($"[{DateTimeOffset.Now:HH:mm:ss}] {text}");
+    }
     public Runtime(string root)
     {
         var printer=new Thread(()=>
@@ -32,12 +36,19 @@ public sealed partial class Runtime
     public async Task<JsonNode> Worker(string op,JsonObject? args=null)
     {
         var python=Config["PythonExecutable"]!.GetValue<string>();
-        if(!Path.IsPathRooted(python)) python=Path.Combine(Root,python);
-        var result=await Run(python,[Path.Combine(Root,"tools","worker.py")],new JsonObject{{"op",op},{"args",args??new JsonObject()}}.ToJsonString(),Root,false,TimeSpan.FromHours(24));
-        JsonNode obj;
-        try {obj=JsonNode.Parse(result.Output)!;} catch {throw new Exception("Worker returned invalid JSON. "+result.Error);}
-        if(result.Code!=0 || obj["ok"]?.GetValue<bool>()!=true)throw new Exception(obj["error"]?.GetValue<string>()??"Evidence worker failed");
-        return obj["result"]!.DeepClone();
+        if(!Path.IsPathRooted(python))python=Path.Combine(Root,python);
+        var work=args?["work"]?.ToString()??Path.Combine(Root,"runtime","diagnostics");
+        Directory.CreateDirectory(Path.Combine(work,"workers"));
+        var prefix=Path.Combine(work,"workers",op+"-"+Guid.NewGuid().ToString("N"));
+        try
+        {
+            var result=await Run(python,[Path.Combine(Root,"tools","worker.py")],new JsonObject{{"op",op},{"args",args??new JsonObject()}}.ToJsonString(),Root,false,TimeSpan.FromHours(24),true,prefix);
+            JsonNode obj;
+            try{obj=JsonNode.Parse(result.Output)!;}catch{throw new Exception($"Worker {op} returned invalid JSON; see {prefix}-stderr.txt");}
+            if(result.Code!=0 || obj["ok"]?.GetValue<bool>()!=true)throw new Exception(obj["error"]?.ToString()??$"Worker {op} failed; see {prefix}-stderr.txt");
+            return obj["result"]!.DeepClone();
+        }
+        catch(Exception e){RecordFailure(work,"worker:"+op,e);throw;}
     }
     public async Task LoadSecret()
     {
@@ -66,7 +77,7 @@ public sealed partial class Runtime
         File.WriteAllText(prefix+"-activity.log",$"Agent {role}: Codex reasoning through POC ChatGPT login. Local embeddings: {Config["EmbeddingModel"]}.\n");
         File.Delete(prefix+".cancel");
 
-        Log($"{role}: Codex reasoning started; activity: {prefix}-activity.log. Ctrl+C cancels this call. Progress stays in this console; complete logs remain on disk.");
+        RoleLog($"{role}: reasoning started. Ctrl+C in main or Q in the role window cancels. Raw logs: {Path.GetFileName(prefix)}-events.jsonl.");
         var timeout=TimeSpan.FromMinutes(Config["AgentTimeoutMinutes"]!.GetValue<int>());
         var r=await Run(Config["CodexExecutable"]!.GetValue<string>(),args,prompt,folder,true,timeout,true,prefix);
         if(r.Code!=0)throw new Exception($"Codex {role} exited {r.Code}. See {role}-stderr.txt and {role}-status.json in the run folder.");
@@ -81,11 +92,12 @@ public sealed partial class Runtime
         if(OperatingSystem.IsWindows() && (executable.Equals("codex",StringComparison.OrdinalIgnoreCase)||executable.EndsWith(".cmd",StringComparison.OrdinalIgnoreCase)))
         {
             // cmd is used only for a trusted installed .cmd shim. User prompts go through stdin.
-            static string Quote(string s){if(s.IndexOfAny(['"','\r','\n','&','|','<','>','%','!'])>=0)throw new Exception("Unsafe character in executable/argument path; extract to a simple path such as C:\\TD-POC-v0.14.");return "\""+s+"\"";}
+            static string Quote(string s){if(s.IndexOfAny(['"','\r','\n','&','|','<','>','%','!'])>=0)throw new Exception("Unsafe character in executable/argument path; extract to a simple path such as C:\\TD-POC-v0.15.");return "\""+s+"\"";}
             start.FileName="cmd.exe";
             start.Arguments="/d /s /c \""+Quote(executable)+" "+string.Join(" ",list.Select(Quote))+"\"";
         }
         else foreach(var a in list)start.ArgumentList.Add(a);
+        start.Environment["PYTHONUTF8"]="1";start.Environment["PYTHONIOENCODING"]="utf-8";
         if(codex || Path.GetFileNameWithoutExtension(executable).Equals("codex",StringComparison.OrdinalIgnoreCase))
         {
             foreach(var key in start.Environment.Keys.Where(x=>x.StartsWith("TD_PG",StringComparison.OrdinalIgnoreCase)||x.StartsWith("PG",StringComparison.OrdinalIgnoreCase)).ToArray())start.Environment.Remove(key);
@@ -95,6 +107,8 @@ public sealed partial class Runtime
         }
         if(codex)return await RunAgentProcess(start,input,timeout,livePrefix ?? Path.Combine(cwd,"codex"));
         using var process=new Process{StartInfo=start};
+        using var outLog=livePrefix is null?null:new StreamWriter(livePrefix+"-stdout.json",false,new UTF8Encoding(false)){AutoFlush=true};
+        using var errLog=livePrefix is null?null:new StreamWriter(livePrefix+"-stderr.txt",false,new UTF8Encoding(false)){AutoFlush=true};
         if(!process.Start())throw new Exception("Could not start "+executable);
         var stdout=new StringBuilder();var stderr=new StringBuilder();
         async Task Pump(StreamReader reader,StringBuilder target,bool error)
@@ -102,15 +116,31 @@ public sealed partial class Runtime
             while(await reader.ReadLineAsync() is {} line)
             {
                 target.AppendLine(line);
-                if(error&&logErrors)Progress?.Invoke(line);
+                if(error){errLog?.WriteLine(line);if(logErrors)PublishActivity(line);}else outLog?.WriteLine(line);
             }
         }
         var aout=Pump(process.StandardOutput,stdout,false);var aerr=Pump(process.StandardError,stderr,true);
-        await process.StandardInput.WriteAsync(input);process.StandardInput.Close();
-        using var cancel=new CancellationTokenSource(timeout);
-        try {await process.WaitForExitAsync(cancel.Token);}
-        catch(OperationCanceledException){process.Kill(true);throw new Exception("Worker operation timed out; process stopped.");}
-        await Task.WhenAll(aout,aerr);
-        return(process.ExitCode,stdout.ToString(),stderr.ToString());
+        using var timeoutCancel=new CancellationTokenSource(timeout);
+        using var manual=new CancellationTokenSource();
+        using var cancel=CancellationTokenSource.CreateLinkedTokenSource(timeoutCancel.Token,manual.Token);
+        using var monitorStop=new CancellationTokenSource();
+        var roleCancel=RoleCancel;
+        ConsoleCancelEventHandler handler=(_,e)=>{e.Cancel=true;manual.Cancel();};
+        if(logErrors)Console.CancelKeyPress+=handler;
+        var watch=Task.Run(async()=>{try{while(!monitorStop.IsCancellationRequested){await Task.Delay(500,monitorStop.Token);if(roleCancel is not null && File.Exists(roleCancel))manual.Cancel();}}catch(OperationCanceledException){}});
+        try
+        {
+            await process.StandardInput.WriteAsync(input.AsMemory(),cancel.Token);process.StandardInput.Close();
+            await process.WaitForExitAsync(cancel.Token);
+            await Task.WhenAll(aout,aerr).WaitAsync(TimeSpan.FromSeconds(5));
+            return(process.ExitCode,stdout.ToString(),stderr.ToString());
+        }
+        catch
+        {
+            if(!process.HasExited)process.Kill(true);
+            try{await Task.WhenAll(aout,aerr).WaitAsync(TimeSpan.FromSeconds(5));}catch{}
+            throw;
+        }
+        finally{monitorStop.Cancel();await watch;if(logErrors)Console.CancelKeyPress-=handler;}
     }
 }
