@@ -1,0 +1,42 @@
+test_actual_error_is_retained_and_shown (test_frame_compatibility.FrameCompatibilityTests.test_actual_error_is_retained_and_shown) ... ok
+test_legacy_build_uses_numeric_vsync (test_frame_compatibility.FrameCompatibilityTests.test_legacy_build_uses_numeric_vsync) ... ok
+test_modern_build_does_not_receive_removed_vsync (test_frame_compatibility.FrameCompatibilityTests.test_modern_build_does_not_receive_removed_vsync) ... ok
+test_no_supported_mode_is_explicit_failure (test_frame_compatibility.FrameCompatibilityTests.test_no_supported_mode_is_explicit_failure) ... ok
+test_covered_requires_actual_article (test_module_review.CoverageTests.test_covered_requires_actual_article) ... ok
+test_duplicate_topic_rejected (test_module_review.CoverageTests.test_duplicate_topic_rejected) ... ok
+test_global_missing_enum_not_allowed (test_module_review.CoverageTests.test_global_missing_enum_not_allowed) ... ok
+test_index_cannot_silently_change_module (test_module_review.CoverageTests.test_index_cannot_silently_change_module) ... ok
+test_index_must_account_for_every_observation (test_module_review.CoverageTests.test_index_must_account_for_every_observation) ... ok
+test_invented_excerpt_rejected (test_module_review.CoverageTests.test_invented_excerpt_rejected) ... ok
+test_missing_with_unread_guide_rejected (test_module_review.CoverageTests.test_missing_with_unread_guide_rejected) ... ok
+test_no_topic_omissions (test_module_review.CoverageTests.test_no_topic_omissions) ... ok
+test_qualified_gap_allowed (test_module_review.CoverageTests.test_qualified_gap_allowed) ... ok
+test_section_cannot_invent_frame_or_transcript (test_module_review.CoverageTests.test_section_cannot_invent_frame_or_transcript) ... ok
+test_valid_coverage (test_module_review.CoverageTests.test_valid_coverage) ... ok
+test_wrong_run_rejected (test_module_review.CoverageTests.test_wrong_run_rejected) ... ok
+test_bad_query_profile_endpoint_rejected (test_worker.ContractTests.test_bad_query_profile_endpoint_rejected) ... ok
+test_extra_contract_field_rejected (test_worker.ContractTests.test_extra_contract_field_rejected) ... ok
+test_fabricated_excerpt_rejected (test_worker.ContractTests.test_fabricated_excerpt_rejected) ... ok
+test_no_frames_rejects_visual_claim (test_worker.ContractTests.test_no_frames_rejects_visual_claim) ... ok
+test_original_test_requests_valid (test_worker.ContractTests.test_original_test_requests_valid) ... ok
+test_bad_srt_range_rejected (test_worker.EvidenceTests.test_bad_srt_range_rejected) ... ok
+test_chunk_bounds_no_text_loss (test_worker.EvidenceTests.test_chunk_bounds_no_text_loss) ... ok
+test_missing_root_is_not_successful_full_scan (test_worker.EvidenceTests.test_missing_root_is_not_successful_full_scan) ... ok
+test_no_binary_as_text (test_worker.EvidenceTests.test_no_binary_as_text) ... ok
+test_scan_excludes_meetings_and_symlinks (test_worker.EvidenceTests.test_scan_excludes_meetings_and_symlinks) ... ok
+test_srt_preserves_original_timestamps (test_worker.EvidenceTests.test_srt_preserves_original_timestamps) ... ok
+test_worker_exists (test_worker.EvidenceTests.test_worker_exists) ... ok
+test_current_state_traversal_rejected (test_worker.RegressionTests.test_current_state_traversal_rejected) ... ok
+test_exact_text_locator_and_excerpt_accepted (test_worker.RegressionTests.test_exact_text_locator_and_excerpt_accepted) ... ok
+test_malformed_payload_returns_errors_instead_of_crashing (test_worker.RegressionTests.test_malformed_payload_returns_errors_instead_of_crashing) ... ok
+test_non_object_output_returns_errors (test_worker.RegressionTests.test_non_object_output_returns_errors) ... ok
+test_unsupplied_frame_timestamp_rejected (test_worker.RegressionTests.test_unsupplied_frame_timestamp_rejected) ... ok
+test_visual_level_cannot_use_only_transcript (test_worker.RegressionTests.test_visual_level_cannot_use_only_transcript) ... ok
+test_all_emitted_categories_are_in_final_schema (test_worker.SourceCategoryTests.test_all_emitted_categories_are_in_final_schema) ... ok
+test_docx_uses_final_schema_document_category (test_worker.SourceCategoryTests.test_docx_uses_final_schema_document_category) ... ok
+test_pdf_uses_final_schema_document_category (test_worker.SourceCategoryTests.test_pdf_uses_final_schema_document_category) ... ok
+
+----------------------------------------------------------------------
+Ran 37 tests in 0.109s
+
+OK

@@ -61,6 +61,34 @@ def start(db,cfg,options):
  write(work,'module-manifest.json',manifest)
  return {'work':str(work),'run_key':key,'sections':sections,'duration_seconds':seconds}
 
+def frame_sync_args(help_text):
+ # Modern FFmpeg replaces legacy -vsync with the per-stream -fps_mode.
+ if re.search(r'(?m)^\s*-fps_mode(?:\[|\s)',help_text):return ['-fps_mode','vfr']
+ if re.search(r'(?m)^\s*-vsync(?:\[|\s)',help_text):return ['-vsync','2']
+ raise ValueError('FFmpeg reports neither -fps_mode nor -vsync. Use a complete FFmpeg build; no frames or timestamps were fabricated.')
+
+def decode_frames(ffmpeg,rec,folder,section,pattern):
+ folder=Path(folder)
+ common=dict(capture_output=True,text=True,encoding='utf-8',errors='replace')
+ version=subprocess.run([ffmpeg,'-version'],timeout=20,**common)
+ help_result=subprocess.run([ffmpeg,'-hide_banner','-h','full'],timeout=30,**common)
+ try:sync=frame_sync_args(help_result.stdout+'\n'+help_result.stderr)
+ except ValueError:
+  (folder/'ffmpeg-help.txt').write_text(help_result.stdout+'\n'+help_result.stderr,encoding='utf-8');raise
+ cmd=[ffmpeg,'-nostdin','-hide_banner','-loglevel','info','-ss',str(section['start']),'-i',str(rec),'-t',str(section['end']-section['start']),'-vf',"select='isnan(prev_selected_t)+gte(t-prev_selected_t,2)',scale=1280:-2,showinfo",*sync,'-frames:v','60','-y',str(pattern)]
+ write(folder,'ffmpeg-command.json',{'patch':'0.13.1','version':version.stdout+version.stderr,'sync_arguments':sync,'arguments':cmd})
+ try:decoded=subprocess.run(cmd,timeout=180,**common)
+ except subprocess.TimeoutExpired as exc:
+  stderr=exc.stderr or b''
+  if isinstance(stderr,bytes):stderr=stderr.decode('utf-8',errors='replace')
+  (folder/'ffmpeg-stderr.txt').write_text(stderr,encoding='utf-8')
+  raise ValueError('FFmpeg frame extraction timed out; see '+str(folder/'ffmpeg-stderr.txt')) from exc
+ (folder/'ffmpeg-stderr.txt').write_text(decoded.stderr,encoding='utf-8')
+ (folder/'ffmpeg-stdout.txt').write_text(decoded.stdout,encoding='utf-8')
+ if decoded.returncode:
+  raise ValueError(f"FFmpeg failed with exit code {decoded.returncode}. Full diagnostics: {folder/'ffmpeg-stderr.txt'}\n"+decoded.stderr[-3500:])
+ return decoded
+
 def section_packet(cfg,work,section_id):
  m=read(work,'module-manifest.json');s=next(x for x in m['sections'] if x['id']==section_id)
  rec=Path(cfg['DataRoot'])/m['recording_file']
@@ -68,7 +96,7 @@ def section_packet(cfg,work,section_id):
   if w.file_hash(path)!=digest:raise ValueError('Source changed during review; start a new review')
  folder=Path(work)/section_id;folder.mkdir(exist_ok=True)
  pattern=folder/'frame-%04d.jpg'
- decoded=subprocess.run([m['ffmpeg'],'-nostdin','-hide_banner','-loglevel','info','-ss',str(s['start']),'-i',str(rec),'-t',str(s['end']-s['start']),'-vf',"select='isnan(prev_selected_t)+gte(t-prev_selected_t,2)',scale=1280:-2,showinfo",'-vsync','vfr','-frames:v','60','-y',str(pattern)],capture_output=True,text=True,timeout=180,check=True)
+ decoded=decode_frames(m['ffmpeg'],rec,folder,s,pattern)
  paths=sorted(folder.glob('frame-*.jpg'))
  times=[float(t) for t in re.findall(r'Parsed_showinfo[^\n]*pts_time:([0-9.]+)',decoded.stderr)]
  if len(times)<len(paths):raise ValueError('Could not map actual decoded frame timestamps')

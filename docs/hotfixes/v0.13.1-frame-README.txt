@@ -1,0 +1,35 @@
+TD v0.13.1 frame-extraction compatibility hotfix for installed v0.13
+
+Failure: first section FFmpeg exited with unsigned code 2880417800,
+corresponding to -1414549496 (AVERROR_OPTION_NOT_FOUND). The old command
+used deprecated -vsync vfr. The exact rejected option cannot be confirmed
+from the screenshot because v0.13 hid FFmpeg stderr.
+
+Patch: detect supported options from FFmpeg help; prefer -fps_mode vfr.
+For older builds advertising only -vsync, use its numeric VFR mode 2.
+Keep the actual decoded-frame timestamp mapping unchanged. Save command,
+FFmpeg version, stdout and stderr under each section. Show real stderr
+on failure. No invented frames, fallback timing or ignored decode errors.
+
+INSTALL
+1. In the main POC window type /exit. Close completed activity windows.
+2. Extract this ZIP directly into C:\TD-POC-v0.13 and replace tools\module_review.py.
+   The tools and tests directories must merge into the existing solution;
+   do not create a nested TD-v0.13.1-frame-fix directory.
+3. Open CMD:
+   cd /d C:\TD-POC-v0.13
+   Start-POC.cmd
+4. At You> enter /review, then:
+   current-state\System Admin_ Security_User Master Walkthrough.mp4
+5. This starts a new run. No setup, database migration/reset, model download
+   or /process is needed for this patch. The old failed run remains as history.
+6. If extraction still fails, the real FFmpeg error will now be shown.
+   Run Export-LatestRun.cmd from another CMD and share the ZIP; it includes
+   S001\ffmpeg-command.json and S001\ffmpeg-stderr.txt.
+
+Verification: 37 Python tests passed, including modern/legacy option selection
+and retained error diagnostics. The supplied video's first and last sections
+were extracted using -fps_mode vfr with expected in-range decoded timestamps
+(60 frames at 0-118 seconds and 28 frames at 720-774 seconds).
+The user's Windows FFmpeg binary has not been run here. Native retry is required.
+The C# banner remains v0.13.0; this is a Python-only compatibility hotfix.
