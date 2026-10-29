@@ -1,4 +1,4 @@
-# v0.13 walkthrough
+# v0.14 walkthrough
 
 ## What changed
 
@@ -6,16 +6,16 @@ The new default broad workflow is `/review` (alias `/test MODULE`). It does NOT 
 
 A uses two-minute sections and approximately two-second visual sampling, with original timestamps mapped from decoded frames. Every scheduled section must complete validation, every extracted observation must be assigned once, and every indexed topic must receive one B row. This accounts for supplied evidence, not all possible unobserved actions: the model can still miss content, and sampled video is not continuous video/audio review. Transcript narration, visual states, demonstrated actions and unverified outcomes remain distinct.
 
-For the 12m55s User Master recording, expect seven section calls, one consolidation call, and one B call per group of three discovered topics, plus retrieval/embedding. This is substantially longer than T02; the duration depends on topic count and Codex latency. Use the activity windows for progress. No precise total-time promise is made.
+For the 12m55s User Master recording, expect seven section calls, one consolidation call, and one B call per group of three discovered topics, plus retrieval/embedding. This is substantially longer than T02; the duration depends on topic count and Codex latency. Use elapsed-time/event lines in the main console for progress. No separate Codex activity windows are launched. No precise total-time promise is made.
 
 ## Install and start
 
-1. Close the old POC. Keep it as a backup. Extract this package to C:\TD-POC-v0.13, with Setup-POC.cmd directly inside that folder.
+1. Close the old POC. Keep it as a backup. Extract this package to C:\TD-POC-v0.14, with Setup-POC.cmd directly inside that folder.
 2. Keep PostgreSQL and C:\S3 bucket Data untouched. No fresh-install SQL or database reset.
 3. Open CMD:
 
 ```cmd
-cd /d C:\TD-POC-v0.13
+cd /d C:\TD-POC-v0.14
 Setup-POC.cmd
 ```
 
@@ -95,13 +95,13 @@ Put each MP4 and matching same-basename SRT in current-state. Keep unrelated mee
 In a separate CMD:
 
 ```cmd
-cd /d C:\TD-POC-v0.13
+cd /d C:\TD-POC-v0.14
 Export-LatestRun.cmd
 ```
 
 Upload the ZIP to review the first broad run. It includes section evidence/results/validation, topic-index.json, agent-a.json, per-topic executed search evidence, B batch results, agent-b.json, gap-list.json, gap-list.txt and live logs. The combined JSON report is also persisted in analysis.agent_outputs; `/results` does not depend on local files surviving an upgrade. Current source-version flags warn if evidence versions have subsequently been superseded.
 
-Press Q in the active activity viewer or Ctrl+C in the main console during a Codex call to cancel. Earlier completed sections remain in files for diagnosis; interrupted reviews are marked FAILED where the DB is reachable and no final gap list is claimed. There is no resume of interrupted broad reviews in this version; a new `/review` creates a new run. There is no automatic processing on ordinary chat. Keep config/database.dpapi and config/codex-home private; export only the review bundle.
+Press Ctrl+C in the main console during a Codex call to cancel. Earlier completed sections remain in files for diagnosis; interrupted reviews are marked FAILED where the DB is reachable and no final gap list is claimed. A new `/review` creates a new run. Guarded `/resume` supports a FAILED run with all section outputs present and no saved analysis outputs yet; see the section below. It refuses changed sources or already-saved outputs instead of duplicating them. There is no automatic processing on ordinary chat. Keep config/database.dpapi and config/codex-home private; export only the review bundle.
 
 ## Storage and learning
 
@@ -110,3 +110,19 @@ The importer already chunks text to about 3,000 characters, uses timestamped SRT
 Original targeted tests and their old contract are retained. New whole-review instructions are agents/agent-a-module.md, agents/agent-b-gaps.md; new envelope schema is contracts/module-review.schema.json. tools/module_review.py owns broad coverage validation/storage; src/TD.Poc.Core/ModuleReview.cs owns orchestration and exact-run C context. Original 29-table diagram remains in docs/architecture-and-tables.html.
 
 A nonblocking Firecrawl connector startup error appeared in earlier Codex stderr despite POC-home isolation. This release retains tool restrictions but does not claim that external startup behavior is fully resolved. No Firecrawl key is needed to perform the supplied-evidence workflow. Check VALIDATION.md for what was actually tested locally versus on Windows.
+
+## Resume the supplied v0.13 consolidation failure
+
+Keep the old folder and close its running POC before resuming. After Setup-POC.cmd and Start-POC.cmd in the new v0.14 folder, at You>:
+
+```text
+/resume C:\TD-POC-v0.13\runtime\runs\TD-MODULE-20261029142006-735a56
+```
+
+This is the run shown in the supplied screenshot. If its directory has been moved, supply its actual path. The host requires matching failed-run identity in PostgreSQL, unchanged imported recording/SRT hashes, complete valid section outputs and saved frames, and zero existing A/B database outputs. It copies the run into v0.14 runtime/runs, preserves original section evidence, updates only copied frame file locations, and restarts index consolidation followed by the existing A save/embedding and B pipeline. It does not rerun A's section calls. Raw pre-resume index/log files are backed up. The old folder is not modified.
+
+If a prior resume has already created the copied directory, use the v0.14 run-folder path for the next eligible attempt. Resume is deliberately limited to failures before A database save. It does not claim to recover arbitrary partially persisted pipelines. If prerequisites fail, retain the diagnostics and start a fresh /review if appropriate.
+
+Module attribution is now host-derived from original section observations. Formatting-only differences in case, whitespace and navigation separators are recognized. The host does NOT guess semantic aliases or change source observations; topic groups crossing distinct module labels are split. proposed-topic-index.json and index-normalization.json record exactly what the index proposed and how it was mapped. Missing/duplicate/invented observation IDs still fail validation.
+
+Single-console execution: role/section starts, key Codex events and a 10-second elapsed heartbeat appear in the main window. A bounded asynchronous display queue keeps pipe readers and cancellation monitoring independent of console writes; full logs are continuously written even if display lines are dropped under blockage. The heartbeat confirms host liveness only. No private internal reasoning is exposed. The old Watch-Agent.ps1 remains a manual troubleshooting utility, not an automatically launched viewer. The AgentActivityWindows legacy configuration value is no longer used to spawn windows.

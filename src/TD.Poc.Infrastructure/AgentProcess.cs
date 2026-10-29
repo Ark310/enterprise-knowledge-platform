@@ -19,17 +19,6 @@ public sealed partial class Runtime
         var handle=GetStdHandle(-10);
         if(GetConsoleMode(handle,out var mode))SetConsoleMode(handle,(mode|0x80u)&~0x40u);
     }
-    private void OpenActivity(string prefix)
-    {
-        if(!OperatingSystem.IsWindows() || Config["AgentActivityWindows"]?.GetValue<bool>()==false)return;
-        try
-        {
-            var psi=new ProcessStartInfo{FileName="powershell.exe",WorkingDirectory=Root,UseShellExecute=true};
-            foreach(var a in new[]{"-NoProfile","-ExecutionPolicy","Bypass","-File",Path.Combine(Root,"scripts","Watch-Agent.ps1"),"-Prefix",prefix})psi.ArgumentList.Add(a);
-            Process.Start(psi);
-        }
-        catch(Exception e){Log("Activity viewer could not open: "+e.Message+". Live files are still available.");}
-    }
     private async Task<(int Code,string Output,string Error)> RunAgentProcess(ProcessStartInfo start,string input,TimeSpan timeout,string prefix)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(prefix)!);
@@ -62,12 +51,19 @@ public sealed partial class Runtime
             Note("FAILED to launch: "+e.Message);throw;
         }
         Console.CancelKeyPress+=handler;
-        State("RUNNING");Note($"Process {process.Id} started. Timeout {timeout.TotalMinutes:g} minutes. Press Q in the viewer to cancel.");
+        State("RUNNING");Note($"Process {process.Id} started. Timeout {timeout.TotalMinutes:g} minutes. Press Ctrl+C in the main console to cancel.");
+        bool connectorWarningShown=false;
         async Task Pump(StreamReader reader,bool error)
         {
             while(await reader.ReadLineAsync() is {} line)
             {
-                if(error){stderr.AppendLine(line);errors.WriteLine(line);Note("stderr: "+line);continue;}
+                if(error)
+                {
+                    stderr.AppendLine(line);errors.WriteLine(line);Note("stderr: "+line);
+                    if(!connectorWarningShown && line.Contains("rmcp",StringComparison.OrdinalIgnoreCase))
+                    {connectorWarningShown=true;PublishActivity("External MCP startup warning received; full stderr retained. This does not by itself establish that the agent failed.");}
+                    continue;
+                }
                 stdout.AppendLine(line);events.WriteLine(line);
                 try
                 {
@@ -75,6 +71,7 @@ public sealed partial class Runtime
                     lock(gate){lastEvent=type;lastEventAt=clock.Elapsed.TotalSeconds;}
                     // Show status and event names, not private reasoning content.
                     Note("Codex event: "+type);
+                    if(type is "turn.started" or "turn.completed" or "turn.failed" or "error")PublishActivity(Path.GetFileName(prefix)+": "+type);
                 }
                 catch{Note("Received non-JSON output; retained in events file.");}
             }
@@ -92,7 +89,7 @@ public sealed partial class Runtime
                     {
                         State("RUNNING");
                         Note($"Waiting for Codex: {clock.Elapsed:mm\\:ss} elapsed; last event {lastEvent}. A heartbeat confirms the host is alive, not model progress.");
-                        // Do not let main-console selection block the event reader or process monitor.
+                        PublishActivity($"{Path.GetFileName(prefix)}: {clock.Elapsed:mm\\:ss} elapsed; last event {lastEvent}. Host alive; model progress unconfirmed.");
                     }
                 }
             }
@@ -109,6 +106,7 @@ public sealed partial class Runtime
             monitoring.Cancel();await heartbeat;
             State(process.ExitCode==0?"COMPLETED":"FAILED",process.ExitCode);
             Note($"Codex process exited {process.ExitCode}; elapsed {clock.Elapsed:mm\\:ss}. Host validation follows separately.");
+            PublishActivity($"{Path.GetFileName(prefix)} exited {process.ExitCode} after {clock.Elapsed:mm\\:ss}; validation follows separately.");
             return(process.ExitCode,stdout.ToString(),stderr.ToString());
         }
         catch(Exception e)

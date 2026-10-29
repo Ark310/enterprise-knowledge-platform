@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json.Nodes;
+using System.Threading.Channels;
 namespace TD.Poc.Infrastructure;
 
 public sealed partial class Runtime
@@ -8,8 +9,16 @@ public sealed partial class Runtime
     public string Root { get; }
     public JsonObject Config { get; }
     public event Action<string>? Progress;
+    private readonly Channel<string> consoleActivity=Channel.CreateBounded<string>(new BoundedChannelOptions(64){SingleReader=true,FullMode=BoundedChannelFullMode.DropOldest});
+    private void PublishActivity(string text)=>consoleActivity.Writer.TryWrite($"[{DateTimeOffset.Now:HH:mm:ss}] {text}");
     public Runtime(string root)
     {
+        var printer=new Thread(()=>
+        {
+            while(consoleActivity.Reader.WaitToReadAsync().AsTask().GetAwaiter().GetResult())
+                while(consoleActivity.Reader.TryRead(out var line))try{Progress?.Invoke(line);}catch{ }
+        }){IsBackground=true,Name="TD console activity"};
+        printer.Start();
         Root=Path.GetFullPath(root);
         Config=JsonNode.Parse(File.ReadAllText(Path.Combine(Root,"config","appsettings.json")))!.AsObject();
         Directory.CreateDirectory(Path.Combine(Root,"runtime"));
@@ -56,8 +65,8 @@ public sealed partial class Runtime
         var prefix=Path.Combine(folder,role);
         File.WriteAllText(prefix+"-activity.log",$"Agent {role}: Codex reasoning through POC ChatGPT login. Local embeddings: {Config["EmbeddingModel"]}.\n");
         File.Delete(prefix+".cancel");
-        OpenActivity(prefix);
-        Log($"{role}: Codex reasoning started; activity: {prefix}-activity.log. Ctrl+C cancels this call; embeddings use local Ollama separately.");
+
+        Log($"{role}: Codex reasoning started; activity: {prefix}-activity.log. Ctrl+C cancels this call. Progress stays in this console; complete logs remain on disk.");
         var timeout=TimeSpan.FromMinutes(Config["AgentTimeoutMinutes"]!.GetValue<int>());
         var r=await Run(Config["CodexExecutable"]!.GetValue<string>(),args,prompt,folder,true,timeout,true,prefix);
         if(r.Code!=0)throw new Exception($"Codex {role} exited {r.Code}. See {role}-stderr.txt and {role}-status.json in the run folder.");
@@ -72,7 +81,7 @@ public sealed partial class Runtime
         if(OperatingSystem.IsWindows() && (executable.Equals("codex",StringComparison.OrdinalIgnoreCase)||executable.EndsWith(".cmd",StringComparison.OrdinalIgnoreCase)))
         {
             // cmd is used only for a trusted installed .cmd shim. User prompts go through stdin.
-            static string Quote(string s){if(s.IndexOfAny(['"','\r','\n','&','|','<','>','%','!'])>=0)throw new Exception("Unsafe character in executable/argument path; extract to a simple path such as C:\\TD-POC-v0.13.");return "\""+s+"\"";}
+            static string Quote(string s){if(s.IndexOfAny(['"','\r','\n','&','|','<','>','%','!'])>=0)throw new Exception("Unsafe character in executable/argument path; extract to a simple path such as C:\\TD-POC-v0.14.");return "\""+s+"\"";}
             start.FileName="cmd.exe";
             start.Arguments="/d /s /c \""+Quote(executable)+" "+string.Join(" ",list.Select(Quote))+"\"";
         }

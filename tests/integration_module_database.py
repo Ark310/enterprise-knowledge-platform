@@ -20,6 +20,17 @@ class ModuleDatabaseTest(unittest.TestCase):
     fixture_db(db)
     w.q(db,(w.BASE/'database/migrations/010-local-files.sql').read_text().replace("current_database()<>'knowledge_poc'","current_database()<>'postgres'"))
    w.migration=fixture_migration
+   # PGlite is a single-connection engine; avoid socket detach/reconnect races.
+   import contextlib
+   shared_connection=w.connect()
+   @contextlib.contextmanager
+   def fixture_connect():
+    try:
+     yield shared_connection
+     shared_connection.commit()
+    except:
+     shared_connection.rollback();raise
+   w.connect=fixture_connect
   with w.connect() as db:
    self.assertEqual(w.one(db,'select count(*) n from knowledge.sources')['n'],0,'Dedicated EMPTY test DB only')
    w.migration(db)
@@ -38,9 +49,23 @@ class ModuleDatabaseTest(unittest.TestCase):
     work=start['work'];key=start['run_key'];packet=m.section_packet(cfg,work,'S001');cue=packet['transcript'][0]
     ob=dict(observation_id='S001-O1',module='Fixture',topic='Fixture setting',statement='Synthetic fixture setting description.',level='NARRATED_ONLY',citations=[dict(kind='TRANSCRIPT',source_id=str(cue['id']),excerpt='Synthetic fixture setting description.')],unverified_points=['Fixture only, no product claim'])
     m.write(Path(work)/'S001','a.json',m.envelope(key,'CURRENT_STATE_SECTION',dict(section_id='S001',observations=[ob],limitations=['Synthetic'])))
-    topic=dict(topic_id='T1',module='Fixture',title='Fixture setting',observation_ids=['S001-O1'])
+    topic=dict(topic_id='T1',module='Rewritten Fixture Heading',title='Fixture setting',observation_ids=['S001-O1'])
     m.write(work,'topic-index.json',m.envelope(key,'TOPIC_INDEX',dict(topics=[topic],limitations=['Synthetic'])))
+    with w.connect() as db:w.q(db,"update analysis.runs set status='FAILED' where run_key=%s",(key,))
+    # Reuse completed section evidence after the reproduced consolidation failure.
+    import shutil
+    legacy=root/'legacy/runtime/runs'/key;legacy.parent.mkdir(parents=True);shutil.move(work,legacy)
+    packet=m.read(legacy/'S001','evidence.json')
+    for frame in packet['frames']:frame['path']=str(legacy/Path(frame['path']).relative_to(work))
+    m.write(legacy/'S001','evidence.json',packet)
+    with w.connect() as db:resumed=m.resume_start(db,cfg,str(legacy))
+    self.assertEqual(resumed['reused_sections'],1);work=resumed['work']
+    self.assertEqual(Path(work),w.BASE/'runtime/runs'/key)
+    self.assertTrue((legacy/'S001/a.json').exists()) # Original run left intact.
+    self.assertTrue(Path(m.read(Path(work)/'S001','evidence.json')['frames'][0]['path']).is_file())
     with w.connect() as db:m.save_a(db,cfg,work)
+    self.assertEqual(m.read(work,'agent-a.json')['payload']['topics'][0]['module'],'Fixture')
+    self.assertEqual(m.read(work,'index-normalization.json')[0]['proposed_module'],'Rewritten Fixture Heading')
     with w.connect() as db:evidence=m.retrieve(db,cfg,work)
     unit=evidence['topics'][0]['passages'][0]
     batches=Path(work)/'batches';batches.mkdir();m.write(batches,'batch-001.json',dict(topic_ids=['T1']));(batches/'batch-001').mkdir()
@@ -56,6 +81,12 @@ class ModuleDatabaseTest(unittest.TestCase):
      self.assertEqual(m.results(db,key)['run_key'],key)
      self.assertEqual(m.results(db,'latest')['run_key'],key)
      self.assertEqual(w.one(db,'select count(*) n from retrieval.embedding_profiles')['n'],1)
-  finally:service.shutdown();service.server_close()
+     w.q(db,"update analysis.runs set status='FAILED' where run_key=%s",(key,));db.commit()
+     with self.assertRaisesRegex(ValueError,'existing outputs'):
+      m.resume_start(db,cfg,work)
+     w.q(db,"update analysis.runs set status='PARTIAL' where run_key=%s",(key,))
+  finally:
+   service.shutdown();service.server_close()
+   if os.environ.get('TD_TEST_PGLITE')=='1':shared_connection.close()
 
 if __name__=='__main__':unittest.main()

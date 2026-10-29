@@ -1,9 +1,7 @@
-# v0.13
+# v0.14
 
-- Whole-recording /review (alias /test MODULE): pinned video/SRT, sequential two-minute sections, actual decoded frame timestamps, consolidated topic index.
-- Per-topic bounded documentation searches with executed-query audit and one qualified coverage/gap row for every indexed topic.
-- Validation of exact topic accounting and supplied citation IDs/excerpts; originals remain immutable inputs.
-- A observations and individual B gap rows stored/embedded under the same local profile. B rows link to A records and source units.
-- /results latest or exact key selects a database-backed whole-review report; /ask and subsequent plain questions use only that run.
-- JSON/text gap reports, per-section/batch diagnostics, new module adapter prompts and separate validated contract.
-- Retain legacy targeted tests, 29-table schema, existing model and source extraction version; no new migration/reset.
+- Fix exact-label consolidation mismatch: host derives topic modules from original observations, normalizes only syntax and splits distinct module groups. Preserve raw proposal and audit mapping.
+- Remove automatic activity windows. Main-console events/10-second heartbeat use a bounded asynchronous queue; pipe readers/cancellation/log writes do not depend on console rendering.
+- Add guarded pre-A-save failed-run resume, including copying old run artifacts into the current release, preserving old evidence, source hash checks and duplicate-output prevention.
+- Include v0.13.1 FFmpeg capability detection and complete decode diagnostics.
+- Preserve contracts, 29-table schema, manual processing, local embedding profile and exact-run gap reporting. No new database migration or reset.

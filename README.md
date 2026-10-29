@@ -1,17 +1,17 @@
-# TD POC v0.13 — recording-wide documentation gap lists
+# TD POC v0.14
 
-Read docs/START-HERE.md. No database reset or reimport is required for unchanged data/model fingerprints.
+Fixes v0.13 consolidation failures caused by exact module-label equality and removes all automatic per-call activity windows. Includes the v0.13.1 FFmpeg compatibility/error-log fix.
 
 ```cmd
-cd /d C:\TD-POC-v0.13
+cd /d C:\TD-POC-v0.14
 Setup-POC.cmd
 Start-POC.cmd
 ```
 
-At You>, use `/review` (alias `/test MODULE`), then give the recording path. A reviews all scheduled sections and builds a topic index; B searches per topic and writes one coverage row per topic. The host validates, stores and embeds both stages using the existing local Qwen profile. `/results latest` retrieves one exact whole-recording run; ask C follow-up questions or use `/ask`.
+Read docs/START-HERE.md. Keep the v0.13 run folder: `/resume C:\TD-POC-v0.13\runtime\runs\TD-MODULE-20261029142006-735a56` reuses eligible completed sections from the reported failed run. Otherwise `/review` starts a new whole-recording review.
 
-Coverage statuses: COVERED, NEEDS_REWORK, NOT_FOUND_IN_REVIEWED_SOURCES, NEEDS_REVIEW. Gaps are qualified; a bounded search cannot establish company-wide absence. The scope is the recording's supported topics, not every unshown feature of its modules. All findings remain AGENT_PROPOSED.
+Every topic retains source-derived module attribution; formatting aliases are reconciled conservatively, distinct source modules are split, and the mapping is audited. Unknown/missing/duplicate observation references still fail. The host saves/embeds A/B results with the same existing local profile. /results latest and /ask retrieve/discuss one exact saved gap run.
 
-Existing `/test T02`, T04 and T05 remain narrow regression tests. The original td-doc-review-2.0 contract is unchanged. The broad workflow uses the separately validated td-module-review-1.0 envelope in contracts/module-review.schema.json. Existing 29 tables and 55 relationships are retained; no migration is added.
+Main-console progress/events/elapsed heartbeat; Ctrl+C cancels the active Codex call. Complete event/stderr/status files stay on disk. No separate Codex viewers open automatically. /process still opens its separate import worker by explicit request.
 
-View workflow and tables in docs/architecture-and-tables.html. Agent instructions are in agents/agent-a-module.md and agents/agent-b-gaps.md. Logs and per-section/batch JSON are exported by Export-LatestRun.cmd. Credentials are excluded.
+No database reset, schema migration change, reimport or model change is required. Source-backed memory is not model training. Findings remain AGENT_PROPOSED with sampled-video/bounded-search limitations. Existing MCP startup noise is not claimed fully resolved; no Firecrawl key is needed for supplied-evidence review. See VALIDATION.md for actual tests and native Windows limits.

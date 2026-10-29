@@ -57,6 +57,25 @@ public sealed class ModuleReview(Runtime runtime)
                 var valid=await runtime.Worker("module_check_section",new JsonObject{{"work",work},{"section_id",id}});
                 if(valid["valid"]?.GetValue<bool>()!=true)throw new Exception("A section validation failed: "+valid);
             }
+            return await Finish(work,key);
+        }
+        catch
+        {
+            try{await runtime.Worker("fail_run",new JsonObject{{"run_key",key}});}catch{}
+            throw;
+        }
+    }
+    public async Task<JsonNode> Resume(string work)
+    {
+        Selected=null;
+        var resume=await runtime.Worker("module_resume_start",new JsonObject{{"work",Path.GetFullPath(work)}});
+        var key=resume["run_key"]!.ToString();work=resume["work"]!.ToString();
+        runtime.Log($"Resuming {key}: reusing {resume["reused_sections"]} validated sections; restarting consolidation only.");
+        try{return await Finish(work,key);}
+        catch{try{await runtime.Worker("fail_run",new JsonObject{{"run_key",key}});}catch{}throw;}
+    }
+    private async Task<JsonNode> Finish(string work,string key)
+    {
             var collected=await runtime.Worker("module_collect",new JsonObject{{"work",work}});
             var index=await runtime.Codex("index",Instructions("agent-a-module.md"),new JsonObject{{"envelope",Envelope(key,"TOPIC_INDEX")},{"validated_observations",collected.DeepClone()}}.ToJsonString(),work);
             File.WriteAllText(Path.Combine(work,"topic-index.json"),index.ToJsonString());
@@ -80,11 +99,6 @@ public sealed class ModuleReview(Runtime runtime)
             File.WriteAllText(Path.Combine(work,"gap-list.txt"),Display(Selected));
             runtime.Log("Gap list saved and embedded. Use /results latest or ask a question about the selected run.");
             return Selected;
-        }
-        catch
-        {
-            try{await runtime.Worker("fail_run",new JsonObject{{"run_key",key}});}catch{}
-            throw;
-        }
     }
+
 }

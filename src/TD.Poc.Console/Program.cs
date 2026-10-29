@@ -16,7 +16,7 @@ string FindRoot()
 try
 {
     var runtime=new Runtime(FindRoot());runtime.Progress+=Console.WriteLine;var workflow=new Workflow(runtime);var moduleReview=new ModuleReview(runtime);
-    if(args.Contains("--version")){Console.WriteLine("TD POC 0.13.0");return;}
+    if(args.Contains("--version")){Console.WriteLine("TD POC 0.14.0");return;}
     await runtime.LoadSecret();
     if(args.Contains("--migrate")){Console.WriteLine(await runtime.Worker("migrate"));return;}
     if(args.Contains("--process")){Console.WriteLine(await runtime.Worker("process",new JsonObject{{"limit",args.Contains("--pilot")?10:0}}));Console.WriteLine("Worker finished. Review totals above; close this window when ready.");return;}
@@ -28,7 +28,7 @@ try
         if(check["ready"]?.GetValue<bool>()!=true)throw new Exception("Readiness failed");
         Console.WriteLine(await runtime.Worker("status"));return;
     }
-    Console.WriteLine("TD POC 0.13 | Codex A/B/C | local Qwen embeddings | automatic scan, MANUAL processing");
+    Console.WriteLine("TD POC 0.14 | Codex A/B/C | local Qwen embeddings | automatic scan, MANUAL processing");
     Console.WriteLine("Checking database...");Console.WriteLine(await runtime.Worker("status"));
     Console.WriteLine("Checking Codex login...");
     var login=await runtime.Run(runtime.Config["CodexExecutable"]!.GetValue<string>(),["login","status"],"",runtime.Root,false,TimeSpan.FromSeconds(30));
@@ -59,13 +59,17 @@ try
         Console.WriteLine("Run output: "+path+"\nBring agent-a.json, agent-b.json and validation files here for review.");
     }
     await Scan();
-    Console.WriteLine("Commands: /review | /results latest | /ask question | /scan | /process | /pilot | /status | /search question | /test T02 | /test T04 | /test T05 | /help | /exit");
+    Console.WriteLine("Commands: /review | /resume run-folder | /results latest | /ask question | /scan | /process | /pilot | /status | /search question | /test T02 | /test T04 | /test T05 | /help | /exit");
     Console.WriteLine("Or type a question for Agent C. Processing requires your explicit /process or /pilot command.");
     while(true)
     {
         Console.Write("\nYou> ");var input=Console.ReadLine();if(input is null||input.Trim()=="/exit")break;input=input.Trim();if(input.Length==0)continue;
         try
         {
+            if(input.StartsWith("/resume "))
+            {
+                Console.WriteLine(ModuleReview.Display(await moduleReview.Resume(input[8..].Trim().Trim('"'))));continue;
+            }
             if(input=="/review" || input.Equals("/test MODULE",StringComparison.OrdinalIgnoreCase))
             {
                 Console.WriteLine("Recording path relative to data folder, e.g. current-state\\User Master.mp4 (matching imported SRT required):");

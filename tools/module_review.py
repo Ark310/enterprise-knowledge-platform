@@ -135,6 +135,67 @@ def collect(work):
  if not observations:raise ValueError('No supported topics were extracted; no gap report can be claimed')
  return {'run_key':m['run_key'],'observations':observations,'limitations':list(dict.fromkeys(limitations))}
 
+def module_key(label):
+ # Conservative syntax normalization only: do not guess product/module aliases.
+ return '/'.join(re.sub(r'\s+',' ',p).strip().casefold() for p in re.split(r'\s*(?:>+|/|\\)\s*',label.strip()))
+
+def normalize_index(obj,data):
+ errors=validate(obj,'TOPIC_INDEX',data['run_key'])
+ if errors:raise ValueError(w.j(errors))
+ original={x['observation_id']:x for x in data['observations']}
+ refs=[r for t in obj['payload']['topics'] for r in t['observation_ids']]
+ ids=[t['topic_id'] for t in obj['payload']['topics']]
+ if len(ids)!=len(set(ids)) or not all(re.fullmatch('T[0-9]+',i) for i in ids):raise ValueError('Invalid/duplicate topic IDs')
+ if set(refs)!=set(original) or len(refs)!=len(original):raise ValueError('Every observation must be assigned exactly once; unknown, missing or duplicate references cannot be repaired')
+ normalized=json.loads(w.j(obj));topics=[];audit=[]
+ for proposed in obj['payload']['topics']:
+  groups={}
+  for ref in proposed['observation_ids']:
+   ob=original[ref];key=module_key(ob['module'])
+   group=groups.setdefault(key,{'module':ob['module'],'refs':[]});group['refs'].append(ref)
+  for group in groups.values():
+   t=dict(topic_id='T'+str(len(topics)+1),module=group['module'],title=proposed['title'],observation_ids=group['refs']);topics.append(t)
+   audit.append(dict(proposed_topic_id=proposed['topic_id'],proposed_module=proposed['module'],normalized_topic_id=t['topic_id'],module_from_source_observations=t['module'],observation_ids=t['observation_ids'],split=len(groups)>1))
+ normalized['payload']['topics']=topics
+ normalized['payload']['limitations']+=['Host derives module attribution from immutable section observations. Only case/spacing/navigation separators are normalized; different module identities remain separate. Topic grouping is a model proposal, not human verification.']
+ return normalized,audit
+
+def resume_start(db,cfg,work):
+ work=Path(work).absolute();m=read(work,'module-manifest.json')
+ if work.name!=m['run_key'] or work.parent.name!='runs' or work.parent.parent.name!='runtime':raise ValueError('Choose the original runtime/runs/TD-MODULE-... folder')
+ run=w.one(db,'select id,status from analysis.runs where run_key=%s and contract_version=%s',(m['run_key'],CONTRACT))
+ if not run or str(run['id'])!=m['run_id'] or run['status']!='FAILED':raise ValueError('Resume requires this matching FAILED whole-recording run')
+ if w.one(db,'select count(*) n from analysis.agent_outputs where run_id=%s',(run['id'],))['n']:raise ValueError('This resume mode supports failures before A database save only; existing outputs will not be duplicated')
+ root=Path(cfg['DataRoot']);rec=w.safe_path(root/'current-state',root/m['recording_file']);srt=w.safe_path(root,rec.with_suffix('.srt'))
+ if set(m['hashes'])!={str(rec),str(srt)}:raise ValueError('Source identity/path changed; start a new /review')
+ for p in (rec,srt):
+  sv=w.one(db,"select content_sha256 from knowledge.source_versions where storage_uri=%s and lifecycle_status='ACTIVE' and evidence_role='CURRENT_STATE'",(p.absolute().as_uri(),))
+  if not sv or sv['content_sha256']!=m['hashes'][str(p)] or w.file_hash(p)!=m['hashes'][str(p)]:raise ValueError('Recording/SRT changed; start a new /review')
+ collect(work) # Recheck every section's contract/citations/coverage before reusing it.
+ for section in m['sections']:
+  packet=read(work/section['id'],'evidence.json')
+  for frame in packet['frames']:
+   path=w.safe_path(work,Path(frame['path']))
+   if not path.is_file():raise ValueError('Missing saved frame; start a new /review')
+ destination=w.BASE/'runtime/runs'/m['run_key']
+ if destination.absolute()!=work:
+  if destination.exists():raise ValueError('A copied run already exists here; resume its v0.14 folder instead')
+  for path in work.rglob('*'):w.safe_path(work,path)
+  destination.parent.mkdir(parents=True,exist_ok=True)
+  shutil.copytree(work,destination)
+  for section in m['sections']:
+   packet=read(destination/section['id'],'evidence.json');write(destination/section['id'],'original-evidence-before-resume.json',packet)
+   for frame in packet['frames']:frame['path']=str(destination/Path(frame['path']).relative_to(work))
+   write(destination/section['id'],'evidence.json',packet)
+  m['resumed_from']=str(work);m['resume_release']='0.14';write(destination,'module-manifest.json',m)
+  work=destination
+ backup=work/('pre-v014-resume-'+datetime.datetime.now().strftime('%Y%m%d%H%M%S'));backup.mkdir()
+ for pattern in ('index*','topic-index*','prompt-index*'):
+  for p in work.glob(pattern):
+   if p.is_file():shutil.copy2(p,backup/p.name)
+ w.q(db,"update analysis.runs set status='PROCESSING',completed_at=null where id=%s",(run['id'],))
+ return {'work':str(work),'run_key':m['run_key'],'reused_sections':len(m['sections'])}
+
 def check_index(obj,data):
  errors=validate(obj,'TOPIC_INDEX',data['run_key'])
  if errors:return errors
@@ -144,14 +205,14 @@ def check_index(obj,data):
   if len(set(t['observation_ids']))!=len(t['observation_ids']):errors.append('Repeated observation in topic')
   for ref in t['observation_ids']:
    if ref not in original:errors.append('Unknown observation reference')
-   elif original[ref]['module']!=t['module']:errors.append('Topic changed original module attribution')
+   elif module_key(original[ref]['module'])!=module_key(t['module']):errors.append('Topic changed original module attribution')
  if len(ids)!=len(set(ids)) or not all(re.fullmatch('T[0-9]+',x) for x in ids):errors.append('Invalid/duplicate topic IDs')
  if set(refs)!=set(original) or len(refs)!=len(original):errors.append('Every observation must be assigned to exactly one topic')
  return errors
 
 def store(db,cfg,work,obj,role,records):
  m=read(work,'module-manifest.json');profile=w.model_profile(db,cfg);db.commit()
- oid=w.one(db,"insert into analysis.agent_outputs(run_id,agent_role,output_json,schema_validated,validation_status,validation_details,contract_schema_sha256,prompt_sha256,model_details) values(%s,%s,%s::jsonb,true,'VALID',%s::jsonb,%s,%s,%s::jsonb) returning id",(m['run_id'],role,w.j(obj),w.j({'checks':'module schema, coverage accounting, supplied citations; not human semantic approval'}),w.sha((w.BASE/'contracts/module-review.schema.json').read_bytes()),w.sha((w.BASE/'agents'/('agent-a-module.md' if role=='CURRENT_STATE' else 'agent-b-gaps.md')).read_bytes()),w.j({'engine':'Codex CLI','release':'0.13'})))['id']
+ oid=w.one(db,"insert into analysis.agent_outputs(run_id,agent_role,output_json,schema_validated,validation_status,validation_details,contract_schema_sha256,prompt_sha256,model_details) values(%s,%s,%s::jsonb,true,'VALID',%s::jsonb,%s,%s,%s::jsonb) returning id",(m['run_id'],role,w.j(obj),w.j({'checks':'module schema, coverage accounting, supplied citations; not human semantic approval'}),w.sha((w.BASE/'contracts/module-review.schema.json').read_bytes()),w.sha((w.BASE/'agents'/('agent-a-module.md' if role=='CURRENT_STATE' else 'agent-b-gaps.md')).read_bytes()),w.j({'engine':'Codex CLI','release':'0.14'})))['id']
  unitmap={str(x['id']):x for x in m['transcript']}
  if role=='ARTICLE_REVIEW':
   for packet in read(work,'gap-evidence.json')['topics']:
@@ -175,7 +236,8 @@ def store(db,cfg,work,obj,role,records):
  return {'records':count,'profile_id':str(profile['id']),'output_id':str(oid)}
 
 def save_a(db,cfg,work):
- data=collect(work);index=read(work,'topic-index.json');errors=check_index(index,data)
+ data=collect(work);proposed=read(work,'topic-index.json');write(work,'proposed-topic-index.json',proposed)
+ index,audit=normalize_index(proposed,data);write(work,'index-normalization.json',audit);write(work,'topic-index.json',index);errors=check_index(index,data)
  if errors:raise ValueError(w.j(errors))
  obj=envelope(data['run_key'],'CURRENT_STATE_HANDOFF',{'observations':data['observations'],'topics':index['payload']['topics'],'limitations':data['limitations']+index['payload']['limitations']})
  errors=validate(obj,'CURRENT_STATE_HANDOFF',data['run_key'])
@@ -255,6 +317,7 @@ def results(db,key):
 
 def main(db,cfg,op,args):
  work=args.get('work')
+ if op=='module_resume_start':return resume_start(db,cfg,args['work'])
  if op=='module_start':return start(db,cfg,args)
  if op=='module_section':return section_packet(cfg,work,args['section_id'])
  if op=='module_check_section':

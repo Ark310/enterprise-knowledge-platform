@@ -3,7 +3,7 @@ import sys,os,json,re,hashlib,uuid,datetime,urllib.request,urllib.parse,zipfile,
 from pathlib import Path
 from xml.etree import ElementTree as ET
 BASE=Path(__file__).resolve().parents[1]
-VERSION='0.13.0'
+VERSION='0.14.0'
 EXTRACTION_VERSION='0.10.0' # Parser/chunk semantics unchanged; reuse successful v0.10 extractions
 ROOTS=[('current-state','CURRENT_STATE'),('existing-assets/Confluence Articles','EXISTING_ASSET'),('existing-assets/REST API','EXISTING_ASSET'),('existing-assets/Sharepoint','EXISTING_ASSET'),('existing-assets/VLCs','EXISTING_ASSET')]
 TEXT_EXT={'.txt','.md','.json','.csv','.html','.htm','.xml','.yaml','.yml','.cs','.go','.java','.js','.php','.py','.rb','.sh','.sql','.svg','.srt','.vtt','.log'}

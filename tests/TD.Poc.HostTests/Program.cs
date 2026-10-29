@@ -4,7 +4,7 @@ var dir=Path.Combine(Path.GetTempPath(),"td-host-test-"+Guid.NewGuid().ToString(
 try
 {
     File.WriteAllText(Path.Combine(dir,"config","appsettings.json"),"{\"PythonExecutable\":\"python3\",\"CodexExecutable\":\"codex\",\"AgentTimeoutMinutes\":1}");
-    var r=new Runtime(dir);int passed=0;
+    var r=new Runtime(dir);int passed=0;var activity=new System.Collections.Concurrent.ConcurrentQueue<string>();r.Progress+=activity.Enqueue;
     void Check(bool condition,string name){if(!condition)throw new Exception("FAIL "+name);Console.WriteLine("PASS "+name);passed++;}
     var version=await r.Run("dotnet",["--version"],"",dir,false,TimeSpan.FromSeconds(30));Check(version.Code==0,"safe process invocation");
     if(!OperatingSystem.IsWindows())
@@ -23,6 +23,7 @@ try
         Check(capture["codex_home"]!.GetValue<string>()==Path.Combine(dir,"config","codex-home"),"isolated Codex home used");
         Check(File.Exists(Path.Combine(folder,"test-events.jsonl")),"event file written");
         Check(JsonNode.Parse(File.ReadAllText(Path.Combine(folder,"test-status.json")))!["state"]!.GetValue<string>()=="COMPLETED","completion recorded");
+        Check(SpinWait.SpinUntil(()=>activity.Any(x=>x.Contains("turn.completed")),2000),"agent progress reaches the main-console subscription");
         Check(answer["action"]!.GetValue<string>()=="NONE","Codex final JSON consumed");
     }
     if(!OperatingSystem.IsWindows())
