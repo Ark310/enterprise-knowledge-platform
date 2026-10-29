@@ -1,0 +1,17 @@
+TD POC v0.11.1 SRT timing hotfix (apply to v0.11)
+
+Cause confirmed from supplied SRT: 214 parsed cues; cue 134 has start=end=00:08:19,370; cue 180 has start=end=00:10:40,640. No reversed cues and no malformed cue blocks were found. The old importer required strictly positive duration even though the approved database CHECK permits end_seconds >= start_seconds.
+
+Fix: retain all text and all supplied times unchanged. Equal start/end cues are labelled POINT_ONLY with explicit timing warnings; the extraction is PARTIAL, not a claim of fully established timing. Reversed durations still fail. Warnings are printed during processing and passed to A/B in transcript_timing_warnings. Agents must not infer duration/visual corroboration from a point-only cue. No SRT rewriting, text dropping, artificial duration or timestamp shift.
+
+Apply:
+1. Close any finished processing window. Enter /exit in the main POC window.
+2. Extract this ZIP directly into C:\TD-POC-v0.11, allowing file replacement while retaining its tools, agents and tests folder structure.
+3. Run Start-POC.cmd from that folder. No Setup-LocalModel.cmd, password configuration, SQL migration or DB reset is needed.
+4. After the startup scan, enter /process. Keep your original SRT beside the MP4.
+5. Expected: the SRT prints two POINT_ONLY warnings, imports its 214 text cues, and its extraction is marked PARTIAL for timing uncertainty. Existing compatible evidence/vectors are reused. The overall processing summary should no longer report this subtitle-duration failure. The exact number of new vectors depends on other changes/retries, so do not use 214 as an unconditional whole-run expectation.
+6. Send the final summary. Then run /test T02 and export its result for review; cue 134 falls inside that case's range, so its timing limitation must stay visible.
+
+Files: tools/worker.py; agents/shared-guardrails.md; tests/test_srt_point_timestamps.py. Main C# banner remains v0.11; evidence worker identifies as 0.11.1. Compatible extraction cache version remains intentionally unchanged so previously successful files are not re-extracted merely due to this fix.
+
+Verification: 25 offline evidence tests passed (21 existing + 4 new); actual supplied SRT parsed into 214 units with exactly 2 point-only warnings and original file SHA256 unchanged. Approved schema explicitly allows equal start/end. No native Windows/database/Codex live execution of this hotfix is claimed. This does not independently verify transcription accuracy or audiovisual alignment.
