@@ -15,8 +15,8 @@ string FindRoot()
 }
 try
 {
-    var runtime=new Runtime(FindRoot());runtime.Progress+=Console.WriteLine;var workflow=new Workflow(runtime);
-    if(args.Contains("--version")){Console.WriteLine("TD POC 0.12.0");return;}
+    var runtime=new Runtime(FindRoot());runtime.Progress+=Console.WriteLine;var workflow=new Workflow(runtime);var moduleReview=new ModuleReview(runtime);
+    if(args.Contains("--version")){Console.WriteLine("TD POC 0.13.0");return;}
     await runtime.LoadSecret();
     if(args.Contains("--migrate")){Console.WriteLine(await runtime.Worker("migrate"));return;}
     if(args.Contains("--process")){Console.WriteLine(await runtime.Worker("process",new JsonObject{{"limit",args.Contains("--pilot")?10:0}}));Console.WriteLine("Worker finished. Review totals above; close this window when ready.");return;}
@@ -28,7 +28,7 @@ try
         if(check["ready"]?.GetValue<bool>()!=true)throw new Exception("Readiness failed");
         Console.WriteLine(await runtime.Worker("status"));return;
     }
-    Console.WriteLine("TD POC 0.12 | Codex A/B/C | local Qwen embeddings | automatic scan, MANUAL processing");
+    Console.WriteLine("TD POC 0.13 | Codex A/B/C | local Qwen embeddings | automatic scan, MANUAL processing");
     Console.WriteLine("Checking database...");Console.WriteLine(await runtime.Worker("status"));
     Console.WriteLine("Checking Codex login...");
     var login=await runtime.Run(runtime.Config["CodexExecutable"]!.GetValue<string>(),["login","status"],"",runtime.Root,false,TimeSpan.FromSeconds(30));
@@ -59,20 +59,33 @@ try
         Console.WriteLine("Run output: "+path+"\nBring agent-a.json, agent-b.json and validation files here for review.");
     }
     await Scan();
-    Console.WriteLine("Commands: /scan | /process | /pilot | /status | /search question | /test T02 | /test T04 | /test T05 | /help | /exit");
+    Console.WriteLine("Commands: /review | /results latest | /ask question | /scan | /process | /pilot | /status | /search question | /test T02 | /test T04 | /test T05 | /help | /exit");
     Console.WriteLine("Or type a question for Agent C. Processing requires your explicit /process or /pilot command.");
     while(true)
     {
         Console.Write("\nYou> ");var input=Console.ReadLine();if(input is null||input.Trim()=="/exit")break;input=input.Trim();if(input.Length==0)continue;
         try
         {
+            if(input=="/review" || input.Equals("/test MODULE",StringComparison.OrdinalIgnoreCase))
+            {
+                Console.WriteLine("Recording path relative to data folder, e.g. current-state\\User Master.mp4 (matching imported SRT required):");
+                var recording=Console.ReadLine();
+                if(!string.IsNullOrWhiteSpace(recording))Console.WriteLine(ModuleReview.Display(await moduleReview.Review(recording)));
+                continue;
+            }
+            if(input=="/results" || input.StartsWith("/results "))
+            {
+                Console.WriteLine(ModuleReview.Display(await moduleReview.Select(input=="/results"?"latest":input[9..].Trim())));continue;
+            }
+            if(input.StartsWith("/ask ")){Console.WriteLine("Agent C> "+await moduleReview.Ask(input[5..]));continue;}
             if(input=="/scan"){await Scan();continue;}
             if(input=="/process"||input=="/pilot"){StartWorker(input=="/pilot");continue;}
             if(input=="/status"){Console.WriteLine(await runtime.Worker("status"));continue;}
             if(input.StartsWith("/search ")){Console.WriteLine(await workflow.AnswerSearch(input[8..]));continue;}
             if(input.StartsWith("/run ")){await Test(input[5..].Trim().Trim('"'));continue;}
             if(input.StartsWith("/test ")){await Test(input[6..].Trim().ToUpperInvariant());continue;}
-            if(input=="/help"){Console.WriteLine("/scan finds changes; /pilot processes first 10 allowlisted files; /process handles all files and retries missing vectors; /test runs A then B; /search asks evidence questions. Read docs\\START-HERE.md for test scope and limitations.");continue;}
+            if(input=="/help"){Console.WriteLine("/review reviews a whole recording in sections; /results latest selects an exact saved gap run; /ask asks about that selected run; /scan finds changes; /pilot processes first 10 allowlisted files; /process handles all files and retries missing vectors; /test runs A then B; /search asks evidence questions. Read docs\\START-HERE.md for test scope and limitations.");continue;}
+            if(moduleReview.Selected is not null){Console.WriteLine("Agent C> "+await moduleReview.Ask(input));continue;}
             var response=await workflow.Chat(input);Console.WriteLine("Agent C> "+response["reply"]!.GetValue<string>());
             var action=response["action"]!.GetValue<string>();var argument=response["argument"]!.GetValue<string>();
             switch(action)

@@ -1,0 +1,750 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "td-module-review-1.0"
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "test_id": {
+          "const": "MODULE_REVIEW"
+        },
+        "module": {
+          "const": "Whole recording; modules identified in topic index"
+        },
+        "topic": {
+          "const": "Whole-recording documentation coverage"
+        },
+        "message_type": {
+          "const": "CURRENT_STATE_SECTION"
+        },
+        "sender": {
+          "const": "CURRENT_STATE"
+        },
+        "recipient": {
+          "const": "ARTICLE_REVIEW"
+        },
+        "status": {
+          "enum": [
+            "OK",
+            "PARTIAL"
+          ]
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "section_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "observations": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "observation_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "module": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "topic": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "statement": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "level": {
+                    "enum": [
+                      "OBSERVED_VISUAL",
+                      "NARRATED_ONLY",
+                      "CORROBORATED"
+                    ]
+                  },
+                  "citations": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "kind": {
+                          "enum": [
+                            "TRANSCRIPT",
+                            "FRAME"
+                          ]
+                        },
+                        "source_id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "excerpt": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "source_id",
+                        "excerpt"
+                      ]
+                    },
+                    "minItems": 1
+                  },
+                  "unverified_points": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                },
+                "required": [
+                  "observation_id",
+                  "module",
+                  "topic",
+                  "statement",
+                  "level",
+                  "citations",
+                  "unverified_points"
+                ]
+              },
+              "minItems": 0
+            },
+            "limitations": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "section_id",
+            "observations",
+            "limitations"
+          ]
+        },
+        "next_action": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "contract_version",
+        "run_id",
+        "test_id",
+        "module",
+        "topic",
+        "message_type",
+        "sender",
+        "recipient",
+        "status",
+        "payload",
+        "next_action"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "td-module-review-1.0"
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "test_id": {
+          "const": "MODULE_REVIEW"
+        },
+        "module": {
+          "const": "Whole recording; modules identified in topic index"
+        },
+        "topic": {
+          "const": "Whole-recording documentation coverage"
+        },
+        "message_type": {
+          "const": "TOPIC_INDEX"
+        },
+        "sender": {
+          "const": "CURRENT_STATE"
+        },
+        "recipient": {
+          "const": "ARTICLE_REVIEW"
+        },
+        "status": {
+          "enum": [
+            "OK",
+            "PARTIAL"
+          ]
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "topics": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "topic_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "module": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "observation_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "topic_id",
+                  "module",
+                  "title",
+                  "observation_ids"
+                ]
+              },
+              "minItems": 1
+            },
+            "limitations": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "topics",
+            "limitations"
+          ]
+        },
+        "next_action": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "contract_version",
+        "run_id",
+        "test_id",
+        "module",
+        "topic",
+        "message_type",
+        "sender",
+        "recipient",
+        "status",
+        "payload",
+        "next_action"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "td-module-review-1.0"
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "test_id": {
+          "const": "MODULE_REVIEW"
+        },
+        "module": {
+          "const": "Whole recording; modules identified in topic index"
+        },
+        "topic": {
+          "const": "Whole-recording documentation coverage"
+        },
+        "message_type": {
+          "const": "DOCUMENTATION_GAP_BATCH"
+        },
+        "sender": {
+          "const": "ARTICLE_REVIEW"
+        },
+        "recipient": {
+          "const": "HUMAN"
+        },
+        "status": {
+          "enum": [
+            "OK",
+            "PARTIAL"
+          ]
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "rows": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "topic_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "coverage": {
+                    "enum": [
+                      "COVERED",
+                      "NEEDS_REWORK",
+                      "NOT_FOUND_IN_REVIEWED_SOURCES",
+                      "NEEDS_REVIEW"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "article_citations": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "unit_id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "excerpt": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "unit_id",
+                        "excerpt"
+                      ]
+                    },
+                    "minItems": 0
+                  },
+                  "actions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "unread_relevant_sources": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "limitations": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                },
+                "required": [
+                  "topic_id",
+                  "coverage",
+                  "reason",
+                  "article_citations",
+                  "actions",
+                  "unread_relevant_sources",
+                  "limitations"
+                ]
+              },
+              "minItems": 1
+            },
+            "limitations": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "rows",
+            "limitations"
+          ]
+        },
+        "next_action": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "contract_version",
+        "run_id",
+        "test_id",
+        "module",
+        "topic",
+        "message_type",
+        "sender",
+        "recipient",
+        "status",
+        "payload",
+        "next_action"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "td-module-review-1.0"
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "test_id": {
+          "const": "MODULE_REVIEW"
+        },
+        "module": {
+          "const": "Whole recording; modules identified in topic index"
+        },
+        "topic": {
+          "const": "Whole-recording documentation coverage"
+        },
+        "message_type": {
+          "const": "CURRENT_STATE_HANDOFF"
+        },
+        "sender": {
+          "const": "CURRENT_STATE"
+        },
+        "recipient": {
+          "const": "ARTICLE_REVIEW"
+        },
+        "status": {
+          "enum": [
+            "OK",
+            "PARTIAL"
+          ]
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "observations": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "observation_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "module": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "topic": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "statement": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "level": {
+                    "enum": [
+                      "OBSERVED_VISUAL",
+                      "NARRATED_ONLY",
+                      "CORROBORATED"
+                    ]
+                  },
+                  "citations": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "kind": {
+                          "enum": [
+                            "TRANSCRIPT",
+                            "FRAME"
+                          ]
+                        },
+                        "source_id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "excerpt": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "source_id",
+                        "excerpt"
+                      ]
+                    },
+                    "minItems": 1
+                  },
+                  "unverified_points": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                },
+                "required": [
+                  "observation_id",
+                  "module",
+                  "topic",
+                  "statement",
+                  "level",
+                  "citations",
+                  "unverified_points"
+                ]
+              },
+              "minItems": 1
+            },
+            "topics": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "topic_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "module": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "observation_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "topic_id",
+                  "module",
+                  "title",
+                  "observation_ids"
+                ]
+              },
+              "minItems": 1
+            },
+            "limitations": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "observations",
+            "topics",
+            "limitations"
+          ]
+        },
+        "next_action": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "contract_version",
+        "run_id",
+        "test_id",
+        "module",
+        "topic",
+        "message_type",
+        "sender",
+        "recipient",
+        "status",
+        "payload",
+        "next_action"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "td-module-review-1.0"
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "test_id": {
+          "const": "MODULE_REVIEW"
+        },
+        "module": {
+          "const": "Whole recording; modules identified in topic index"
+        },
+        "topic": {
+          "const": "Whole-recording documentation coverage"
+        },
+        "message_type": {
+          "const": "DOCUMENTATION_GAP_REPORT"
+        },
+        "sender": {
+          "const": "ARTICLE_REVIEW"
+        },
+        "recipient": {
+          "const": "HUMAN"
+        },
+        "status": {
+          "enum": [
+            "OK",
+            "PARTIAL"
+          ]
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "rows": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "topic_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "coverage": {
+                    "enum": [
+                      "COVERED",
+                      "NEEDS_REWORK",
+                      "NOT_FOUND_IN_REVIEWED_SOURCES",
+                      "NEEDS_REVIEW"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "article_citations": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "unit_id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "excerpt": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "unit_id",
+                        "excerpt"
+                      ]
+                    },
+                    "minItems": 0
+                  },
+                  "actions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "unread_relevant_sources": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "limitations": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                },
+                "required": [
+                  "topic_id",
+                  "coverage",
+                  "reason",
+                  "article_citations",
+                  "actions",
+                  "unread_relevant_sources",
+                  "limitations"
+                ]
+              },
+              "minItems": 1
+            },
+            "limitations": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "rows",
+            "limitations"
+          ]
+        },
+        "next_action": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "contract_version",
+        "run_id",
+        "test_id",
+        "module",
+        "topic",
+        "message_type",
+        "sender",
+        "recipient",
+        "status",
+        "payload",
+        "next_action"
+      ]
+    }
+  ]
+}

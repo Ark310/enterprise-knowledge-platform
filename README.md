@@ -1,18 +1,17 @@
-# TD POC v0.12
+# TD POC v0.13 — recording-wide documentation gap lists
 
-Start with **docs/START-HERE.md**. Existing approved PostgreSQL schema/data is retained.
-
-One-time setup (CMD):
+Read docs/START-HERE.md. No database reset or reimport is required for unchanged data/model fingerprints.
 
 ```cmd
-cd /d C:\TD-POC-v0.12
+cd /d C:\TD-POC-v0.13
 Setup-POC.cmd
+Start-POC.cmd
 ```
 
-Daily start: `Start-POC.cmd`. Startup scans only. `/process` explicitly imports and embeds. Wait for that worker before `/test T02`.
+At You>, use `/review` (alias `/test MODULE`), then give the recording path. A reviews all scheduled sections and builds a topic index; B searches per topic and writes one coverage row per topic. The host validates, stores and embeds both stages using the existing local Qwen profile. `/results latest` retrieves one exact whole-recording run; ask C follow-up questions or use `/ask`.
 
-Codex supplies reasoning through a dedicated POC ChatGPT login. Ollama `qwen3-embedding:4b` supplies source, query, A observation and B finding vectors via the same immutable database profile. Agents never receive database passwords.
+Coverage statuses: COVERED, NEEDS_REWORK, NOT_FOUND_IN_REVIEWED_SOURCES, NEEDS_REVIEW. Gaps are qualified; a bounded search cannot establish company-wide absence. The scope is the recording's supported topics, not every unshown feature of its modules. All findings remain AGENT_PROPOSED.
 
-Each invocation opens a read-only PowerShell activity window on Windows. Press Q there, or Ctrl+C in the main console during a Codex call, to cancel that call. Closing a viewer does not cancel it. Logs are live; use Export-LatestRun.cmd even during a test. No private internal model reasoning is exposed.
+Existing `/test T02`, T04 and T05 remain narrow regression tests. The original td-doc-review-2.0 contract is unchanged. The broad workflow uses the separately validated td-module-review-1.0 envelope in contracts/module-review.schema.json. Existing 29 tables and 55 relationships are retained; no migration is added.
 
-Architecture and all tables: docs/architecture-and-tables.html. Agent instructions: agents/. Contracts: contracts/. Diagnosis: docs/DIAGNOSIS-v0.11.md. Verification and platform limits: VALIDATION.md.
+View workflow and tables in docs/architecture-and-tables.html. Agent instructions are in agents/agent-a-module.md and agents/agent-b-gaps.md. Logs and per-section/batch JSON are exported by Export-LatestRun.cmd. Credentials are excluded.

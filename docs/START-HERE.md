@@ -1,93 +1,112 @@
-# Start here — v0.12
+# v0.13 walkthrough
 
-## Install once
+## What changed
 
-1. Stop the old POC. Keep the v0.11 folder as a backup. Extract this ZIP so the solution is at C:\TD-POC-v0.12 (avoid a second nested folder).
-2. Keep C:\S3 bucket Data and PostgreSQL untouched. Do not run the fresh-install SQL again.
-3. In CMD run:
+The new default broad workflow is `/review` (alias `/test MODULE`). It does NOT ask a predefined feature question. You choose an imported recording, A reviews its scheduled sections and builds a topic index, B assesses documentation per topic, and the host saves a gap list to PostgreSQL and JSON. Only recorded/narrated topics are in scope; this is not an exhaustive certification of an entire product/module.
+
+A uses two-minute sections and approximately two-second visual sampling, with original timestamps mapped from decoded frames. Every scheduled section must complete validation, every extracted observation must be assigned once, and every indexed topic must receive one B row. This accounts for supplied evidence, not all possible unobserved actions: the model can still miss content, and sampled video is not continuous video/audio review. Transcript narration, visual states, demonstrated actions and unverified outcomes remain distinct.
+
+For the 12m55s User Master recording, expect seven section calls, one consolidation call, and one B call per group of three discovered topics, plus retrieval/embedding. This is substantially longer than T02; the duration depends on topic count and Codex latency. Use the activity windows for progress. No precise total-time promise is made.
+
+## Install and start
+
+1. Close the old POC. Keep it as a backup. Extract this package to C:\TD-POC-v0.13, with Setup-POC.cmd directly inside that folder.
+2. Keep PostgreSQL and C:\S3 bucket Data untouched. No fresh-install SQL or database reset.
+3. Open CMD:
 
 ```cmd
-cd /d C:\TD-POC-v0.12
+cd /d C:\TD-POC-v0.13
 Setup-POC.cmd
 ```
 
-4. Accept the data-root default or supply the folder containing current-state and existing-assets. The script checks dependencies, sets up its own Python environment, verifies the local model, builds, prompts for PostgreSQL host/port/user/hidden password, applies the existing idempotent migration, checks ffmpeg, and checks Codex.
-5. Complete the ChatGPT login if prompted. v0.12 deliberately uses its own Codex home so unrelated personal connectors cannot start. No API key is required. config/codex-home contains credentials: do not share it or the whole configured folder. Export-LatestRun.cmd excludes it.
-6. Setup requires your already installed approved schema, PostgreSQL 17+, pgvector, Python 3.11+, .NET 10 SDK, Codex and Ollama. It checks prerequisites; it does not install PostgreSQL, reset tables, or silently change system execution policy.
-7. Wait for SETUP PASSED. No source ingestion occurs during setup.
-
-The optional corrected SRT is in data-fixes/current-state. If you have not already replaced the invalid original, back up the old SRT outside the data root and copy this same-named corrected SRT into C:\S3 bucket Data\current-state. Keep the MP4 and DOCX. This is the previously supplied format repair, not verified audio alignment.
-
-## Start and test
+4. Accept the data-root default; enter PostgreSQL host localhost, port 5432, user postgres (unless changed), and your hidden password. Complete the POC ChatGPT login if prompted. The script creates its Python environment, checks the existing local model, builds, configures the connection, applies the existing idempotent migration, checks video tools and tests Codex readiness. Existing extraction/vector rows are reused when fingerprints match.
+5. After SETUP PASSED:
 
 ```cmd
-cd /d C:\TD-POC-v0.12
 Start-POC.cmd
 ```
 
-Wait for startup readiness and scan. Then, at You>:
+## First whole-recording test
+
+After startup scan completes, if the corrected SRT/video are already imported, no `/process` is necessary. Otherwise enter `/process`, wait until its worker finishes, and check failed=0. Known unsupported files can remain blocked.
+
+At You>:
 
 ```text
-/status
+/review
 ```
 
-If files changed, or vectors may be missing:
-
-```text
-/process
-```
-
-Wait for the worker window to finish; check failed=0 and empty failures/scan_errors. Known blocked images, videos without text extraction, .snag and legacy unsupported formats can remain blocked. The scan's pending count includes those unsupported files, so it need not reach zero. Existing successful extractions/vectors are reused when hashes, parser version and model digest match; no forced full reimport.
-
-Next:
-
-```text
-/test T02
-```
-
-Recording prompt:
+Recording path:
 
 ```text
 current-state\System Admin_ Security_User Master Walkthrough.mp4
 ```
 
-A activity opens, then A validation/save/local embeddings, B retrieval, then B activity and B validation/save/local embeddings. These run in order. Activity windows show execution events, elapsed time and terminal status. COMPLETED in a viewer means only that Codex exited; main-console validation/database storage must also succeed. Close completed viewer windows when convenient.
+The command reads recording duration, pins current imported video/SRT hashes, then runs A section by section. A builds a topic index; the host saves and embeds A's observations. B performs three logged searches per topic (up to eight passages each), assesses groups of three topics, and returns one row per topic. Each B row is stored as a separate FINDING with its own vector and links to the corresponding A observations and cited source units. Agent reasoning never has direct database credentials.
 
-After T02, in another CMD:
+Do not prefeed an expected gap list. Content not shown in this recording cannot be classified as a missing product feature. A broad test is not expected to reproduce a fixed number of topics on every model run; review the evidence and coverage accounting.
+
+## Read and discuss the result
+
+```text
+/results latest
+```
+
+This retrieves the newest WHOLE-RECORDING run, not the newest narrow T02/T04/T05 test. It prints topic IDs, module, coverage, reason, source citations and actions. Failed/incomplete reviews do not fall back to an older successful report.
+
+After selecting a report, type ordinary questions to C:
+
+```text
+Which topics have no article in the reviewed sources?
+Which existing articles need rework, and what exactly needs changing?
+Show me the topics that are adequately covered, with their article references.
+What needs human confirmation before we write anything?
+```
+
+Or explicitly:
+
+```text
+/ask Summarize the missing coverage and the proposed work, with topic IDs.
+```
+
+C answers ONLY from the selected report. It does not silently mix old runs. After restarting, use `/results latest` again. To select an older broad run:
+
+```text
+/results TD-MODULE-<your-exact-run-key>
+```
+
+The exact run key is printed by the app. General `/search` still searches across source/derived records; use `/results` and `/ask` for exact-run discussion. `/status` lists database runs.
+
+## Meaning of gap statuses
+
+- COVERED: applicable supplied text adequately covers the reader task. This does not certify untested product behavior.
+- NEEDS_REWORK: coverage exists but a concrete omission, outdated claim or reader problem is evidenced; article citations and proposed actions are required.
+- NOT_FOUND_IN_REVIEWED_SOURCES: a qualified candidate gap in the bounded reviewed sources, not proof of company-wide absence. Human/source confirmation remains necessary before new writing.
+- NEEDS_REVIEW: applicability, product meaning, unread linked guidance or available coverage prevents a defensible conclusion. It is not forced into a missing/update bucket.
+
+Reports and database run status remain PARTIAL because media are sampled, documentation retrieval is bounded, and human approval has not occurred. That status alone is not a technical failure. No articles are automatically created/published.
+
+## Adding four more recordings
+
+Put each MP4 and matching same-basename SRT in current-state. Keep unrelated meeting-recording exclusion unchanged. Start the app or `/scan`; then `/process` and wait for completion. Use `/review` separately for each recording. Each creates a distinct run and gap list. This release does not merge several recordings into one global report; the user can select each run by key.
+
+## Export and cancellation
+
+In a separate CMD:
 
 ```cmd
-cd /d C:\TD-POC-v0.12
+cd /d C:\TD-POC-v0.13
 Export-LatestRun.cmd
 ```
 
-Upload the reported ZIP for review before continuing. Other cases, one at a time:
+Upload the ZIP to review the first broad run. It includes section evidence/results/validation, topic-index.json, agent-a.json, per-topic executed search evidence, B batch results, agent-b.json, gap-list.json, gap-list.txt and live logs. The combined JSON report is also persisted in analysis.agent_outputs; `/results` does not depend on local files surviving an upgrade. Current source-version flags warn if evidence versions have subsequently been superseded.
 
-```text
-/test T04
-/test T05
-```
+Press Q in the active activity viewer or Ctrl+C in the main console during a Codex call to cancel. Earlier completed sections remain in files for diagnosis; interrupted reviews are marked FAILED where the DB is reachable and no final gap list is claimed. There is no resume of interrupted broad reviews in this version; a new `/review` creates a new run. There is no automatic processing on ordinary chat. Keep config/database.dpapi and config/codex-home private; export only the review bundle.
 
-Use the same recording path when prompted. T02 covers Authentication Type/2FA (495–570 seconds), T04 Time Zone (90–165), T05 Profile (650–705). Never feed reviewer expected answers to the agents.
+## Storage and learning
 
-## Cancel and diagnose
+The importer already chunks text to about 3,000 characters, uses timestamped SRT cues and format-specific paragraph/page/row units. It creates chunks; PostgreSQL stores chunks/vectors. A/B records, provenance and vectors use the existing tables. This is retrievable memory, not fine-tuning or a change to Codex weights. Prior agent conclusions are proposals, not independent source truth.
 
-Press Q in the active activity window to request cancellation, or Ctrl+C in the main window while Codex runs. The host stops that process tree, retains partial files, marks the workflow failed where the DB is reachable, and returns control. No successful handoff is claimed. Cancellation during a database/embedding worker is not part of this Codex cancellation path; allow the worker to complete or preserve logs before closing.
+Original targeted tests and their old contract are retained. New whole-review instructions are agents/agent-a-module.md, agents/agent-b-gaps.md; new envelope schema is contracts/module-review.schema.json. tools/module_review.py owns broad coverage validation/storage; src/TD.Poc.Core/ModuleReview.cs owns orchestration and exact-run C context. Original 29-table diagram remains in docs/architecture-and-tables.html.
 
-Closing an activity window alone does not stop the agent. If the main console was left in manual selection mode, press Esc. QuickEdit is disabled for this application but explicit selection modes may still pause console writes. Logs/heartbeat keep running independently of main-console progress writes.
-
-Export-LatestRun.cmd can snapshot an active or cancelled analysis run. Files are copied with read/write sharing; a snapshot is not an atomic database backup. Inspect export-snapshot.json for copy warnings. Never send config/database.dpapi, config/codex-home, or an entire installed application directory.
-
-Each run holds prompt-a.txt, prompt-b.txt, evidence-a.json, evidence-b.json, raw final output, agent-a/b.json when consumed, validation-a/b.json when reached, a/b-events.jsonl, a/b-stderr.txt, a/b-activity.log and a/b-status.json. Status can be RUNNING, COMPLETED, FAILED, CANCELLED or TIMED_OUT. Heartbeats indicate host liveness, not hidden reasoning or confirmed model progress. Default timeout remains 25 minutes per agent, adjustable in config/appsettings.json.
-
-## Files and responsibilities
-
-- Setup-POC.cmd / scripts/Setup-POC.ps1: combined setup; individual older setup commands remain for troubleshooting.
-- Start-POC.cmd: starts the prebuilt host after setup.
-- src/TD.Poc.Console/Program.cs: CMD commands and readiness.
-- src/TD.Poc.Core/Workflow.cs: A → validation/save/embedding → B → validation/save/embedding.
-- src/TD.Poc.Infrastructure/Runtime.cs and AgentProcess.cs: controlled process launch, credential isolation, live logs, cancellation, activity windows.
-- tools/worker.py: extraction, PostgreSQL, shared Ollama embedding profile, retrieval and contract/provenance gates. The host writes records on behalf of agents; reasoning agents do not connect directly to PostgreSQL.
-- agents/agent-a-current-state.md, agent-b-documentation-review.md, agent-c-coordinator.md, shared-guardrails.md: instructions. Original A/B instructions and contracts remain bundled.
-- docs/architecture-and-tables.html: combined workflow and all 29 tables/55 relations. This schema is unchanged in v0.12.
-
-A/B findings remain AGENT_PROPOSED. Schema and literal citation validation do not replace human factual review. Transcript narration is not proof that a screen transition/save/login succeeded. No product API calls or documentation publishing occur.
+A nonblocking Firecrawl connector startup error appeared in earlier Codex stderr despite POC-home isolation. This release retains tool restrictions but does not claim that external startup behavior is fully resolved. No Firecrawl key is needed to perform the supplied-evidence workflow. Check VALIDATION.md for what was actually tested locally versus on Windows.

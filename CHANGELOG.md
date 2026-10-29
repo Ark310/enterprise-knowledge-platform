@@ -1,11 +1,9 @@
-# v0.12.0
+# v0.13
 
-- Combined Setup-POC.cmd with isolated Codex login, database setup/migration, dependencies/model/build and video/readiness checks.
-- Read-only per-agent activity windows; Q/Ctrl+C cancellation, independent elapsed heartbeat and continuously flushed event/stderr files.
-- Disable QuickEdit in the main console and viewers. Bounded pipe draining after process exit; preserve failure/timeout/cancel diagnostics.
-- Snapshot active run logs with read/write sharing. No credentials in exported bundles.
-- Make shared local embedding model/profile visible during A/B database saves. Retain extraction version 0.10.0 for successful-data reuse.
-- Remove duplicate upstream handoff from the B prompt (original evidence packet retained).
-- Original contracts, agent guardrails, PostgreSQL schema and 25-minute per-agent timeout retained.
-
-See docs/DIAGNOSIS-v0.11.md and VALIDATION.md for findings and verification limits.
+- Whole-recording /review (alias /test MODULE): pinned video/SRT, sequential two-minute sections, actual decoded frame timestamps, consolidated topic index.
+- Per-topic bounded documentation searches with executed-query audit and one qualified coverage/gap row for every indexed topic.
+- Validation of exact topic accounting and supplied citation IDs/excerpts; originals remain immutable inputs.
+- A observations and individual B gap rows stored/embedded under the same local profile. B rows link to A records and source units.
+- /results latest or exact key selects a database-backed whole-review report; /ask and subsequent plain questions use only that run.
+- JSON/text gap reports, per-section/batch diagnostics, new module adapter prompts and separate validated contract.
+- Retain legacy targeted tests, 29-table schema, existing model and source extraction version; no new migration/reset.
