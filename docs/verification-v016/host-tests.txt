@@ -21,4 +21,7 @@ PASS worker exception and raw output persisted
 PASS one aggregate status stream per A/B role
 PASS A sections share one activity stream
 PASS B aggregate completion recorded
-Host tests passed: 23
+PASS invalid batch repaired with validation feedback
+PASS persistent invalid batch stops after two corrections
+PASS cancellation propagates without retry
+Host tests passed: 26

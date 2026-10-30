@@ -1,4 +1,6 @@
 using System.Text.Json.Nodes;
+using System.Security.Cryptography;
+using System.Text;
 using TD.Poc.Infrastructure;
 namespace TD.Poc.Core;
 
@@ -114,11 +116,32 @@ public sealed class ModuleReview(Runtime runtime)
             var id=$"batch-{offset/3+1:D3}";var slice=topics.Skip(offset).Take(3).ToArray();
             var ids=new JsonArray(slice.Select(x=>JsonValue.Create(x!["topic"]!["topic_id"]!.ToString())).ToArray());
             File.WriteAllText(Path.Combine(batches,id+".json"),new JsonObject{{"topic_ids",ids.DeepClone()}}.ToJsonString());
-            var context=new JsonObject{{"envelope",Envelope(key,"DOCUMENTATION_GAP_BATCH")},{"topics",new JsonArray(slice.Select(x=>x!.DeepClone()).ToArray())}};
+            var context=new JsonObject{{"envelope",Envelope(key,"DOCUMENTATION_GAP_BATCH")},{"module_context",new JsonArray(topics.Select(x=>x!["topic"]!.DeepClone()).ToArray())},{"evidence_scope","All passages supplied in this batch are shared across its requested topics. This is one whole-recording review."},{"topics",new JsonArray(slice.Select(x=>x!.DeepClone()).ToArray())}};
+            var folder=Path.Combine(batches,id);Directory.CreateDirectory(folder);
+            var fingerprint=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(context.ToJsonString())));
+            var checkpoint=Path.Combine(folder,"validated-context.sha256");
+            async Task<JsonNode> Validate()=>await runtime.Worker("module_check_batch",new JsonObject{{"work",work},{"batch_id",id},{"topic_ids",ids.DeepClone()}});
             Stage(work,$"B {id}: {Math.Min(offset+3,topics.Count)} of {topics.Count} topics");
-            await runtime.Codex("b",Instructions("agent-b-gaps.md"),context.ToJsonString(),Path.Combine(batches,id));
-            var valid=await runtime.Worker("module_check_batch",new JsonObject{{"work",work},{"batch_id",id},{"topic_ids",ids.DeepClone()}});
-            if(valid["valid"]?.GetValue<bool>()!=true)throw new Exception("B gap batch validation failed: "+valid);
+            if(File.Exists(checkpoint)&&File.ReadAllText(checkpoint)==fingerprint&&File.Exists(Path.Combine(folder,"b.json")))
+            {
+                var cached=await Validate();
+                if(cached["valid"]?.GetValue<bool>()==true){runtime.RoleLog(id+": verified checkpoint reused.");continue;}
+            }
+            await BatchRecovery.Run(async (attempt,feedback)=>
+            {
+                var input=context.DeepClone().AsObject();
+                if(feedback is not null)input["correction_feedback"]=new JsonObject{{"validation",feedback.DeepClone()},{"previous_output",JsonNode.Parse(File.ReadAllText(Path.Combine(folder,"b.json")))}};
+                runtime.RoleLog($"{id}: attempt {attempt}/3 (whole-module coverage).");
+                var attemptFolder=Path.Combine(folder,"attempt-"+DateTime.UtcNow.ToString("yyyyMMddHHmmssfff")+"-"+Guid.NewGuid().ToString("N"));
+                await runtime.Codex("b",Instructions("agent-b-gaps.md"),input.ToJsonString(),attemptFolder);
+                File.Copy(Path.Combine(attemptFolder,"b.json"),Path.Combine(folder,"b.json"),true);
+            },async ()=>
+            {
+                var result=await Validate();
+                File.WriteAllText(Path.Combine(folder,"validation-"+Guid.NewGuid().ToString("N")+".json"),result.ToJsonString());
+                return result;
+            });
+            File.WriteAllText(checkpoint,fingerprint);
         }
         Stage(work,"B validating final gap list, saving records and embedding findings");
         Selected=await runtime.Worker("module_finalize",new JsonObject{{"work",work}});

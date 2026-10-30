@@ -6,7 +6,7 @@ function Step([string]$name,[string]$script){
  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot $script)
  if($LASTEXITCODE -ne 0){throw ($name+' failed. Fix the error above and rerun Setup-POC.cmd.')}
 }
-Write-Host 'TD POC v0.15 setup. Existing PostgreSQL sources, vectors and reviews are preserved.'
+Write-Host 'TD POC v0.16 setup. Existing PostgreSQL sources, vectors and reviews are preserved.'
 Write-Host 'Requires installed Python 3.11+, .NET 10 SDK, Ollama, Codex, PostgreSQL and the approved schema.'
 $configPath=Join-Path $root 'config\appsettings.json'
 $config=Get-Content -LiteralPath $configPath -Raw|ConvertFrom-Json

@@ -218,7 +218,7 @@ def resume_start(db,cfg,work):
    packet=read(destination/section['id'],'evidence.json');write(destination/section['id'],'original-evidence-before-resume.json',packet)
    for frame in packet['frames']:frame['path']=str(destination/Path(frame['path']).relative_to(work))
    write(destination/section['id'],'evidence.json',packet)
-  m['resumed_from']=str(work);m['resume_release']='0.15';write(destination,'module-manifest.json',m)
+  m['resumed_from']=str(work);m['resume_release']='0.16';write(destination,'module-manifest.json',m)
   work=destination
  backup=work/('pre-resume-'+datetime.datetime.now().strftime('%Y%m%d%H%M%S')+'-'+uuid.uuid4().hex[:8]);backup.mkdir()
  for pattern in ('index*','topic-index*','prompt-index*'):
@@ -245,7 +245,7 @@ def store(db,cfg,work,obj,role,records):
  m=read(work,'module-manifest.json');profile=w.model_profile(db,cfg);db.commit()
  if role=='ARTICLE_REVIEW' and str(profile['id'])!=read(work,'validation-a.json')['profile_id']:
   raise ValueError('Embedding profile changed after A was saved; B will not be stored under a different profile')
- oid=w.one(db,"insert into analysis.agent_outputs(run_id,agent_role,output_json,schema_validated,validation_status,validation_details,contract_schema_sha256,prompt_sha256,model_details) values(%s,%s,%s::jsonb,true,'VALID',%s::jsonb,%s,%s,%s::jsonb) returning id",(m['run_id'],role,w.j(obj),w.j({'checks':'module schema, coverage accounting, supplied citations; not human semantic approval'}),w.sha((w.BASE/'contracts/module-review.schema.json').read_bytes()),w.sha((w.BASE/'agents'/('agent-a-module.md' if role=='CURRENT_STATE' else 'agent-b-gaps.md')).read_bytes()),w.j({'engine':'Codex CLI','release':'0.15'})))['id']
+ oid=w.one(db,"insert into analysis.agent_outputs(run_id,agent_role,output_json,schema_validated,validation_status,validation_details,contract_schema_sha256,prompt_sha256,model_details) values(%s,%s,%s::jsonb,true,'VALID',%s::jsonb,%s,%s,%s::jsonb) returning id",(m['run_id'],role,w.j(obj),w.j({'checks':'module schema, coverage accounting, supplied citations; not human semantic approval'}),w.sha((w.BASE/'contracts/module-review.schema.json').read_bytes()),w.sha((w.BASE/'agents'/('agent-a-module.md' if role=='CURRENT_STATE' else 'agent-b-gaps.md')).read_bytes()),w.j({'engine':'Codex CLI','release':'0.16'})))['id']
  unitmap={str(x['id']):x for x in m['transcript']}
  if role=='ARTICLE_REVIEW':
   for packet in read(work,'gap-evidence.json')['topics']:
@@ -300,13 +300,15 @@ def check_rows(obj,data,expected_ids):
  ids=[x['topic_id'] for x in obj['payload']['rows']]
  if set(ids)!=set(expected_ids) or len(ids)!=len(set(ids)):errors.append('Each requested topic must have exactly one coverage row')
  packets={x['topic']['topic_id']:x for x in data['topics']}
+ # Batch topics share supplied evidence; never accept an unseen other-batch passage.
+ units={str(u['id']):u for tid in expected_ids if tid in packets for u in packets[tid]['passages']}
  for row in obj['payload']['rows']:
   if row['topic_id'] not in packets:continue
-  units={str(x['id']):x for x in packets[row['topic_id']]['passages']}
   if row['coverage'] in ('COVERED','NEEDS_REWORK') and not row['article_citations']:errors.append('Existing coverage/rework needs supplied article citations')
   if row['coverage']=='NOT_FOUND_IN_REVIEWED_SOURCES' and (row['article_citations'] or row['unread_relevant_sources']):errors.append('Missing coverage cannot hide cited coverage or unread relevant sources; use NEEDS_REWORK/NEEDS_REVIEW')
   for c in row['article_citations']:
-   if c['unit_id'] not in units or c['excerpt'] not in units[c['unit_id']]['content_text']:errors.append('Article citation ID/excerpt not in this topic evidence packet')
+   if c['unit_id'] not in units:errors.append(f"Topic {row['topic_id']}: citation {c['unit_id']} was not supplied in this batch's shared evidence")
+   elif c['excerpt'] not in units[c['unit_id']]['content_text']:errors.append(f"Topic {row['topic_id']}: citation {c['unit_id']} excerpt is not an exact substring of supplied content_text")
  return errors
 
 def finalize(db,cfg,work):

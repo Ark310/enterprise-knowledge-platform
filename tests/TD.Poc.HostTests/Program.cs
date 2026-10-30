@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using TD.Poc.Infrastructure;
+using TD.Poc.Core;
 var dir=Path.Combine(Path.GetTempPath(),"td-host-test-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(Path.Combine(dir,"config"));
 try
 {
@@ -71,6 +72,15 @@ try
         Check(roleLog.Contains("Section 1 of 2") && roleLog.Contains("Section 2 of 2"),"A sections share one activity stream");
         Check(JsonNode.Parse(File.ReadAllText(Path.Combine(roleWork,"activity","agent-b.status.json")))!["state"]!.ToString()=="COMPLETE","B aggregate completion recorded");
     }
+    int generated=0,validated=0;bool receivedFeedback=false;
+    await BatchRecovery.Run((attempt,feedback)=>{generated++;receivedFeedback|=feedback is not null;return Task.CompletedTask;},()=>Task.FromResult<JsonNode>(new JsonObject{{"valid",++validated==2},{"errors",new JsonArray("fixture citation mismatch")}}));
+    Check(generated==2&&receivedFeedback,"invalid batch repaired with validation feedback");
+    generated=0;bool stopped=false;
+    try{await BatchRecovery.Run((attempt,feedback)=>{generated++;return Task.CompletedTask;},()=>Task.FromResult<JsonNode>(new JsonObject{{"valid",false}}));}catch(InvalidOperationException){stopped=true;}
+    Check(stopped&&generated==3,"persistent invalid batch stops after two corrections");
+    generated=0;bool propagated=false;
+    try{await BatchRecovery.Run((attempt,feedback)=>{generated++;throw new OperationCanceledException();},()=>Task.FromResult<JsonNode>(new JsonObject{{"valid",true}}));}catch(OperationCanceledException){propagated=true;}
+    Check(propagated&&generated==1,"cancellation propagates without retry");
     Console.WriteLine($"Host tests passed: {passed}");
 }
 finally{Directory.Delete(dir,true);}

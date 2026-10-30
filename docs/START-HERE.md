@@ -1,13 +1,13 @@
-# v0.15 — one clean whole-recording review
+# v0.16 — one clean whole-recording review
 
 ## Install and start
 
-Keep v0.14 as a backup. Close its main POC and activity windows. Extract the new package to C:\TD-POC-v0.15 so Setup-POC.cmd is directly inside it. Do not delete PostgreSQL, vectors, the data folder, or previous run evidence.
+Keep v0.14 as a backup. Close its main POC and activity windows. Extract the new package to C:\TD-POC-v0.16 so Setup-POC.cmd is directly inside it. Do not delete PostgreSQL, vectors, the data folder, or previous run evidence.
 
 Open CMD:
 
 ```cmd
-cd /d C:\TD-POC-v0.15
+cd /d C:\TD-POC-v0.16
 Setup-POC.cmd
 ```
 
@@ -83,7 +83,7 @@ Coverage: COVERED, NEEDS_REWORK, NOT_FOUND_IN_REVIEWED_SOURCES, NEEDS_REVIEW. No
 In a separate CMD:
 
 ```cmd
-cd /d C:\TD-POC-v0.15
+cd /d C:\TD-POC-v0.16
 Export-LatestRun.cmd
 ```
 

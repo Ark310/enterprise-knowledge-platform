@@ -8,6 +8,15 @@ class CoverageTests(unittest.TestCase):
   return dict(topic_id='T1',coverage=status,reason='Supported reason',article_citations=[dict(unit_id='u1',excerpt='documented setting')],actions=[],unread_relevant_sources=[],limitations=[])
  def data(self):return dict(run_key='run',topics=[dict(topic=dict(topic_id='T1'),passages=[dict(id='u1',content_text='This is a documented setting.')])])
  def wrap(self,row):return m.envelope('run','DOCUMENTATION_GAP_BATCH',dict(rows=[row],limitations=[]))
+ def test_cross_topic_supplied_batch_citation_allowed(self):
+  d=self.data();d['topics'].append(dict(topic=dict(topic_id='T2'),passages=[dict(id='u2',content_text='Other documented setting.')]))
+  row=self.row();row['article_citations']=[dict(unit_id='u2',excerpt='documented setting')]
+  obj=self.wrap(row);obj['payload']['rows'].append(dict(self.row(),topic_id='T2',article_citations=[dict(unit_id='u2',excerpt='documented setting')]))
+  self.assertEqual(m.check_rows(obj,d,['T1','T2']),[])
+ def test_unsupplied_other_batch_citation_rejected(self):
+  d=self.data();d['topics'].append(dict(topic=dict(topic_id='T99'),passages=[dict(id='u99',content_text='documented setting')]))
+  row=self.row();row['article_citations']=[dict(unit_id='u99',excerpt='documented setting')]
+  self.assertTrue(m.check_rows(self.wrap(row),d,['T1']))
  def test_valid_coverage(self):self.assertEqual(m.check_rows(self.wrap(self.row()),self.data(),['T1']),[])
  def test_covered_requires_actual_article(self):
   r=self.row();r['article_citations']=[];self.assertTrue(m.check_rows(self.wrap(r),self.data(),['T1']))

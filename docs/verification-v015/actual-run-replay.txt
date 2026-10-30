@@ -1,2 +1,0 @@
-Actual failed-run packet: 1207058 ASCII-safe JSON characters, 37 topics; exact JSON roundtrip passed
-Actual failed-run index: 37 old topics -> 31 topics after explicit context-prefix normalization; all 56 observation IDs preserved
