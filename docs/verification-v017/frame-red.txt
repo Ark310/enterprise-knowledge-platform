@@ -1,0 +1,21 @@
+...EE....
+======================================================================
+ERROR: test_cache_key_changes_with_source_or_sampling (test_v017.FrameCacheTests.test_cache_key_changes_with_source_or_sampling)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v017/TD-POC-v0.17/tests/test_v017.py", line 47, in test_cache_key_changes_with_source_or_sampling
+    from video_evidence import cache_key
+ModuleNotFoundError: No module named 'video_evidence'
+
+======================================================================
+ERROR: test_missing_or_changed_cached_frame_is_not_reused (test_v017.FrameCacheTests.test_missing_or_changed_cached_frame_is_not_reused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v017/TD-POC-v0.17/tests/test_v017.py", line 40, in test_missing_or_changed_cached_frame_is_not_reused
+    from video_evidence import valid_cache
+ModuleNotFoundError: No module named 'video_evidence'
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.002s
+
+FAILED (errors=2)

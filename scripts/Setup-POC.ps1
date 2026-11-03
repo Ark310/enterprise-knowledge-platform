@@ -6,7 +6,7 @@ function Step([string]$name,[string]$script){
  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot $script)
  if($LASTEXITCODE -ne 0){throw ($name+' failed. Fix the error above and rerun Setup-POC.cmd.')}
 }
-Write-Host 'TD POC v0.16 setup. Existing PostgreSQL sources, vectors and reviews are preserved.'
+Write-Host 'TD POC v0.17 setup. Existing PostgreSQL sources, vectors and reviews are preserved.'
 Write-Host 'Requires installed Python 3.11+, .NET 10 SDK, Ollama, Codex, PostgreSQL and the approved schema.'
 $configPath=Join-Path $root 'config\appsettings.json'
 $config=Get-Content -LiteralPath $configPath -Raw|ConvertFrom-Json
@@ -18,6 +18,8 @@ Step 'Local dependencies, embedding model and build' 'Setup-LocalModel.ps1'
 Step 'Database connection (hidden password)' 'Configure-Database.ps1'
 & dotnet run --project src\TD.Poc.Console\TD.Poc.Console.csproj --configuration Release --no-build -- --migrate
 if($LASTEXITCODE -ne 0){throw 'Database initialization failed. Existing approved tables must already be installed; do not reset the database.'}
+& dotnet run --project src\TD.Poc.Console\TD.Poc.Console.csproj --configuration Release --no-build -- --build-indexes
+if($LASTEXITCODE -ne 0){throw 'HNSW index setup failed. Read error; existing vectors and source records were retained.'}
 Step 'Video tools' 'Setup-VideoTools.ps1'
 # A dedicated home prevents unrelated personal MCP servers being loaded by the POC.
 # Never copy auth/config from another Codex home; complete this POC login once.

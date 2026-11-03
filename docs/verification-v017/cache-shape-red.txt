@@ -1,0 +1,20 @@
+E.........
+======================================================================
+ERROR: test_structurally_corrupt_cache_rebuilds (test_v017.AdditionalCacheTests.test_structurally_corrupt_cache_rebuilds)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v017/TD-POC-v0.17/tests/test_v017.py", line 54, in test_structurally_corrupt_cache_rebuilds
+    for rows in ({},[None],[{}],[{'path':'missing'}]):self.assertFalse(valid_cache(rows))
+                                                                       ^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/aed6c87a9d4c/v017/TD-POC-v0.17/tools/video_evidence.py", line 9, in valid_cache
+    return all(Path(r['path']).is_file() and w.file_hash(r['path'])==r['sha256'] for r in rows)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/aed6c87a9d4c/v017/TD-POC-v0.17/tools/video_evidence.py", line 9, in <genexpr>
+    return all(Path(r['path']).is_file() and w.file_hash(r['path'])==r['sha256'] for r in rows)
+                    ~^^^^^^^^
+TypeError: 'NoneType' object is not subscriptable
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.004s
+
+FAILED (errors=1)

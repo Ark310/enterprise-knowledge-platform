@@ -1,0 +1,61 @@
+EEEEEEE
+======================================================================
+ERROR: test_index_dimension_identifier_guard (test_v017.ComparisonTests.test_index_dimension_identifier_guard)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v017/TD-POC-v0.17/tests/test_v017.py", line 32, in test_index_dimension_identifier_guard
+    from retrieval_v017 import index_spec
+ModuleNotFoundError: No module named 'retrieval_v017'
+
+======================================================================
+ERROR: test_modes_reject_unknown_value (test_v017.ComparisonTests.test_modes_reject_unknown_value)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v017/TD-POC-v0.17/tests/test_v017.py", line 29, in test_modes_reject_unknown_value
+    from retrieval_v017 import validate_mode
+ModuleNotFoundError: No module named 'retrieval_v017'
+
+======================================================================
+ERROR: test_recall_and_rank_overlap_are_not_interchangeable (test_v017.ComparisonTests.test_recall_and_rank_overlap_are_not_interchangeable)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v017/TD-POC-v0.17/tests/test_v017.py", line 26, in test_recall_and_rank_overlap_are_not_interchangeable
+    from retrieval_v017 import overlap
+ModuleNotFoundError: No module named 'retrieval_v017'
+
+======================================================================
+ERROR: test_bad_times_rejected (test_v017.TranscriptGroupingTests.test_bad_times_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v017/TD-POC-v0.17/tests/test_v017.py", line 22, in test_bad_times_rejected
+    from transcript_groups import group_cues
+ModuleNotFoundError: No module named 'transcript_groups'
+
+======================================================================
+ERROR: test_groups_cues_without_text_loss (test_v017.TranscriptGroupingTests.test_groups_cues_without_text_loss)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v017/TD-POC-v0.17/tests/test_v017.py", line 7, in test_groups_cues_without_text_loss
+    from transcript_groups import group_cues
+ModuleNotFoundError: No module named 'transcript_groups'
+
+======================================================================
+ERROR: test_long_cue_keeps_exact_offsets_without_inventing_time (test_v017.TranscriptGroupingTests.test_long_cue_keeps_exact_offsets_without_inventing_time)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v017/TD-POC-v0.17/tests/test_v017.py", line 17, in test_long_cue_keeps_exact_offsets_without_inventing_time
+    from transcript_groups import group_cues
+ModuleNotFoundError: No module named 'transcript_groups'
+
+======================================================================
+ERROR: test_pause_and_maximum_boundaries (test_v017.TranscriptGroupingTests.test_pause_and_maximum_boundaries)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v017/TD-POC-v0.17/tests/test_v017.py", line 13, in test_pause_and_maximum_boundaries
+    from transcript_groups import group_cues
+ModuleNotFoundError: No module named 'transcript_groups'
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.002s
+
+FAILED (errors=7)

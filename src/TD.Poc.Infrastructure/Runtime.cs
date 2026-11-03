@@ -35,6 +35,8 @@ public sealed partial class Runtime
     }
     public async Task<JsonNode> Worker(string op,JsonObject? args=null)
     {
+        args??=new JsonObject();
+        args["search_mode"]=Config["SearchMode"]?.ToString()??"improved_hnsw";
         var python=Config["PythonExecutable"]!.GetValue<string>();
         if(!Path.IsPathRooted(python))python=Path.Combine(Root,python);
         var work=args?["work"]?.ToString()??Path.Combine(Root,"runtime","diagnostics");
@@ -92,7 +94,7 @@ public sealed partial class Runtime
         if(OperatingSystem.IsWindows() && (executable.Equals("codex",StringComparison.OrdinalIgnoreCase)||executable.EndsWith(".cmd",StringComparison.OrdinalIgnoreCase)))
         {
             // cmd is used only for a trusted installed .cmd shim. User prompts go through stdin.
-            static string Quote(string s){if(s.IndexOfAny(['"','\r','\n','&','|','<','>','%','!'])>=0)throw new Exception("Unsafe character in executable/argument path; extract to a simple path such as C:\\TD-POC-v0.16.");return "\""+s+"\"";}
+            static string Quote(string s){if(s.IndexOfAny(['"','\r','\n','&','|','<','>','%','!'])>=0)throw new Exception("Unsafe character in executable/argument path; extract to a simple path such as C:\\TD-POC-v0.17.");return "\""+s+"\"";}
             start.FileName="cmd.exe";
             start.Arguments="/d /s /c \""+Quote(executable)+" "+string.Join(" ",list.Select(Quote))+"\"";
         }

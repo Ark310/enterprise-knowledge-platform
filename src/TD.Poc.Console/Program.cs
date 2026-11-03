@@ -16,8 +16,14 @@ string FindRoot()
 try
 {
     var runtime=new Runtime(FindRoot());runtime.Progress+=Console.WriteLine;var workflow=new Workflow(runtime);var moduleReview=new ModuleReview(runtime);
-    if(args.Contains("--version")){Console.WriteLine("TD POC 0.16.0");return;}
+    if(args.Contains("--version")){Console.WriteLine("TD POC 0.17.0");return;}
     await runtime.LoadSecret();
+    if(args.Contains("--build-indexes")){Console.WriteLine(await runtime.Worker("build_indexes"));return;}
+    if(args.Contains("--search-health")){Console.WriteLine(await runtime.Worker("search_health"));return;}
+    if(args.Contains("--compare")){
+        Console.WriteLine("Enter the search question to compare:");var query=Console.ReadLine();
+        if(!string.IsNullOrWhiteSpace(query))DisplayComparison(await runtime.Worker("compare_search",new JsonObject{{"query",query},{"limit",20}}));return;
+    }
     if(args.Contains("--migrate")){Console.WriteLine(await runtime.Worker("migrate"));return;}
     if(args.Contains("--process")){Console.WriteLine(await runtime.Worker("process",new JsonObject{{"limit",args.Contains("--pilot")?10:0}}));Console.WriteLine("Worker finished. Review totals above; close this window when ready.");return;}
     if(args.Contains("--status")){Console.WriteLine(await runtime.Worker("status"));return;}
@@ -28,7 +34,7 @@ try
         if(check["ready"]?.GetValue<bool>()!=true)throw new Exception("Readiness failed");
         Console.WriteLine(await runtime.Worker("status"));return;
     }
-    Console.WriteLine("TD POC 0.16 | Codex A/B/C | local Qwen embeddings | automatic scan, MANUAL processing");
+    Console.WriteLine("TD POC 0.17 | Codex A/B/C | local Qwen embeddings | automatic scan, MANUAL processing");
     Console.WriteLine("Checking database...");var dbStatus=await runtime.Worker("status");
     Console.WriteLine($"Database ready: {dbStatus["sources"]} sources; {dbStatus["vectors"]} source vectors.");
     Console.WriteLine("Checking Codex login...");
@@ -43,6 +49,7 @@ try
     {
         var s=await runtime.Worker("scan");var files=s["files"]!.AsArray();
         Console.WriteLine($"Scan: {files.Count} files; {files.Count(x=>x?["state"]?.GetValue<string>()!="UNCHANGED")} new/pending extraction; {s["errors"]!.AsArray().Count} errors. No source data was imported or embedded.");
+        Console.WriteLine($"Transcript grouping pending: {s["grouped_transcripts_pending"]}. /process prepares grouped passages; /search-health checks vectors for the current profile.");
         Console.WriteLine("Full manifest: runtime\\last-scan.json. Missing embeddings can be retried with /process even when files are unchanged.");
     }
     void StartWorker(bool pilot)
@@ -59,14 +66,33 @@ try
         var path=await workflow.RunTest(code,rec.Replace('\\','/'));
         Console.WriteLine("Run output: "+path+"\nBring agent-a.json, agent-b.json and validation files here for review.");
     }
+    void DisplayComparison(JsonNode report)
+    {
+        Console.WriteLine("Same question and embedding; three search modes:");
+        foreach(var mode in report["modes"]!.AsObject()){
+            var d=mode.Value!;Console.WriteLine($"  {mode.Key}: {d["milliseconds"]} ms; {d["final_count"]} matches; HNSW index used: {d["hnsw_index_used"]}");
+        }
+        Console.WriteLine($"Semantic ANN recall@k: {report["ann_semantic_recall_at_k"]!["recall"]} (same improved chunks).");
+        Console.WriteLine("Grouped transcripts: "+report["grouped_transcripts"]+". Chunking comparison ready: "+report["chunking_comparison_ready"]);
+        Console.WriteLine("Reports: "+report["report_markdown"]+" and "+report["report_json"]);
+        Console.WriteLine("Timing excludes embedding/reasoning. If HNSW index used is false, this is not an ANN benchmark. Inspect the cited evidence for answer quality.");
+    }
     await Scan();
-    Console.WriteLine("Commands: /review | /results latest | /ask question | /help | /exit");
+    Console.WriteLine("Commands: /review | /results latest | /ask question | /compare question | /mode | /search-health | /help | /exit");
     Console.WriteLine("Or type a question for Agent C. Processing requires your explicit /process or /pilot command.");
     while(true)
     {
         Console.Write("\nYou> ");var input=Console.ReadLine();if(input is null||input.Trim()=="/exit")break;input=input.Trim();if(input.Length==0)continue;
         try
         {
+            if(input=="/mode"){Console.WriteLine("Current search mode: "+(runtime.Config["SearchMode"]?.ToString()??"improved_hnsw")+". Choices: /mode old_exact | /mode improved_exact | /mode improved_hnsw");continue;}
+            if(input.StartsWith("/mode ")){
+                var mode=input[6..].Trim();
+                if(mode is not("old_exact" or "improved_exact" or "improved_hnsw"))throw new Exception("Choose old_exact, improved_exact or improved_hnsw.");
+                runtime.Config["SearchMode"]=mode;Console.WriteLine("Search mode for this session: "+mode+". A new review pins this mode; existing saved results are unchanged.");continue;
+            }
+            if(input=="/search-health"){Console.WriteLine(await runtime.Worker("search_health"));continue;}
+            if(input.StartsWith("/compare ")){DisplayComparison(await runtime.Worker("compare_search",new JsonObject{{"query",input[9..].Trim()},{"limit",20}}));continue;}
             if(input.StartsWith("/resume "))
             {
                 Console.WriteLine(ModuleReview.Display(await moduleReview.Resume(input[8..].Trim().Trim('"'))));continue;
@@ -89,7 +115,7 @@ try
             if(input.StartsWith("/search ")){Console.WriteLine(await workflow.AnswerSearch(input[8..]));continue;}
             if(input.StartsWith("/run ")){await Test(input[5..].Trim().Trim('"'));continue;}
             if(input.StartsWith("/test ")){await Test(input[6..].Trim().ToUpperInvariant());continue;}
-            if(input=="/help"){Console.WriteLine("/review reviews a whole recording in sections; /results latest selects an exact saved gap run; /ask asks about that selected run; /scan finds changes; /pilot processes first 10 allowlisted files; /process handles all files and retries missing vectors; /test runs A then B; /search asks evidence questions. Read docs\\START-HERE.md for test scope and limitations.");continue;}
+            if(input=="/help"){Console.WriteLine("/compare question compares all three search modes without invoking AI reasoning; /mode selects search mode for new searches/reviews; /search-health checks HNSW setup; /review reviews a whole recording in sections; /results latest selects an exact saved gap run; /ask asks about that selected run; /scan finds changes; /pilot processes first 10 allowlisted files; /process handles all files and retries missing vectors; /test runs A then B; /search asks evidence questions. Read docs\\START-HERE.md for test scope and limitations.");continue;}
             if(moduleReview.Selected is not null){Console.WriteLine("Agent C> "+await moduleReview.Ask(input));continue;}
             var response=await workflow.Chat(input);Console.WriteLine("Agent C> "+response["reply"]!.GetValue<string>());
             var action=response["action"]!.GetValue<string>();var argument=response["argument"]!.GetValue<string>();

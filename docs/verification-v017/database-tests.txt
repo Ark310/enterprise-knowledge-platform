@@ -1,0 +1,26 @@
+PASS additive migration is repeatable
+PASS transcript passage pins matching recording revision and duration check
+PASS persistent transcript-to-recording relationship
+PASS grouped passages combine original cues
+PASS original citation IDs remain intact
+PASS grouped passages link to original cues
+PASS retry does not duplicate grouped units
+Building/verifying HNSW: td017_content_e681f96aed1a4e00a82d03c9239428ab; may take several minutes on the first upgrade
+Building/verifying HNSW: td017_analysis_e681f96aed1a4e00a82d03c9239428ab; may take several minutes on the first upgrade
+PASS both halfvec HNSW indexes are valid at 2560 dimensions
+PASS legacy mode uses original cues
+PASS improved mode selects grouped passages
+PASS exact baseline does not use ANN index
+PASS comparison query really uses source HNSW index
+PASS comparison exports both reports
+PASS incomplete grouped vectors fall back to original cues
+PASS comparison blocks misleading all-baseline fallback
+PASS second review reuses hash-verified frames
+PASS frame IDs and actual timestamps remain stable
+PASS frame metadata deduplicates
+PASS corrupt frame cache is regenerated
+PASS saved findings use analysis HNSW candidate search and full-vector reranking
+PASS visual finding stores one explicit reusable frame link
+PASS role filter excludes current-state passages
+PASS superseded source revisions do not enter results
+INTEGRATION PASSED: 23 checks; PostgreSQL 160015 pgvector 0.8.1

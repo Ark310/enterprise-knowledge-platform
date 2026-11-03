@@ -1,9 +1,9 @@
-"""TD 0.10 evidence worker. JSON stdin/stdout; progress to stderr. Never executes source files."""
+"""TD 0.17 evidence worker. JSON stdin/stdout; progress to stderr. Never executes source files."""
 import sys,os,json,re,hashlib,uuid,datetime,urllib.request,urllib.parse,zipfile,html,subprocess,shutil,traceback
 from pathlib import Path
 from xml.etree import ElementTree as ET
 BASE=Path(__file__).resolve().parents[1]
-VERSION='0.16.0'
+VERSION='0.17.0'
 EXTRACTION_VERSION='0.10.0' # Parser/chunk semantics unchanged; reuse successful v0.10 extractions
 ROOTS=[('current-state','CURRENT_STATE'),('existing-assets/Confluence Articles','EXISTING_ASSET'),('existing-assets/REST API','EXISTING_ASSET'),('existing-assets/Sharepoint','EXISTING_ASSET'),('existing-assets/VLCs','EXISTING_ASSET')]
 TEXT_EXT={'.txt','.md','.json','.csv','.html','.htm','.xml','.yaml','.yml','.cs','.go','.java','.js','.php','.py','.rb','.sh','.sql','.svg','.srt','.vtt','.log'}
@@ -144,6 +144,7 @@ def require_db(db):
 def migration(db):
  require_db(db)
  q(db,(BASE/'database/migrations/010-local-files.sql').read_text(encoding='utf-8-sig'))
+ q(db,(BASE/'database/migrations/017-search-video.sql').read_text(encoding='utf-8-sig'))
 
 def ollama(cfg,endpoint,body=None):
  url=cfg.get('OllamaUrl','http://localhost:11434').rstrip('/')+endpoint
@@ -268,6 +269,9 @@ def process(cfg,options):
      v=embed(cfg,u['content_text'])
      if len(v)!=profile['dimensions']:raise ValueError('Embedding dimensions changed')
      q(db,"insert into retrieval.content_embeddings(content_unit_id,profile_id,input_sha256,embedding,embedded_text) values(%s,%s,%s,%s::vector,%s) on conflict do nothing",(u['id'],profile['id'],sha(u['content_text']),vector(v),u['content_text']));db.commit();totals['embedded']+=1
+    if Path(f['path']).suffix.lower()=='.srt':
+     from transcript_groups import ensure_grouped
+     totals.setdefault('grouped_embedded',0);totals['grouped_embedded']+=ensure_grouped(db,cfg,f,sv,ov,profile)
     count=one(db,'select count(*) n from knowledge.content_units where extraction_id=%s',(ex['id'],))['n']
     job(db,ov,'EMBED','COMPLETE' if count else 'BLOCKED',{'profile_id':str(profile['id']),'new_vectors':len(pending),'reason':None if count else 'No searchable units; conversion or scoped video review required'});db.commit()
    except Exception as e:
@@ -286,7 +290,7 @@ def status(db):
  require_db(db)
  return {'sources':one(db,'select count(*) n from knowledge.sources')['n'],'active_versions':one(db,"select count(*) n from knowledge.source_versions where lifecycle_status='ACTIVE'")['n'],'searchable_units':one(db,'select count(*) n from retrieval.active_content')['n'],'vectors':one(db,'select count(*) n from retrieval.content_embeddings')['n'],'extraction_jobs':q(db,'select status,count(*) n from knowledge.ingestion_jobs group by status').fetchall(),'runs':q(db,'select run_key,status,created_at from analysis.runs order by created_at desc limit 10').fetchall()}
 
-def search(db,cfg,text,role=None,limit=20):
+def legacy_search(db,cfg,text,role=None,limit=20):
  require_db(db);limit=max(1,min(int(limit),80));profile=model_profile(db,cfg);queryvec=vector(embed(cfg,text,True));db.commit()
  # Reciprocal rank fusion rather than adding incompatible raw text/cosine scores.
  rows=q(db,"""with base as(select a.*,s.title,s.product,v.id version_id from retrieval.active_content a join knowledge.extractions ex on ex.id=a.extraction_id join knowledge.source_versions v on v.id=ex.source_version_id join knowledge.sources s on s.id=v.source_id where (%s::text is null or a.evidence_role=%s)),
@@ -296,6 +300,10 @@ def search(db,cfg,text,role=None,limit=20):
  select b.id,b.version_id,b.title,b.product,b.evidence_role,b.content_text,b.representation_kind,b.locator,b.storage_uri,b.start_seconds,b.end_seconds,scores.score from scores join base b using(id) order by scores.score desc limit %s""",(role,role,text,text,queryvec,profile['id'],queryvec,limit)).fetchall()
  derived=q(db,"""select r.id,r.run_id,r.record_key,r.statement,r.details,r.review_status,exists(select 1 from analysis.run_sources rs join knowledge.source_versions sv on sv.id=rs.source_version_id where rs.run_id=r.run_id and sv.lifecycle_status<>'ACTIVE') evidence_superseded from analysis.records r join analysis.agent_outputs o on o.id=r.agent_output_id join retrieval.analysis_embeddings e on e.record_id=r.id and e.profile_id=%s where o.validation_status='VALID' and r.review_status<>'REJECTED' order by e.embedding <=> %s::vector limit 8""",(profile['id'],queryvec)).fetchall()
  return {'passages':rows,'derived_findings':derived,'coverage':'Bounded hybrid search; not an exhaustive inventory. Findings are proposals, may be stale and must be checked against current source versions.'}
+
+def search(db,cfg,text,role=None,limit=20):
+ from retrieval_v017 import search as improved_search
+ return improved_search(db,cfg,text,role,limit)
 
 def validate_contract(obj,expected=None,request=None):
  from jsonschema import Draft202012Validator
@@ -341,11 +349,9 @@ def prepare_test(db,cfg,options):
   # Scoped 2-second sampling. An agent must flag unobserved transitions; denser inspection remains necessary for brief actions.
   for n,r in enumerate(ranges):
    if r['end_seconds']<=r['start_seconds'] or r['end_seconds']-r['start_seconds']>600:raise ValueError('Each visual range must be positive and at most 600 seconds')
-   duration=r['end_seconds']-r['start_seconds'];pattern=work/f'range{n}-%05d.jpg'
-   cmd=[ffmpeg,'-nostdin','-hide_banner','-loglevel','error','-ss',str(r['start_seconds']),'-i',str(rec),'-t',str(duration),'-vf','fps=1/2,scale=1280:-2','-frames:v','80',str(pattern)]
-   subprocess.run(cmd,check=True,timeout=180,capture_output=True)
-   for i,p in enumerate(sorted(work.glob(f'range{n}-*.jpg'))):frames.append({'path':str(p),'recording_file':rec.relative_to(root).as_posix(),'seconds':r['start_seconds']+i*2,'sampling':'2-second frames; actions between frames unverified'})
- manifest={'request':request,'transcript_file':srt.relative_to(root).as_posix(),'transcript':packet,'frames':frames,'original_audio_listened':False,'visual_limitations':[] if frames else ['ffmpeg unavailable: no visual evidence supplied; no visual/corroborated claims permitted'],'archive_mapping':{'LOCAL_CURRENT_STATE':str(root/'current-state'),'LOCAL_EXISTING_ASSETS':'four approved existing-assets roots'},'recording_sha256':expected_recording_hash,'srt_sha256':expected_srt_hash}
+   from video_evidence import frames as cached_frames
+   frames.extend(cached_frames(db,cfg,rec,r['start_seconds'],r['end_seconds'],cap=80))
+ manifest={'search_mode':cfg.get('SearchMode','improved_hnsw'),'request':request,'transcript_file':srt.relative_to(root).as_posix(),'transcript':packet,'frames':frames,'original_audio_listened':False,'visual_limitations':[] if frames else ['ffmpeg unavailable: no visual evidence supplied; no visual/corroborated claims permitted'],'archive_mapping':{'LOCAL_CURRENT_STATE':str(root/'current-state'),'LOCAL_EXISTING_ASSETS':'four approved existing-assets roots'},'recording_sha256':expected_recording_hash,'srt_sha256':expected_srt_hash}
  if file_hash(rec)!=manifest['recording_sha256'] or file_hash(srt)!=manifest['srt_sha256']:raise ValueError('Recording/transcript changed while preparing frames; retry')
  (work/'request.json').write_text(j(request),encoding='utf-8');(work/'evidence-a.json').write_text(j(manifest),encoding='utf-8')
  rid=one(db,"insert into analysis.runs(run_key,module,topic,question,contract_version,agent_a_version,agent_b_version,status) values(%s,%s,%s,%s,%s,'2.1.0+local-0.12','2.1.0+local-0.12','PROCESSING') returning id",(request['run_id'],request['module'],request['topic'],request['payload']['question'],request['contract_version']))['id']
@@ -412,6 +418,11 @@ def save_output(db,cfg,options):
  progress(f"{role}: saving {len(records)} records; local embedding model {cfg['EmbeddingModel']}, profile {profile['id']}")
  for key,kind,text,level,details in records:
   rec=one(db,"insert into analysis.records(run_id,agent_output_id,record_key,record_type,topic,statement,evidence_level,details) values(%s,%s,%s,%s,%s,%s,%s,%s::jsonb) returning id",(rid,oid,role+':'+key,kind,req['topic'],text,level,j(details)))['id']
+  from video_evidence import link
+  for cite in details.get('citations',[]):
+   if cite.get('source_type')=='RECORDING_VISUAL':
+    match=re.fullmatch(r'frame_seconds=([0-9]+(?:\.[0-9]+)?)',cite.get('locator',''))
+    if match:link(db,rec,{'source_id':f'{float(match.group(1)):.3f}'},manifest['frames'])
   # Store links only for literal excerpt matches from actual supplied units.
   cites=details.get('citations',details.get('existence_citations',[]))
   for cite in cites:
@@ -431,6 +442,9 @@ def save_output(db,cfg,options):
 
 def main(req):
  cfg=json.loads((BASE/'config/appsettings.json').read_text(encoding='utf-8-sig'));op=req['op'];args=req.get('args',{})
+ if args.get('search_mode'):
+  from retrieval_v017 import validate_mode
+  cfg['SearchMode']=validate_mode(args['search_mode'])
  if op=='scan':
   result=scan(cfg)
   try:
@@ -438,6 +452,11 @@ def main(req):
     for f in result['files']:
      r=one(db,"select v.id,exists(select 1 from knowledge.extractions e where e.source_version_id=v.id and e.is_active and e.processor_version=%s) extracted from knowledge.source_versions v where v.storage_uri=%s and v.content_sha256=%s and v.lifecycle_status='ACTIVE'",(EXTRACTION_VERSION,Path(f['path']).absolute().as_uri(),f['sha256']))
      f['state']='UNCHANGED' if r and r['extracted'] else 'NEW_OR_PENDING'
+     if Path(f['path']).suffix.lower()=='.srt':
+      from transcript_groups import VERSION as GROUPED_VERSION,CONFIG_HASH
+      prepared=one(db,"select exists(select 1 from knowledge.extractions where source_version_id=%s and processor_version=%s and config_sha256=%s and status='COMPLETE') ok",(r['id'],GROUPED_VERSION,CONFIG_HASH))['ok'] if r else False
+      f['grouping_state']='PREPARED_CHECK_PROFILE' if prepared else 'PENDING'
+    result['grouped_transcripts_pending']=sum(f.get('grouping_state')=='PENDING' for f in result['files'])
   except Exception:result['database_comparison']='Unavailable; scan still read-only, database health must pass before processing'
   (BASE/'runtime').mkdir(exist_ok=True);(BASE/'runtime/last-scan.json').write_text(j(result),encoding='utf-8');return result
  if op=='process':return process(cfg,args)
@@ -448,7 +467,12 @@ def main(req):
    import module_review
    require_db(db)
    return module_review.main(db,cfg,op,args)
-  if op=='migrate':migration(db);return {'migration':'010-local-files applied','database':'knowledge_poc'}
+  if op=='migrate':migration(db);return {'migration':'010-local-files + 017-search-video applied; historical records retained','database':'knowledge_poc'}
+  if op in ('build_indexes','compare_search','search_health'):
+   import retrieval_v017
+   if op=='build_indexes':return retrieval_v017.build_indexes(db,cfg)
+   if op=='compare_search':return retrieval_v017.compare(db,cfg,args['query'],args.get('role'),args.get('limit',20))
+   return retrieval_v017.health(db,cfg)
   if op=='status':return status(db)
   if op=='search':return search(db,cfg,args['query'],args.get('role'),args.get('limit',20))
   if op=='prepare_test':return prepare_test(db,cfg,args)
@@ -457,6 +481,7 @@ def main(req):
    q(db,"update analysis.runs set status='FAILED',completed_at=now() where run_key=%s",(args['run_key'],));return {'status':'FAILED'}
   if op=='prepare_b':
    work=Path(args['work']);a=json.loads((work/'agent-a.json').read_text(encoding='utf-8-sig'));req=a['payload']['request'];terms=' '.join(req['search_aliases'])+' '+req['question']
+   cfg=dict(cfg,SearchMode=json.loads((work/'evidence-a.json').read_text(encoding='utf-8-sig')).get('search_mode','old_exact'))
    data=search(db,cfg,terms,'EXISTING_ASSET',60);data['upstream']=a;data['search_terms']=terms;data['inventory_scope']='Top 60 hybrid candidates only. No company-wide absence conclusion permitted.'
    rid=one(db,'select id from analysis.runs where run_key=%s',(a['run_id'],))['id']
    for p in data['passages']:

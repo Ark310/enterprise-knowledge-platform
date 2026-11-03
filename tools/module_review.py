@@ -57,7 +57,7 @@ def start(db,cfg,options):
   sections.append({'id':f'S{n:03d}','start':start_seconds,'end':min(seconds,start_seconds+120)})
  rid=w.one(db,"insert into analysis.runs(run_key,module,topic,question,contract_version,agent_a_version,agent_b_version,status) values(%s,'Modules shown in recording','Whole-recording documentation coverage','Inventory recorded topics and assess documentation coverage',%s,'module-0.13','module-0.13','PROCESSING') returning id",(key,CONTRACT))['id']
  for sv in versions:w.q(db,"insert into analysis.run_sources(run_id,source_version_id,coverage_status,coverage_details) values(%s,%s,'LISTED',%s::jsonb)",(rid,sv,w.j({'review':'Whole recording in sampled sections; not continuous video or independent audio listening'})))
- manifest={'run_id':str(rid),'run_key':key,'recording_file':rec.relative_to(root).as_posix(),'transcript_file':srt.relative_to(root).as_posix(),'duration_seconds':seconds,'sections':sections,'hashes':hashes,'ffmpeg':ffmpeg,'transcript':cues,'scope':'Only topics shown or narrated in this recording, not every feature in the product/module. Frames sampled every two seconds; unobserved transitions remain unverified.'}
+ manifest={'search_mode':cfg.get('SearchMode','improved_hnsw'),'run_id':str(rid),'run_key':key,'recording_file':rec.relative_to(root).as_posix(),'transcript_file':srt.relative_to(root).as_posix(),'duration_seconds':seconds,'sections':sections,'hashes':hashes,'ffmpeg':ffmpeg,'transcript':cues,'scope':'Only topics shown or narrated in this recording, not every feature in the product/module. Frames sampled every two seconds; unobserved transitions remain unverified.'}
  write(work,'module-manifest.json',manifest)
  return {'work':str(work),'run_key':key,'sections':sections,'duration_seconds':seconds}
 
@@ -67,7 +67,7 @@ def frame_sync_args(help_text):
  if re.search(r'(?m)^\s*-vsync(?:\[|\s)',help_text):return ['-vsync','2']
  raise ValueError('FFmpeg reports neither -fps_mode nor -vsync. Use a complete FFmpeg build; no frames or timestamps were fabricated.')
 
-def decode_frames(ffmpeg,rec,folder,section,pattern):
+def decode_frames(ffmpeg,rec,folder,section,pattern,max_frames=60):
  folder=Path(folder)
  common=dict(capture_output=True,text=True,encoding='utf-8',errors='replace')
  version=subprocess.run([ffmpeg,'-version'],timeout=20,**common)
@@ -75,7 +75,7 @@ def decode_frames(ffmpeg,rec,folder,section,pattern):
  try:sync=frame_sync_args(help_result.stdout+'\n'+help_result.stderr)
  except ValueError:
   (folder/'ffmpeg-help.txt').write_text(help_result.stdout+'\n'+help_result.stderr,encoding='utf-8');raise
- cmd=[ffmpeg,'-nostdin','-hide_banner','-loglevel','info','-ss',str(section['start']),'-i',str(rec),'-t',str(section['end']-section['start']),'-vf',"select='isnan(prev_selected_t)+gte(t-prev_selected_t,2)',scale=1280:-2,showinfo",*sync,'-frames:v','60','-y',str(pattern)]
+ cmd=[ffmpeg,'-nostdin','-hide_banner','-loglevel','info','-ss',str(section['start']),'-i',str(rec),'-t',str(section['end']-section['start']),'-vf',"select='isnan(prev_selected_t)+gte(t-prev_selected_t,2)',scale=1280:-2,showinfo",*sync,'-frames:v',str(max_frames),'-y',str(pattern)]
  write(folder,'ffmpeg-command.json',{'patch':'0.13.1','version':version.stdout+version.stderr,'sync_arguments':sync,'arguments':cmd})
  try:decoded=subprocess.run(cmd,timeout=180,**common)
  except subprocess.TimeoutExpired as exc:
@@ -89,21 +89,23 @@ def decode_frames(ffmpeg,rec,folder,section,pattern):
   raise ValueError(f"FFmpeg failed with exit code {decoded.returncode}. Full diagnostics: {folder/'ffmpeg-stderr.txt'}\n"+decoded.stderr[-3500:])
  return decoded
 
-def section_packet(cfg,work,section_id):
+def section_packet(cfg,work,section_id,db=None):
  m=read(work,'module-manifest.json');s=next(x for x in m['sections'] if x['id']==section_id)
  rec=Path(cfg['DataRoot'])/m['recording_file']
  for path,digest in m['hashes'].items():
   if w.file_hash(path)!=digest:raise ValueError('Source changed during review; start a new review')
  folder=Path(work)/section_id;folder.mkdir(exist_ok=True)
- pattern=folder/'frame-%04d.jpg'
- decoded=decode_frames(m['ffmpeg'],rec,folder,s,pattern)
- paths=sorted(folder.glob('frame-*.jpg'))
- times=[float(t) for t in re.findall(r'Parsed_showinfo[^\n]*pts_time:([0-9.]+)',decoded.stderr)]
- if len(times)<len(paths):raise ValueError('Could not map actual decoded frame timestamps')
- frames=[{'source_id':f"{s['start']+times[i]:.3f}",'seconds':s['start']+times[i],'path':str(p)} for i,p in enumerate(paths)]
- if not frames:raise ValueError('No frames decoded for section '+section_id)
+ from video_evidence import frames as cached_frames
+ if db is None:
+  with w.connect() as frame_db:frames=cached_frames(frame_db,cfg,rec,s['start'],s['end'])
+ else:frames=cached_frames(db,cfg,rec,s['start'],s['end'])
  cues=[x for x in m['transcript'] if x['start_seconds'] is not None and float(x['end_seconds'])>=s['start'] and float(x['start_seconds'])<=s['end']]
  packet={'run_key':m['run_key'],'section':s,'recording_file':m['recording_file'],'transcript_file':m['transcript_file'],'transcript':cues,'frames':frames,'limitations':[m['scope'],'Original audio not independently listened to. Transcript timing is supplied, not independently aligned. Empty transcript intervals do not establish silence.']}
+ if m.get('search_mode','old_exact')!='old_exact':
+  from transcript_groups import group_cues
+  readable=[{'text':x['content_text'],'start':float(x['start_seconds']),'end':float(x['end_seconds']),'locator':{'cue':i+1}} for i,x in enumerate(cues)]
+  packet['grouped_reading_context']=[dict(text=g['text'],start_seconds=g['start'],end_seconds=g['end'],cite_original_source_ids=[str(cues[i-1]['id']) for i in g['locator']['cue_ids']]) for g in group_cues(readable)]
+  packet['limitations'].append('Grouped reading context is explanatory only; cite original transcript source IDs and supplied frames, never an invented group ID.')
  for path,digest in m['hashes'].items():
   if w.file_hash(path)!=digest:raise ValueError('Source changed while preparing frames')
  write(folder,'evidence.json',packet)
@@ -245,7 +247,7 @@ def store(db,cfg,work,obj,role,records):
  m=read(work,'module-manifest.json');profile=w.model_profile(db,cfg);db.commit()
  if role=='ARTICLE_REVIEW' and str(profile['id'])!=read(work,'validation-a.json')['profile_id']:
   raise ValueError('Embedding profile changed after A was saved; B will not be stored under a different profile')
- oid=w.one(db,"insert into analysis.agent_outputs(run_id,agent_role,output_json,schema_validated,validation_status,validation_details,contract_schema_sha256,prompt_sha256,model_details) values(%s,%s,%s::jsonb,true,'VALID',%s::jsonb,%s,%s,%s::jsonb) returning id",(m['run_id'],role,w.j(obj),w.j({'checks':'module schema, coverage accounting, supplied citations; not human semantic approval'}),w.sha((w.BASE/'contracts/module-review.schema.json').read_bytes()),w.sha((w.BASE/'agents'/('agent-a-module.md' if role=='CURRENT_STATE' else 'agent-b-gaps.md')).read_bytes()),w.j({'engine':'Codex CLI','release':'0.16'})))['id']
+ oid=w.one(db,"insert into analysis.agent_outputs(run_id,agent_role,output_json,schema_validated,validation_status,validation_details,contract_schema_sha256,prompt_sha256,model_details) values(%s,%s,%s::jsonb,true,'VALID',%s::jsonb,%s,%s,%s::jsonb) returning id",(m['run_id'],role,w.j(obj),w.j({'checks':'module schema, coverage accounting, supplied citations; not human semantic approval'}),w.sha((w.BASE/'contracts/module-review.schema.json').read_bytes()),w.sha((w.BASE/'agents'/('agent-a-module.md' if role=='CURRENT_STATE' else 'agent-b-gaps.md')).read_bytes()),w.j({'engine':'Codex CLI','release':'0.17'})))['id']
  unitmap={str(x['id']):x for x in m['transcript']}
  if role=='ARTICLE_REVIEW':
   for packet in read(work,'gap-evidence.json')['topics']:
@@ -257,6 +259,16 @@ def store(db,cfg,work,obj,role,records):
    uid=c.get('unit_id') or (c.get('source_id') if c.get('kind')=='TRANSCRIPT' else None)
    if uid and uid in unitmap:
     u=unitmap[uid];w.q(db,"insert into analysis.record_evidence(record_id,content_unit_id,relationship,locator,excerpt) values(%s,%s,'SUPPORTS',%s::jsonb,%s) on conflict do nothing",(rid,uid,w.j(u['locator']),c['excerpt']))
+  if role=='CURRENT_STATE':
+   from video_evidence import link
+   for cite in cites:
+    if cite.get('kind')=='FRAME':
+     section_id=details.get('section_id')
+     frame_rows=[]
+     for section in m['sections']:
+      packet_path=Path(work)/section['id']/'evidence.json'
+      if packet_path.exists():frame_rows+=read(packet_path.parent,'evidence.json')['frames']
+     link(db,rid,cite,frame_rows)
   if role=='ARTICLE_REVIEW':
    for ref in details['topic']['observation_ids']:
     upstream=w.one(db,'select id from analysis.records where run_id=%s and record_key=%s',(m['run_id'],'CURRENT_STATE:'+ref))
@@ -280,7 +292,7 @@ def save_a(db,cfg,work):
  result=store(db,cfg,work,obj,'CURRENT_STATE',records);w.q(db,'update analysis.runs set module=%s where run_key=%s',('; '.join(dict.fromkeys(t['module'] for t in index['payload']['topics'])),data['run_key']));db.commit();write(work,'agent-a.json',obj);write(work,'validation-a.json',dict(valid=True,errors=[],**result));return result
 
 def retrieve(db,cfg,work):
- m=read(work,'module-manifest.json');a=read(work,'agent-a.json');topics=[]
+ m=read(work,'module-manifest.json');cfg=dict(cfg,SearchMode=m.get('search_mode','old_exact'));a=read(work,'agent-a.json');topics=[]
  for t in a['payload']['topics']:
   obs=[x for x in a['payload']['observations'] if x['observation_id'] in t['observation_ids']]
   # Audit actual executed queries, not model-invented search terms. Candidate bounds explicit.

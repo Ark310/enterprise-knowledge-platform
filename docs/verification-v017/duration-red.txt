@@ -1,0 +1,14 @@
+....E......
+======================================================================
+ERROR: test_transcript_past_recording_duration_is_rejected (test_v017.DurationTests.test_transcript_past_recording_duration_is_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v017/TD-POC-v0.17/tests/test_v017.py", line 59, in test_transcript_past_recording_duration_is_rejected
+    with self.assertRaises(ValueError):group_cues([{'text':'too late','start':0,'end':9,'locator':{'cue':1}}],duration_seconds=3)
+                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: group_cues() got an unexpected keyword argument 'duration_seconds'
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.014s
+
+FAILED (errors=1)
