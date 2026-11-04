@@ -98,22 +98,20 @@ def retrieve(db,cfg,args):
  normalized=args['normalization'];errors=validate_normalization(row['question'],normalized)
  if errors:raise ValueError('; '.join(errors))
  if normalized['needs_clarification']:raise ValueError('Clarification required before searching')
- import retrieval_v017 as retrieval
- config=dict(cfg,SearchMode='improved_hnsw');packets=[];diagnostics=[]
- for query in list(dict.fromkeys([normalized['normalized_question']]+normalized['search_queries']))[:3]:
-  data=retrieval.search(db,config,query,None,12)
-  packets.extend(evidence_packet(data));diagnostics.append({'query':query,'diagnostics':data['diagnostics']})
- # IDs must be unique across independent searches, original UUIDs remain authoritative.
- evidence=[];seen=set()
- for p in packets:
-  key=(p['kind'],p.get('unit_id',p.get('record_id')))
-  if key in seen:continue
-  seen.add(key);p=dict(p,evidence_id=('S' if p['kind']=='SOURCE' else 'R')+str(len(evidence)+1));evidence.append(p)
- for p in evidence:
+ import knowledge_search
+ previous=[p['snapshot'] for p in w.q(db,'select snapshot from knowledge_qa.evidence where turn_id=%s order by evidence_key',(tid,)).fetchall()]
+ expanding=bool(args.get('expand',False))
+ if expanding:
+  if (row:=w.one(db,'select retrieval from knowledge_qa.turns where id=%s',(tid,)))['retrieval'].get('expanded',False):raise ValueError('Only one bounded retrieval expansion is allowed')
+  if len(args.get('queries',[]))>2 or any(not isinstance(x,str) or not 1<=len(x)<=2000 for x in args.get('queries',[])):raise ValueError('Invalid expansion queries')
+  if len(args.get('read_source_versions',[]))>4:raise ValueError('Too many requested source versions')
+ result=knowledge_search.collect(db,cfg,normalized,args.get('queries') if expanding else None,args.get('read_source_versions') if expanding else None,previous)
+ for p in result['evidence']:
   w.q(db,"""insert into knowledge_qa.evidence(turn_id,evidence_key,content_unit_id,source_version_id,record_id,snapshot)
-    values(%s,%s,%s,%s,%s,%s::jsonb)""",(tid,p['evidence_id'],p.get('unit_id'),p.get('version_id'),p.get('record_id'),w.j(p)))
- result={'evidence':evidence,'searches':diagnostics,'coverage':'Bounded retrieval from imported content and non-rejected saved reviews. Reviews are proposals unless confirmed. Search omissions do not establish absence. Transcripts do not establish visual actions.'}
- w.q(db,'update knowledge_qa.turns set normalization=%s::jsonb,retrieval=%s::jsonb where id=%s',(w.j(normalized),w.j({'searches':diagnostics,'coverage':result['coverage']}),tid));db.commit();return result
+    values(%s,%s,%s,%s,%s,%s::jsonb) on conflict(turn_id,evidence_key) do nothing""",(tid,p['evidence_id'],p.get('unit_id'),p.get('version_id'),p.get('record_id'),w.j(p)))
+ history=w.one(db,'select retrieval from knowledge_qa.turns where id=%s',(tid,))['retrieval'] or {}
+ history['rounds']=history.get('rounds',[])+[{k:v for k,v in result.items() if k!='evidence'}];history['expanded']=expanding or history.get('expanded',False)
+ w.q(db,'update knowledge_qa.turns set normalization=%s::jsonb,retrieval=%s::jsonb where id=%s',(w.j(normalized),w.j(history),tid));db.commit();return result
 
 def finish(db,args):
  ensure(db);tid=str(uuid.UUID(args['turn_id']));row=w.one(db,'select * from knowledge_qa.turns where id=%s for update',(tid,))
@@ -150,4 +148,7 @@ def main(db,cfg,op,args):
   errors=validate_normalization(args['original'],obj) if part=='normalization' else validate_answer(obj,args['evidence']) if part=='answer' else validate_verdict(obj,args['answer']) if part=='verdict' else ['Unknown contract']
   return {'valid':not errors,'errors':errors}
  if op=='qa_ready':ensure(db);return {'ready':True}
+ if op=='qa_diagnose':
+  import knowledge_search
+  return knowledge_search.diagnose(db,cfg,args['query'])
  raise ValueError('Unknown QA operation')

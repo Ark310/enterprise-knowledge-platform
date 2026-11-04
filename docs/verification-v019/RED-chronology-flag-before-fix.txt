@@ -1,0 +1,13 @@
+....E.......
+======================================================================
+ERROR: test_latest_version_request_cannot_skip_chronology_due_to_missing_plan_flag (test_knowledge_search.KnowledgeSearchTests.test_latest_version_request_cannot_skip_chronology_due_to_missing_plan_flag)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v019/TD-POC-v0.19/tests/test_knowledge_search.py", line 43, in test_latest_version_request_cannot_skip_chronology_due_to_missing_plan_flag
+    from knowledge_search import wants_chronology
+ImportError: cannot import name 'wants_chronology' from 'knowledge_search' (/workspace/scratch/aed6c87a9d4c/v019/TD-POC-v0.19/tools/knowledge_search.py)
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.032s
+
+FAILED (errors=1)

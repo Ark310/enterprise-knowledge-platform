@@ -60,7 +60,6 @@ public sealed class KnowledgeRetrieval(IKnowledgeHost host)
             var retrieved=await Work("qa_retrieve",new(){{"normalization",normalized.DeepClone()}});
             File.WriteAllText(Path.Combine(folder,"evidence.json"),retrieved.ToJsonString());
             var evidence=retrieved["evidence"]!.AsArray();
-            if(evidence.Count==0)return await Stop("INSUFFICIENT_EVIDENCE","I couldn't retrieve supporting evidence from the imported dataset. Try a more specific product, topic or video title. This does not prove the information is absent.");
             var packet=new JsonObject{{"original_question",question},{"normalization",normalized.DeepClone()},{"conversation",new JsonArray(history.Select(x=>x.DeepClone()).ToArray())},{"retrieval",retrieved.DeepClone()}};
             JsonNode? feedback=null;
             for(var attempt=0;attempt<2;attempt++)
@@ -70,10 +69,10 @@ public sealed class KnowledgeRetrieval(IKnowledgeHost host)
                 var candidate=await host.Model("answer-"+attempt,Instructions("knowledge-assistant.md","answer")+"\nTASK: ANSWER. Return the answer contract. A correction must address all feedback without inventing evidence.",input.ToJsonString(),folder);
                 await Event("DRAFT",candidate);
                 var av=await Work("qa_validate",new(){{"part","answer"},{"object",candidate.DeepClone()},{"evidence",evidence.DeepClone()}});await Event("VALIDATION",av);
-                host.End(true,"Draft saved; handing off to verification. No answer published yet.");active=false;
+                host.End(true,"Draft ready for evidence checking. No answer published yet.");active=false;
                 if(av["valid"]?.GetValue<bool>()!=true){feedback=av;continue;}
-                if(candidate["status"]!.GetValue<string>()!="ANSWER")
-                    return await Stop(candidate["status"]!.GetValue<string>(),candidate["status"]!.GetValue<string>()=="CLARIFY"?candidate["clarification_question"]!.GetValue<string>():"The retrieved dataset does not establish a supported answer to this question. Try narrowing the scope or importing the relevant source.");
+                if(candidate["status"]!.GetValue<string>()=="CLARIFY")
+                    return await Stop("CLARIFY",candidate["clarification_question"]!.GetValue<string>());
                 host.Begin(folder,"Verifier");active=true;
                 var verificationInput=packet.DeepClone().AsObject();verificationInput["candidate"]=candidate.DeepClone();
                 var verdict=await host.Model("verify-"+attempt,Instructions("knowledge-verifier.md","verdict"),verificationInput.ToJsonString(),folder);
@@ -97,6 +96,20 @@ public sealed class KnowledgeRetrieval(IKnowledgeHost host)
                     return result+localWarning+"\nRun: "+folder;
                 }
                 feedback=new JsonObject{{"verifier",verdict.DeepClone()},{"contract_validation",vv.DeepClone()}};
+                if(attempt==0 && vv["valid"]?.GetValue<bool>()==true)
+                {
+                    var queries=verdict["retrieval_queries"]?.DeepClone()??new JsonArray();
+                    var versions=verdict["read_source_versions"]?.DeepClone()??new JsonArray();
+                    // Insufficient evidence gets an independent check and a bounded follow-up, not a dead end.
+                    if(queries.AsArray().Count>0 || versions.AsArray().Count>0 || candidate["status"]!.ToString()=="INSUFFICIENT_EVIDENCE")
+                    {
+                        if(queries.AsArray().Count==0)queries=new JsonArray(normalized["normalized_question"]!.ToString());
+                        host.Begin(folder,"Knowledge");active=true;
+                        retrieved=await Work("qa_retrieve",new(){{"normalization",normalized.DeepClone()},{"expand",true},{"queries",queries},{"read_source_versions",versions}});
+                        File.WriteAllText(Path.Combine(folder,"evidence-expanded.json"),retrieved.ToJsonString());
+                        evidence=retrieved["evidence"]!.AsArray();packet["retrieval"]=retrieved.DeepClone();
+                    }
+                }
             }
             return await Stop("INSUFFICIENT_EVIDENCE","I could not produce an answer that passed the evidence and relevance checks after one correction. No unverified answer is being shown. The drafts and verifier feedback are saved for diagnosis.");
         }
@@ -112,22 +125,37 @@ public sealed class KnowledgeRetrieval(IKnowledgeHost host)
     public static string Render(string original,JsonNode normalized,JsonNode answer,JsonArray evidence)
     {
         var refs=evidence.ToDictionary(x=>x!["evidence_id"]!.GetValue<string>(),x=>x!);
-        var used=new HashSet<string>();var files=new HashSet<string>();var output=new StringBuilder();
-        output.AppendLine("Evidence-checked answer (AI verification; not human approval)");
+        var fileNumbers=new Dictionary<string,int>();var selected=new Dictionary<string,List<(JsonNode Evidence,string Quote)>>();
+        var output=new StringBuilder();output.AppendLine("Evidence-checked answer (AI verification; not human approval)");
         if(normalized["normalized_question"]!.GetValue<string>()!=original)output.AppendLine("Interpreted question: "+normalized["normalized_question"]);
         foreach(var c in answer["claims"]!.AsArray())
         {
-            var prefix=c!["basis"]!.ToString() switch{"INFERENCE"=>"Reasoned interpretation: ","REVIEW_REPORT"=>"Saved review finding (check approval status): ",_=>""};
-            output.AppendLine("\n"+prefix+c["text"]);
-            foreach(var cite in c["citations"]!.AsArray())
+            var numbers=new HashSet<int>();
+            foreach(var cite in c!["citations"]!.AsArray())
             {
-                var id=cite!["evidence_id"]!.GetValue<string>();used.Add(id);var p=refs[id];files.Add(p["file"]!.ToString());
-                output.AppendLine($"  [{id}] {p["file"]} | {p["locator"]?.ToJsonString()}");
-                output.AppendLine("  Evidence: "+cite["excerpt"]!.GetValue<string>());
+                var p=refs[cite!["evidence_id"]!.ToString()];var file=p["file"]!.ToString();
+                if(!fileNumbers.ContainsKey(file)){fileNumbers[file]=fileNumbers.Count+1;selected[file]=[];}
+                numbers.Add(fileNumbers[file]);
+                if(!selected[file].Any(x=>x.Evidence["evidence_id"]!.ToString()==p["evidence_id"]!.ToString()))selected[file].Add((p,cite["excerpt"]!.ToString()));
             }
+            var prefix=c["basis"]!.ToString() switch{"INFERENCE"=>"Reasoned interpretation: ","REVIEW_REPORT"=>"Saved review finding (approval may be pending): ",_=>""};
+            output.AppendLine("\n"+prefix+c["text"]+" ["+string.Join(", ",numbers.Order())+"]");
         }
-        foreach(var limit in answer["limitations"]!.AsArray())output.AppendLine("Limitation: "+limit);
-        output.AppendLine($"\nUsed {used.Count} evidence passages/review records from {files.Count} distinct source paths/review labels. Retrieval is bounded, not exhaustive.");
+        foreach(var limit in answer["limitations"]!.AsArray())output.AppendLine("Evidence limit: "+limit);
+        output.AppendLine("\nSources:");
+        foreach(var (file,items) in selected)
+        {
+            output.AppendLine($"[{fileNumbers[file]}] {file}");
+            foreach(var (p,quote) in items)
+            {
+                var loc=p["locator"];var label=loc?["start_seconds"] is not null?$"{loc["start_seconds"]}–{loc["end_seconds"]} seconds":loc?["line_start"] is not null?$"lines {loc["line_start"]}–{loc["line_end"]}":loc?["page"] is not null?"page "+loc["page"]:"saved evidence";
+                output.AppendLine("    "+p["evidence_id"]+": "+label);
+            }
+            var sample=items[0];var excerpt=sample.Quote.Replace("\r","").Replace("\n"," ");
+            output.AppendLine("    Passage: "+(excerpt.Length>260?excerpt[..260]+"…":excerpt));
+            if(sample.Evidence["note_last_updated"] is {} date)output.AppendLine("    Note last updated: "+date+" (not deployment date)");
+        }
+        output.AppendLine($"\n{selected.Count} distinct source paths/review labels; {selected.Values.Sum(x=>x.Count)} cited passages. Search and source reads are bounded.");
         return output.ToString();
     }
 }

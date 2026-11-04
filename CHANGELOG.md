@@ -1,3 +1,7 @@
+# v0.19 — improved knowledge-source investigation
+
+See docs/CHANGES-v019.md, START-HERE.md and GPT-Comparison-Prompt-and-Questions.txt. Existing source vectors and Gap POC retained.
+
 # v0.18 — dual POC launcher and verified knowledge retrieval
 
 See `docs/CHANGES-v018.md` and `START-HERE.md`. Existing gap analysis and HNSW comparisons retained.

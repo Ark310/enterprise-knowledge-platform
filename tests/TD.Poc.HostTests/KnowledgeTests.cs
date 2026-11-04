@@ -43,7 +43,7 @@ internal static class KnowledgeTests
         using(var h=new Fixture(source){EmptyEvidence=true})
         {
             var text=await new KnowledgeRetrieval(h).Ask("unknown topic");
-            Check(h.Models.Count==1&&h.FinalStatus=="INSUFFICIENT_EVIDENCE"&&!text.Contains("Select Edit"),"no retrieved evidence cannot yield invented general-knowledge answer");
+            Check(h.Models.Contains("verify-0")&&h.Models.Contains("verify-1")&&h.FinalStatus=="INSUFFICIENT_EVIDENCE"&&!text.Contains("Select Edit"),"no retrieved evidence cannot yield invented general-knowledge answer");
         }
         using(var h=new Fixture(source){Cancel=true})
         {
@@ -60,13 +60,19 @@ internal static class KnowledgeTests
             var qa=new KnowledgeRetrieval(h);var text=await qa.Ask("edit a user");
             Check(h.FinalStatus=="VERIFIED" && text.Contains("Select Edit") && !h.Failed,"local final-file failure cannot contradict a committed verified answer");
         }
+        using(var h=new Fixture(source){InitiallyInsufficient=true})
+        {
+            var text=await new KnowledgeRetrieval(h).Ask("edit a user");
+            Check(h.Models.Contains("verify-0") && h.Models.Contains("verify-1"),"insufficient draft goes to verifier, then final answer is rechecked");
+            Check(h.Operations.Count(x=>x=="qa_retrieve")==2 && h.FinalStatus=="VERIFIED","verifier can trigger one additional investigation round");
+        }
         Console.WriteLine($"Knowledge host checks passed: {count}");return count;
     }
     private sealed class Fixture:IKnowledgeHost,IDisposable
     {
         public string Root{get;}=Path.Combine(Path.GetTempPath(),"td018-qa-"+Guid.NewGuid().ToString("N"));
         private readonly string source;
-        public bool WrongQuote,RejectFirst,RejectAll,Clarify,EmptyEvidence,Cancel,FailFinalSave,Failed,BlockLocalFinal;
+        public bool WrongQuote,RejectFirst,RejectAll,Clarify,EmptyEvidence,Cancel,FailFinalSave,Failed,BlockLocalFinal,InitiallyInsufficient;
         public List<string> Models=[],Operations=[],Begins=[],Events=[];
         public string? FinalStatus;public JsonNode? FinalAnswer;
         public Fixture(string source){this.source=source;foreach(var dir in new[]{"agents","contracts"}){Directory.CreateDirectory(Path.Combine(Root,dir));foreach(var file in Directory.GetFiles(Path.Combine(source,dir)))File.Copy(file,Path.Combine(Root,dir,Path.GetFileName(file)));}}
@@ -77,6 +83,8 @@ internal static class KnowledgeTests
         {
             Models.Add(role);if(Cancel)throw new OperationCanceledException();
             if(role=="normalize")return Task.FromResult<JsonNode>(new JsonObject{{"normalized_question","How do I edit a user?"},{"needs_clarification",Clarify},{"clarification_question",Clarify?"Which product do you mean?":""},{"changes",new JsonArray("spelling")},{"search_queries",new JsonArray()}});
+            if(role.StartsWith("answer")&&EmptyEvidence || role=="answer-0"&&InitiallyInsufficient)return Task.FromResult<JsonNode>(new JsonObject{{"status","INSUFFICIENT_EVIDENCE"},{"clarification_question",""},{"claims",new JsonArray()},{"limitations",new JsonArray("Need source detail.")}});
+            if(role.StartsWith("verify")&&EmptyEvidence || role=="verify-0"&&InitiallyInsufficient)return Task.FromResult<JsonNode>(new JsonObject{{"decision","INSUFFICIENT_EVIDENCE"},{"addresses_question",false},{"normalization_faithful",true},{"premise_supported",true},{"human_readable",true},{"claim_checks",new JsonArray()},{"feedback",new JsonArray("Read user instructions.")},{"retrieval_queries",new JsonArray("user edit instructions")},{"read_source_versions",new JsonArray()}});
             if(role.StartsWith("answer"))return Task.FromResult<JsonNode>(new JsonObject{{"status","ANSWER"},{"clarification_question",""},{"claims",new JsonArray(new JsonObject{{"id","C1"},{"text",WrongQuote?"SECRET_BAD_DRAFT":"Select Edit to edit a user."},{"basis","SOURCE"},{"citations",new JsonArray(new JsonObject{{"evidence_id","S1"},{"excerpt",WrongQuote?"Invented quote":"Select Edit"}})}})},{"limitations",new JsonArray("Saving is not demonstrated.")}});
             var reject=RejectAll||RejectFirst&&role=="verify-0";
             return Task.FromResult<JsonNode>(new JsonObject{{"decision",reject?"REVISE":"PASS"},{"addresses_question",true},{"normalization_faithful",true},{"premise_supported",true},{"human_readable",true},{"claim_checks",new JsonArray(new JsonObject{{"claim_id","C1"},{"supported",!reject},{"reason",reject?"Fix scope":"Directly supported"}})},{"feedback",new JsonArray(reject?"Narrow the answer":"")}});

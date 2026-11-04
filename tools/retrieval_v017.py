@@ -76,7 +76,7 @@ def build_indexes(db,cfg):
         w.q(db,'select pg_advisory_unlock(107010)');db.autocommit=False
     return health(db,cfg)
 
-def base_sql(mode,profile):
+def base_sql(mode,profile,substantive_only=False):
     """Full alternate extraction is selected only after every passage has this profile's vector."""
     validate_mode(mode);p=str(uuid.UUID(str(profile['id'])))
     choice='e.is_active'
@@ -84,14 +84,15 @@ def base_sql(mode,profile):
         # Profile-scoped readiness avoids switching to a partially embedded replacement.
         grouped=f"g.processor_version='{VERSION}' AND g.config_sha256='{CONFIG_HASH}' AND g.status='COMPLETE' AND EXISTS(select 1 from knowledge.content_units gu where gu.extraction_id=g.id and gu.unit_type='PASSAGE') AND NOT EXISTS(select 1 from knowledge.content_units gu where gu.extraction_id=g.id and gu.unit_type='PASSAGE' AND NOT EXISTS(select 1 from retrieval.content_embeddings ge where ge.content_unit_id=gu.id and ge.profile_id='{p}'::uuid))"
         choice=f"((e.processor_version='{VERSION}' AND e.config_sha256='{CONFIG_HASH}' AND e.status='COMPLETE' AND ({grouped.replace('g.','e.')})) OR (e.is_active AND NOT EXISTS(select 1 from knowledge.extractions g where g.source_version_id=v.id AND {grouped})))"
+    substantive="AND lower(v.storage_uri) !~ '/(index[.](json|md)|_space[.]json)$'" if substantive_only else ''
     return f"""select u.*,v.source_id,v.id version_id,v.evidence_role,v.storage_uri,s.title,s.product
     from knowledge.content_units u join knowledge.extractions e on e.id=u.extraction_id
     join knowledge.source_versions v on v.id=e.source_version_id join knowledge.sources s on s.id=v.source_id
     where v.lifecycle_status='ACTIVE' AND u.unit_type<>'SECTION' AND u.content_status='USABLE'
-    AND {choice} AND (%s::text IS NULL OR v.evidence_role=%s)"""
+    AND {choice} {substantive} AND (%s::text IS NULL OR v.evidence_role=%s)"""
 
-def queries(mode,profile):
-    spec=index_spec(profile['id'],profile['dimensions']);base=base_sql(mode,profile)
+def queries(mode,profile,substantive_only=False):
+    spec=index_spec(profile['id'],profile['dimensions']);base=base_sql(mode,profile,substantive_only)
     distance='e.embedding <=> %s::vector'
     if mode=='improved_hnsw':distance=f"e.embedding::halfvec({spec['dimensions']}) <=> %s::halfvec({spec['dimensions']})"
     # No materialized/ranked wrapper before the ordered ANN scan. EXISTS checks eligibility per candidate.
@@ -113,9 +114,9 @@ def plan_indexes(plan):
             for v in x:visit(v)
     visit(plan);return found
 
-def execute(db,profile,text,queryvec,mode,role,limit,candidates=100,force_ann=False):
+def execute(db,profile,text,queryvec,mode,role,limit,candidates=100,force_ann=False,substantive_only=False):
     validate_mode(mode);limit=max(1,min(int(limit),80));candidates=max(limit,min(int(candidates),1000))
-    base,semantic,lexical=queries(mode,profile);args=(role,role,queryvec,queryvec,candidates)
+    base,semantic,lexical=queries(mode,profile,substantive_only);args=(role,role,queryvec,queryvec,candidates)
     start=time.perf_counter()
     # Exact baseline is explicit even after HNSW indexes exist. LOCAL settings end with transaction.
     w.q(db,'SET LOCAL enable_indexscan=off');w.q(db,'SET LOCAL enable_bitmapscan=on')

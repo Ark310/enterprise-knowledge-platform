@@ -1,0 +1,23 @@
+PASS QA19 catalog chunks never appear as factual body evidence
+PASS QA19 ordinary release question excludes unrelated saved reviews
+PASS QA19 target article body retrieved despite many catalogs
+PASS QA19 QA19 uses actual halfvec HNSW path
+PASS QA19 note date metadata carried into evidence
+PASS QA19 partial extraction prevents claiming exhaustive release coverage
+PASS QA19 release comparison uses numeric order
+PASS QA19 later release inventory represented rather than assuming top semantic result latest
+PASS QA19 matching article receives complete usable-text read when within budget
+PASS QA19 expansion preserves prior citation IDs
+PASS QA19 second investigation expansion is blocked
+PASS QA19 diagnostic distinguishes text present from missing vectors
+PASS QA19 verifier cannot open arbitrary source IDs outside its packet
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v019/TD-POC-v0.19/tests/integration_v019.py", line 65, in <module>
+    if __name__=='__main__':run()
+                            ^^^^^
+  File "/workspace/scratch/aed6c87a9d4c/v019/TD-POC-v0.19/tests/integration_v019.py", line 62, in run
+    check(any(p.get('version_id')==target for p in selected['evidence']),'keyword diversity before global cap preserves a short unembedded target beside a 200-plus-chunk article')
+  File "/workspace/scratch/aed6c87a9d4c/v019/TD-POC-v0.19/tests/integration_v019.py", line 14, in check
+    def check(ok,name):assert ok,name;checks.append(name);print('PASS QA19',name,flush=True)
+                              ^^
+AssertionError: keyword diversity before global cap preserves a short unembedded target beside a 200-plus-chunk article

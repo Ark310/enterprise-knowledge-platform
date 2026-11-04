@@ -32,6 +32,21 @@
             "maxLength": 12000
           },
           "maxItems": 2
+        },
+        "keywords": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100
+          },
+          "maxItems": 8
+        },
+        "include_reviews": {
+          "type": "boolean"
+        },
+        "latest_release": {
+          "type": "boolean"
         }
       },
       "required": [
@@ -182,6 +197,23 @@
             "maxLength": 2000
           },
           "maxItems": 15
+        },
+        "retrieval_queries": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "maxItems": 2
+        },
+        "read_source_versions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F-]{36}$"
+          },
+          "maxItems": 4
         }
       },
       "required": [
