@@ -6,7 +6,7 @@ function Step([string]$name,[string]$script){
  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot $script)
  if($LASTEXITCODE -ne 0){throw ($name+' failed. Fix the error above and rerun Setup-POC.cmd.')}
 }
-Write-Host 'TD POC v0.17 setup. Existing PostgreSQL sources, vectors and reviews are preserved.'
+Write-Host 'TD POC v0.18 dual-POC setup. Existing PostgreSQL sources, vectors and reviews are preserved.'
 Write-Host 'Requires installed Python 3.11+, .NET 10 SDK, Ollama, Codex, PostgreSQL and the approved schema.'
 $configPath=Join-Path $root 'config\appsettings.json'
 $config=Get-Content -LiteralPath $configPath -Raw|ConvertFrom-Json
@@ -44,4 +44,4 @@ try {
 }finally{$env:CODEX_HOME=$oldCodexHome}
 & dotnet run --project src\TD.Poc.Console\TD.Poc.Console.csproj --configuration Release --no-build -- --preflight
 if($LASTEXITCODE -ne 0){throw 'POC readiness check failed. See the activity window and runtime logs.'}
-Write-Host 'SETUP PASSED. Run Start-POC.cmd. Startup scans only; /process manually imports and embeds.'
+Write-Host 'SETUP PASSED. Run Start-POC.cmd and choose 1 (Gap) or 2 (Retrieval). Processing stays manual.'

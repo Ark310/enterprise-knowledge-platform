@@ -1,0 +1,199 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "normalization": {
+      "type": "object",
+      "properties": {
+        "normalized_question": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 12000
+        },
+        "needs_clarification": {
+          "type": "boolean"
+        },
+        "clarification_question": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "changes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "maxItems": 15
+        },
+        "search_queries": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 12000
+          },
+          "maxItems": 2
+        }
+      },
+      "required": [
+        "normalized_question",
+        "needs_clarification",
+        "clarification_question",
+        "changes",
+        "search_queries"
+      ],
+      "additionalProperties": false
+    },
+    "answer": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": [
+            "ANSWER",
+            "INSUFFICIENT_EVIDENCE",
+            "CLARIFY"
+          ]
+        },
+        "clarification_question": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "claims": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "maxLength": 20
+              },
+              "text": {
+                "type": "string",
+                "maxLength": 4000
+              },
+              "basis": {
+                "enum": [
+                  "SOURCE",
+                  "INFERENCE",
+                  "REVIEW_REPORT"
+                ]
+              },
+              "citations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "evidence_id": {
+                      "type": "string",
+                      "maxLength": 20
+                    },
+                    "excerpt": {
+                      "type": "string",
+                      "maxLength": 4000
+                    }
+                  },
+                  "required": [
+                    "evidence_id",
+                    "excerpt"
+                  ],
+                  "additionalProperties": false
+                },
+                "maxItems": 8
+              }
+            },
+            "required": [
+              "id",
+              "text",
+              "basis",
+              "citations"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 20
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "maxItems": 12
+        }
+      },
+      "required": [
+        "status",
+        "clarification_question",
+        "claims",
+        "limitations"
+      ],
+      "additionalProperties": false
+    },
+    "verdict": {
+      "type": "object",
+      "properties": {
+        "decision": {
+          "enum": [
+            "PASS",
+            "REVISE",
+            "INSUFFICIENT_EVIDENCE"
+          ]
+        },
+        "addresses_question": {
+          "type": "boolean"
+        },
+        "normalization_faithful": {
+          "type": "boolean"
+        },
+        "premise_supported": {
+          "type": "boolean"
+        },
+        "human_readable": {
+          "type": "boolean"
+        },
+        "claim_checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "claim_id": {
+                "type": "string",
+                "maxLength": 20
+              },
+              "supported": {
+                "type": "boolean"
+              },
+              "reason": {
+                "type": "string",
+                "maxLength": 2000
+              }
+            },
+            "required": [
+              "claim_id",
+              "supported",
+              "reason"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 20
+        },
+        "feedback": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "maxItems": 15
+        }
+      },
+      "required": [
+        "decision",
+        "addresses_question",
+        "normalization_faithful",
+        "premise_supported",
+        "human_readable",
+        "claim_checks",
+        "feedback"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

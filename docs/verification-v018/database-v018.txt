@@ -1,0 +1,14 @@
+PASS QA DB migration repeats without resetting data
+Search improved_hnsw: HNSW; 2 ranked passages; original-vector reranking
+Search improved_hnsw: HNSW; 2 ranked passages; original-vector reranking
+PASS QA DB QA forces actual HNSW even when inherited config says old_exact
+PASS QA DB multi-query evidence deduplicated with unique IDs
+PASS QA DB verified answer and normalized question persisted
+PASS QA DB normalization, draft and verification audit persisted
+PASS QA DB QA history does not contaminate source vectors
+PASS QA DB terminal turns cannot be mutated with new drafts
+PASS QA DB citation IDs from another turn cannot be reused without its evidence
+PASS QA DB review rejected during answer generation cannot be published
+PASS QA DB review whose underlying source changes cannot be published
+PASS QA DB multiple questions reuse one conversation identity
+QA DATABASE INTEGRATION PASSED: 11 checks

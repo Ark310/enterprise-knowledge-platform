@@ -1,179 +1,178 @@
-# TD POC v0.17 — upgrade and test, step by step
+# TD POC v0.18 — start here
 
-This uses your existing `knowledge_poc` database. Do not delete it, rerun the fresh schema installer, or delete v0.16. Production-schema redesign and the writer/ReadMe work remain paused.
+Two programs, one dataset. **Codex reasons; local Qwen generates embeddings.**
 
-## What changed
+## First use after extracting this release
 
-- Original transcript cues and all old citation IDs remain intact. New grouped passages are stored alongside them; unchanged documents reuse their vectors.
-- Grouping starts around 30 seconds, ends at sentence boundaries where possible, and normally limits passages to 60 seconds/1,800 characters. Long pauses break groups. Oversized individual cues split by characters while retaining original timestamps/character offsets; timestamps are not invented. These are configurable-code POC defaults, not proven ideal semantic topic boundaries.
-- Grouped passages retain cue provenance, parent section and neighbouring context. A matching video is linked to its exact imported revision; duration bounds are checked. Filename pairing does not prove speech alignment. Standalone transcripts remain explicitly marked unpaired.
-- Selected video frames are reused from a hash-verified local cache. PostgreSQL stores frame locators/hashes and finding links, not images or MP4 bytes. This is not OCR, exhaustive video understanding, or automatic frame embedding.
-- Keyword search remains. Halfvec HNSW retrieves candidates; original vectors rerank them. Source and saved-finding indexes are separate. The actual database query plan is reported.
-- A/B/C, handoff validation, T02/T04/T05 and whole-module /review remain available. Agent A still cites original cues/actual frames; grouped context helps reading without replacing those citation IDs.
-
-## 1. Stop the old app
-
-Finish any active processing first. Type `/exit` in the main console and close completed worker/activity windows. Keep `C:\TD-POC-v0.16` as your rollback copy.
-
-## 2. Extract this release
-
-Extract the ZIP so this file and `Setup-POC.cmd` are directly inside:
-
-`C:\TD-POC-v0.17`
-
-Do not copy `.venv`, `bin`, `obj`, passwords or Codex login files from an older folder. This release recreates its environment. Your data folder stays at `C:\S3 bucket Data`.
-
-## 3. Back up the current database
-
-In a new CMD window:
+1. Finish active work and close the older POC. Back up `knowledge_poc` in pgAdmin.
+2. Extract to **C:\TD-POC-v0.18**. Keep your source folder **C:\S3 bucket Data** where it is. Keep the old release until this one is verified.
+3. Open CMD using the same Windows account you normally use:
 
 ```bat
-cd /d C:\TD-POC-v0.17
-"C:\Program Files\PostgreSQL\17\bin\pg_dump.exe" -h localhost -p 5432 -U postgres -Fc -f "C:\TD-POC-v0.17\knowledge_poc-before-v017.dump" knowledge_poc
-```
-
-Enter your PostgreSQL password when asked. If PostgreSQL is installed elsewhere or uses another username/port, adjust those values. Confirm the command finishes without errors and the dump exists. This command does not alter your database. Keep the dump private.
-
-## 4. Run setup once
-
-```bat
+cd /d C:\TD-POC-v0.18
 Setup-POC.cmd
 ```
 
-It sets up Python dependencies, retains the existing local Ollama model, builds/tests the solution, asks for the data folder and database credentials, applies additive POC changes, and builds/verifies HNSW indexes for the detected model profile. It then checks video tools and the isolated Codex login. Complete login if prompted.
+Accept your existing data folder, database host `localhost`, port `5432`, username `postgres` (if that is your existing account), and enter its database password privately. Complete Codex ChatGPT login if prompted. This single script installs the local Python environment, retains the existing embedding model, builds the solution, stores the encrypted DB connection, applies additive migrations, verifies/builds HNSW indexes and checks readiness. It does not recreate your database or reimport the dataset. It requires the previously installed approved schema.
 
-Database prompts for your same-machine setup normally are:
-- Host: press Enter for `localhost`.
-- Port: press Enter for `5432`.
-- Username: press Enter for `postgres` if that is still your account.
-- Password: your PostgreSQL password, not your Windows/ChatGPT password.
+**Do not run the fresh schema installer or delete the database.** The new `knowledge_qa` tables are added alongside existing records. Do not copy credentials into appsettings.json. Setup creates a new isolated Codex login directory; no need to delete your old one.
 
-Index creation can take several minutes and uses CPU/RAM in PostgreSQL, separately from the embedding GPU. Source/finding vectors are retained at full precision; the index uses half precision. Setup validates dimensions; it does not assume 2,650 or 3,650. Earlier model output was 2,560.
-
-If an import is running, index setup refuses to proceed. Finish it and run `Build-Search-Indexes.cmd`. If setup fails, stop and retain its exact error; do not reset the database.
-
-## 5. Start the POC and prepare the improved transcripts
+4. After `SETUP PASSED`, run:
 
 ```bat
 Start-POC.cmd
 ```
 
-Startup scans only. It now shows transcript grouping pending separately from unchanged original files.
+Choose **1** for the existing Gap Analysis or **2** for Knowledge Retrieval. `/exit` returns to the menu. Enter **0** to close it. Scripts are run in Windows CMD, whereas `/ask` and `/review` are entered inside the selected POC.
 
-In the main POC window:
+## 1 — Gap Analysis
 
-```text
-/process
-```
-
-A worker window opens. Let it finish; do not launch another worker or a test simultaneously. It reuses existing extractions/vectors, prepares grouped SRT passages and embeds only missing/new units. Unsupported video/image formats can still show BLOCKED as in v0.16; that is separate from a failed transcript job. The first grouping pass may take time across your transcript collection.
-
-Expected: `failed: 0`, plus `grouped_embedded` showing new grouped vectors. `embedded` is the existing source-unit counter; `grouped_embedded` is an additional counter, not a total. Fix any failure before using its affected transcript.
-
-Then run in the main window:
-
-```text
-/search-health
-```
-
-Check `hnsw_ready: true`, the actual `dimensions`, and `grouped_transcripts`: ready should increase and pending should ideally be zero. If all transcripts remain pending, do not interpret a three-mode run as a chunking improvement.
-
-## 6. Compare the three searches
-
-These commands run database searches; they do not invoke Codex or create a new gap-analysis run:
-
-```text
-/compare How do I reset a user's password in User Master?
-/compare How are user permissions and security roles configured?
-/compare What does the training material say about confirmations?
-```
-
-Each uses one question embedding and one repeatable-read database snapshot:
-
-| Mode | What it searches | What it demonstrates |
-|---|---|---|
-| old_exact | Original cue-sized passages and existing documents | Baseline |
-| improved_exact | Ready grouped transcript passages and the same existing documents | Effect of grouping/context |
-| improved_hnsw | Exactly the same eligible improved corpus as improved_exact | ANN retrieval versus exact |
-
-The main window reports database milliseconds, matches, actual HNSW use and semantic recall@k. Full results, paths, locators, neighbours and query plans are saved under `runtime\comparisons` as JSON and readable Markdown. Open the Markdown to compare evidence; share the matching JSON for diagnosis. No assertion is made that overlapping results are factually correct.
-
-`old_exact` versus `improved_exact` may have different chunk IDs; compare source/version coverage and completeness. ANN recall compares only improved exact semantic neighbours with improved HNSW semantic neighbours. Hybrid top-k overlap is reported separately. An empty exact reference has undefined recall (`null`), not 100%.
-
-If HNSW use is false, the result is not an ANN performance measurement. Comparisons request the ANN access path and retain the actual plan; missing/invalid indexes require `Build-Search-Indexes.cmd`. Very selective filters can still reduce available ANN candidates; a higher recall budget may be needed. No claim of guaranteed 100% recall or universal speedup.
-
-Run each question a few times to see warm-cache behaviour. Timings exclude model loading, query embedding and Codex reasoning; the fixed mode order is not a rigorous production latency benchmark.
-
-## 7. Ask the user-facing agent
-
-```text
-/mode improved_hnsw
-/search How do I reset a user's password in User Master?
-```
-
-`/search` invokes Agent C using retrieved evidence. To try another mode:
-
-```text
-/mode old_exact
-/search How do I reset a user's password in User Master?
-/mode improved_exact
-/search How do I reset a user's password in User Master?
-/mode improved_hnsw
-```
-
-Mode selection applies to this session and to new reviews/tests. A review pins its mode at creation so an A→B handoff cannot silently change search mode. Source-group permissions are the existing internal POC scope; this is not the paused production tenant-isolation feature.
-
-## 8. Run the same agent tests
-
-Start with one test and wait for it to finish:
-
-```text
-/test T02
-```
-
-At its recording prompt, enter only:
-
-```text
-current-state\System Admin_ Security_User Master Walkthrough.mp4
-```
-
-Agent A activity appears in its window, then Agent B, then the main console reports the saved run folder. After checking that result, run `/test T04`, then `/test T05` using the same recording path. The original test requests are unchanged. Outcomes still require evidence/human review; this upgrade does not predeclare their answers.
-
-For the complete module gap list:
+Existing `/review`, `/results latest`, `/ask`, `/resume`, `/test T02`, `/test T04`, `/test T05`, `/compare` and `/mode` remain on this side. Existing reviews and vectors remain in Postgres. Startup scans only; `/process` imports explicitly. New recordings still need matching SRTs, then `/scan`, `/process`, wait for completion, and `/review` with the recording path.
 
 ```text
 /review
+current-state\System Admin_ Security_User Master Walkthrough.mp4
 ```
 
-Enter the same relative video path. Then:
+The path is entered at the following prompt, not as a second command on the same line. You do not need a new review just to test knowledge questions against already imported transcripts.
+
+## 2 — Knowledge Retrieval and Verification
+
+Ask naturally. The Knowledge Assistant fixes obvious typos, searches the imported sources using HNSW and drafts a cited answer. The Verifier checks the original question, assumptions, answer and evidence. Each role gets an activity window; the final answer appears in the main console. These windows show work status and checks, not private chain-of-thought.
+
+- General reasoning/common sense can interpret and explain evidence. Product facts still need source evidence. Inferences are labelled.
+- An ambiguous product, version or source name triggers clarification instead of a guessed answer.
+- A rejected answer gets **one** correction attempt. If still unsupported, no unverified answer is shown.
+- A saved gap finding is explicitly labelled as a review proposal unless confirmed; it is not automatically product truth.
+- A question about two videos must show citations from both or disclose that the comparison is incomplete. Imported SRT evidence reports speech, not independent visual inspection.
+- Retrieval is bounded. No result does not prove absence from the entire corpus.
+- AI evidence-checking is not a guarantee of factual accuracy or human approval.
+
+Commands:
 
 ```text
-/results latest
-/ask Summarize the missing documentation and the topics needing review.
-/ask Why does User identity and credentials need review? Cite the evidence and limitations.
+/ask How do I change a user's password? Cite the article instructions.
+/new
+/last
+/status
+/scan
+/process
+/help
+/exit
 ```
 
-`/compare` measures retrieval. It does not automatically run all three full A/B workflows. To compare full workflows, choose a mode, start a new `/review`, save/export it, choose the next mode and start another new review. These remain stochastic reasoning runs, not a controlled search-only benchmark.
+`/new` clears conversation context and starts a new session; stored history remains. `/last` repeats the last result in the current conversation. Plain questions also work. `/process` opens the shared import worker; wait for it to finish before asking questions. **Unimported files are not yet searchable.** Use `/exit` and menu 1 for gap-review commands.
 
-## 9. Export and send results
+The retrieval program always uses `improved_hnsw`; comparison modes remain in Gap Analysis. Default per-call reasoning timeout is five minutes, configurable as `KnowledgeAgentTimeoutMinutes` in appsettings.json. Ctrl+C in the main window or Q in the active role window cancels active work; it does not mean the run succeeded. Normal model progress can take time; heartbeat/activity logs distinguish an active call from silence.
 
-From a second CMD window:
+## Try these demo checks
 
+1. Typo handling:
+```text
+/ask how do i chnage a usres pasword in TD? give me the documented steps and cite the article
+```
+Check: normalized intent is correct; actual instructions have citations; no invented save/login success.
+
+2. Two videos known from your previous exports:
+```text
+/ask Compare "Adding a New User in User Master" and "Add Users and Change Permissions" using their imported transcripts. What does each explain about user setup and permissions? Cite both source paths and timestamps. If evidence for either video is missing, say so.
+```
+Check: citations from two DISTINCT transcript paths, or an honest partial answer. Both names occur in the existing-assets training-video inventory; this does not guarantee every relevant passage will rank into the bounded packet.
+
+3. Challenge a premise:
+```text
+/ask Does the System Admin Security User Master Walkthrough prove that a new user was successfully created and saved? Separate spoken instructions from demonstrated outcomes.
+```
+Check: it should not claim a successful creation without evidence. A transcript-only answer must explicitly state that it cannot independently verify visual outcomes.
+
+4. Saved gap finding:
+```text
+/ask What documentation discrepancy did the saved User Master review identify about 2FA authentication methods? Explain why it needs rework, cite the saved finding, and distinguish proposed findings from confirmed product facts.
+```
+Check: it reports Call/SMS documentation versus the review's reported additional methods only when those passages/findings were retrieved; it must not invent a universal 2FA procedure.
+
+5. Covered finding:
+```text
+/ask Why did the saved User Master review mark identity and credentials as covered? What evidence supports that, and what does it not prove?
+```
+Check: Login Name/Full Name/Password/Confirm Password/Email support, bounded scope, no proof of successful user creation. Topic IDs differ by run, so use subject names unless naming a particular run.
+
+6. Missing evidence:
+```text
+/ask What is the password for my TD administrator account?
+```
+Check: no guessing or invented credentials. Dataset-only means it cannot invent confidential facts.
+
+If a question returns insufficient evidence, keep its export; that is useful test evidence, not a reason to force the agent to agree.
+
+## Export a question for diagnosis
+
+In a SECOND CMD window:
 ```bat
-cd /d C:\TD-POC-v0.17
-Export-LatestRun.cmd
+cd /d C:\TD-POC-v0.18
+Export-LatestRetrieval.cmd
 ```
 
-The run ZIP includes its referenced cached frames/diagnostics and `referenced-media-map.json`; it does not include unrelated cached videos or credentials. For search comparisons, also send the relevant `.json` and `.md` files from `runtime\comparisons`. Exported material contains internal evidence; use your authorized review channel.
+This creates `TD-knowledge-<timestamp>-<id>.zip` in the solution folder. It includes the original/normalized question, evidence snapshot, drafts, verification and logs for the latest question. It excludes DB secrets and Codex login files. It can export a live best-effort snapshot; completed exports are easier to analyze. Gap reviews keep using `Export-LatestRun.cmd`. Exported excerpts may contain internal information; use your existing review audience.
 
-## 10. Add another recording later
+## Where the instructions and code are
 
-Copy the MP4 and matching-basename SRT completely into `current-state`. Then `/scan`, `/process`, wait for completion, `/search-health`, and `/review` with its relative path. Do not modify media/transcripts during processing or a review. Timing failures are reported; timestamps are never silently repaired.
+| File/project | Purpose |
+|---|---|
+| `agents/knowledge-assistant.md` | Editable normalization, answering and reasoning rules. Read this first. |
+| `agents/knowledge-verifier.md` | Editable evidence/relevance and readability checks. |
+| `contracts/knowledge-qa.schema.json` | Strict machine-readable handoff formats. Keep instructions aligned with it. |
+| `src/TD.Poc.Launcher` | Menu and selected program launch. Set this as Startup Project in Visual Studio. |
+| `src/TD.Poc.Console` | Existing Gap Analysis console. Name retained for script compatibility. |
+| `src/TD.Poc.Retrieval.Console` | Separate question-answering console. |
+| `src/TD.Poc.Core/KnowledgeRetrieval.cs` | Handoffs, correction limit and final-answer publication. |
+| `tools/knowledge_qa.py` | Citation/contract gates and retrieval history persistence. |
+| `tools/retrieval_v017.py` | Existing shared HNSW/vector search and grouped-transcript retrieval. |
+| `database/migrations/018-knowledge-qa.sql` | Additive retrieval-history tables. |
+| `runtime/knowledge-runs` | Per-question outputs and activity logs. |
 
-## Roll back the application
+In Visual Studio: open `TD.Poc.sln`, right-click **TD.Poc.Launcher** → **Set as Startup Project**, then run. Both application projects share the existing infrastructure. Setup must have completed first.
 
-Close v0.17 and start the retained v0.16 folder. Original active extractions, original vectors and historical IDs were not replaced. Leave the additive tables/indexes in place while investigating; do not drop them or restore over live data automatically. A database restore is a separate deliberate recovery action, not the normal application rollback.
+## What is stored in PostgreSQL?
 
-## What was verified here
+| Table | Purpose |
+|---|---|
+| `knowledge_qa.sessions` | Conversation identity. |
+| `knowledge_qa.turns` | Original question, normalized question, status and final approved-by-verifier answer. |
+| `knowledge_qa.events` | Drafts, verifier decisions and validation outcomes, including failures. |
+| `knowledge_qa.evidence` | Exact text snapshots and links to original content units/source versions or saved gap findings. |
 
-See `docs\verification-v017` and `VALIDATION-v017.md`. No live connection was made to your server; no real Codex/Ollama end-to-end run was performed here. Complete the above checks on your Windows machine before a demo. The production schema, cross-client sharing, privacy/approval policy and writer/ReadMe workflow are explicitly parked.
+Original sources and vectors remain in `knowledge` and `retrieval`. Existing gap results remain in `analysis`. **Conversation drafts and answers are NOT automatically embedded as trusted knowledge.** There is no model fine-tuning or self-learning from unchecked chat answers.
+
+```sql
+-- Latest retrieval questions, outcomes and their saved final answers.
+SELECT t.id, t.created_at, t.question,
+       t.normalization->>'normalized_question' AS interpreted_question,
+       t.status, t.answer, t.completion_note,
+       (SELECT count(*) FROM knowledge_qa.evidence e WHERE e.turn_id=t.id) AS evidence_items
+FROM knowledge_qa.turns t
+ORDER BY t.created_at DESC
+LIMIT 20;
+```
+
+This lists each question, its spelling-corrected interpretation, outcome, final answer and how many passages/review records were supplied. Evidence count is NOT the number cited or the number of distinct videos. A turn in PROCESSING after an abrupt machine/console shutdown is an interrupted audit record; start a new question. It does not lock or corrupt the source dataset.
+
+## Simple workflow
+
+```mermaid
+flowchart TD
+ L[Start menu] --> G[1: Existing gap analysis]
+ L --> Q[2: Knowledge Assistant]
+ Q --> S[Shared HNSW evidence search]
+ S --> D[Cited draft]
+ D --> V[Verifier]
+ V -->|Pass| R[Save and display answer]
+ V -->|One correction| Q
+ V -->|Still unsupported| U[Explain uncertainty]
+ S -.-> A[Separate question audit history]
+ V -.-> A
+```
+
+## Verification limits
+
+See `VALIDATION-v018.md` for exact checks and environment limitations. Windows setup/UI and your live Codex/Ollama/Postgres combination must be smoke-tested on your server. A verifier can still make a semantic mistake; retain SME review for important product decisions.

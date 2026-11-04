@@ -145,6 +145,7 @@ def migration(db):
  require_db(db)
  q(db,(BASE/'database/migrations/010-local-files.sql').read_text(encoding='utf-8-sig'))
  q(db,(BASE/'database/migrations/017-search-video.sql').read_text(encoding='utf-8-sig'))
+ q(db,(BASE/'database/migrations/018-knowledge-qa.sql').read_text(encoding='utf-8-sig'))
 
 def ollama(cfg,endpoint,body=None):
  url=cfg.get('OllamaUrl','http://localhost:11434').rstrip('/')+endpoint
@@ -463,11 +464,15 @@ def main(req):
  if op=='warm':return {'dimensions':len(embed(cfg,'TD startup model readiness check')),'model':cfg['EmbeddingModel']}
  if op=='validate':return {'errors':validate_contract(args['object'])}
  with connect() as db:
+  if op.startswith('qa_'):
+   import knowledge_qa
+   require_db(db)
+   return knowledge_qa.main(db,cfg,op,args)
   if op.startswith('module_'):
    import module_review
    require_db(db)
    return module_review.main(db,cfg,op,args)
-  if op=='migrate':migration(db);return {'migration':'010-local-files + 017-search-video applied; historical records retained','database':'knowledge_poc'}
+  if op=='migrate':migration(db);return {'migration':'010-local-files + 017-search-video + 018-knowledge-qa applied; historical records retained','database':'knowledge_poc'}
   if op in ('build_indexes','compare_search','search_health'):
    import retrieval_v017
    if op=='build_indexes':return retrieval_v017.build_indexes(db,cfg)

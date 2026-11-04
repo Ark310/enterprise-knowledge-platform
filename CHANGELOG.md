@@ -1,3 +1,7 @@
+# v0.18 — dual POC launcher and verified knowledge retrieval
+
+See `docs/CHANGES-v018.md` and `START-HERE.md`. Existing gap analysis and HNSW comparisons retained.
+
 # 0.17 — transcript context and measured retrieval comparisons
 
 - Add grouped timestamped SRT passages alongside immutable legacy cues; original citation IDs remain valid. Grouped readiness requires all vectors for the selected profile. Other file parsers and vectors are reused.

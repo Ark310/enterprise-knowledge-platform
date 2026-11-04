@@ -82,5 +82,6 @@ try
     try{await BatchRecovery.Run((attempt,feedback)=>{generated++;throw new OperationCanceledException();},()=>Task.FromResult<JsonNode>(new JsonObject{{"valid",true}}));}catch(OperationCanceledException){propagated=true;}
     Check(propagated&&generated==1,"cancellation propagates without retry");
     Console.WriteLine($"Host tests passed: {passed}");
+    await KnowledgeTests.Run(PocPaths.FindRoot());
 }
 finally{Directory.Delete(dir,true);}
