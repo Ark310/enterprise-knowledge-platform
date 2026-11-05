@@ -1,82 +1,92 @@
-# TD POC v0.19 — retest guide
+# TD v0.20 — setup and fair POC 2 retest
 
-This release improves **option2: Knowledge Retrieval and Verification**. Option1 remains the existing Gap Analysis. Codex reasons, local Qwen embeds, and PostgreSQL retains the existing data/vectors.
+This release improves **Knowledge Retrieval and Verification (menu 2)**: question-focused source reading, selected video frames, and a verifier coverage check. Gap Analysis's Agent A/B workflow is retained.
 
-## Start afresh without deleting your data
+## 1. Prepare
+1. Close the older POC and its activity/processing windows.
+2. Back up `knowledge_poc` in pgAdmin. Keep the old folder as a fallback.
+3. Extract this ZIP so `Setup-POC.cmd` is directly inside `C:\TD-POC-v0.20`.
+4. Keep your data in `C:\S3 bucket Data`. Keep matching MP4/SRT files together. Do not recreate the database or run the fresh-schema SQL installer.
 
-1. Finish active work and close the old POC. Back up `knowledge_poc` in pgAdmin. Keep the old release folder.
-2. Extract the ZIP to **C:\TD-POC-v0.19**. Keep **C:\S3 bucket Data** where it is. Do not delete/recreate Postgres or rerun the fresh-schema installer.
-3. Open CMD with your usual Windows account:
+## 2. Run setup once
+Open CMD under the same Windows account you normally use:
 
-```bat
-cd /d C:\TD-POC-v0.19
+```cmd
+cd /d C:\TD-POC-v0.20
 Setup-POC.cmd
 ```
 
-Accept your existing data path, host `localhost`, port `5432`, username `postgres` if that is your current account, and enter its DB password privately. Complete the isolated Codex ChatGPT login if prompted. Setup builds the new programs, creates the Python environment and applies the same additive migrations/index checks. Your installed Qwen model is retained; existing vectors and gap results are reused. New folder means configuration/login may need re-entering, not a new dataset import.
+Enter the existing PostgreSQL connection details when asked: host `localhost`, port `5432`, your existing database username and password. Setup creates this folder's Python environment, checks/downloads the same local embedding model, builds the solution, applies additive migrations, checks HNSW indexes, FFmpeg and Codex login. Complete Codex login if requested. Existing source vectors are reused; setup does not re-embed the dataset.
 
-4. After **SETUP PASSED**:
+New database change: `knowledge_qa.evidence.frame_id` links QA frame citations to the existing video-frame table. It stores IDs, hashes, timestamps and paths, not image blobs. Existing rows remain. Answers remain audit records, not automatically trusted learning or embedded source facts.
 
-```bat
+Do not copy old `.venv`, `bin` or `obj` directories. No need to copy old run folders for source retrieval. Run setup in the new folder even if the old release worked. Stop if setup reports FAILED and send the full error.
+
+## 3. Start POC 2
+
+```cmd
 Start-POC.cmd
 ```
 
-Choose **2**. Do not run `/process` just to retest the same imported dataset. Startup scans only. If sources have changed or were never imported, `/process` is still the explicit import command; wait for it to finish before comparing results.
+Choose **2**. Wait for the `You>` prompt. Startup scans only. If you changed/added source files, run:
 
-## First check: is Woodgrove Bank text present?
+```text
+/process
+```
 
-Inside POC2 run:
+Wait for the processing window to finish; check failures before testing. For an unchanged dataset that was already imported, do not perform another full import merely because this version changed. The two role windows show activity; Ctrl+C cancels active work. Video questions may take longer because frames are prepared and both agents examine them.
+
+## 4. Run matching tests
+Use the questions in `GPT-Comparison-Prompt-and-Questions.txt`. For **each independent question**:
+
+1. In POC 2 type `/new`.
+2. Type `/ask ` followed by the exact question.
+3. Let Knowledge and Verifier finish. Copy the complete answer, including limitations, sources and run path.
+4. Export immediately from a separate CMD (the script exports the latest question):
+
+```cmd
+cd /d C:\TD-POC-v0.20
+Export-LatestRetrieval.cmd
+```
+
+Rename each exported ZIP to `Q1-POC.zip`, `Q2-POC.zip`, etc before running another question. The ZIP is created in the solution folder. **Exports now include the selected frame images** as well as prompts, evidence and verdicts. Share them as you would the underlying source material.
+
+For ChatGPT, start a fresh chat per question with the same comparison instructions and Drive folder. Paste the exact same question without `/ask`. Do not show either system the other's answer. Confirm both can access the same source revisions; equal prompts with different available files are not an equal-source comparison.
+
+For a conversation/follow-up demo, keep one session and label it a follow-up test. Do not mix it with independent-question scores.
+
+## 5. What to compare
+
+| Check | Good result |
+|---|---|
+| Meaning | Corrects typos while preserving the actual question and names |
+| Evidence | Relevant original files and passages; applicable product/version |
+| Procedure | All supported steps; missing steps clearly identified |
+| Chronology | Relevant versions compared; exact versus broader names distinguished |
+| Video | Exact recording; speech separated from visible sampled state and outcome |
+| Honesty | No invented save, permissions, global absence or complete-video claim |
+| Clarity | Direct, readable answer with sources and short useful limits |
+
+More citations or longer answers do not automatically win. A justified qualified answer is better than unsupported certainty. Compare source coverage before blaming the embedding model.
+
+## 6. Video limits and diagnosis
+Frames are selected from the question-bearing transcript sections plus opening/ending, at most 12 samples per recording and two recordings per question. Exact names are required; similar names are not substituted. Still frames can miss actions between samples. A visible Save button does not prove successful save. An existing user's Created By field does not prove a new user was created in the recording.
+
+Question-directed text reads keep original unit IDs, use up to 24 units per source and at most eight source versions per round, with an overall evidence budget. A short 18-unit transcript can now be supplied completely. Longer sources remain bounded and disclose coverage. One verifier-requested follow-up remains the limit.
+
+If an answer disappoints, send both complete answers and the POC export. `evidence.json`/`evidence-expanded.json` show what was actually supplied; `visual_inspection` lists exact match and sampling/unavailable status; `source_reads` reports units supplied. Verification events retain the coverage decision/reason. The exporter includes all question-local files and sampled images, not your database password or Codex login files.
+
+Optional direct source diagnostic inside POC 2:
 
 ```text
 /diagnose Woodgrove
 /diagnose Woodgrove
+/last
 ```
 
-This checks the imported ORIGINAL usable text directly, excluding catalogue files. It reports matching source versions and how many matching passages have vectors for this model. A zero result does not prove absence from your original files: extraction/import or source naming may still need checking. Full reports are saved under `runtime/knowledge-diagnostics`.
+`/diagnose` searches imported usable text; it does not prove missing originals do not exist. `/last` redisplays the last result in this session.
 
-This diagnostic is NOT a Woodgrove answer key and does not use ChatGPT's claimed version as ground truth. Share its report if there are no matches or some text has no vectors. Do not re-embed everything blindly.
+Engineering checks accompany the release, but real Windows/Codex answers and parity with ChatGPT require your live retest. Do not treat AI verification as human approval.
 
-## Compare fairly
-
-Use `GPT-Comparison-Prompt-and-Questions.txt` in this folder (also provided separately). Connect Google Drive in a **fresh ChatGPT chat**, replace the folder link, and paste only the SETUP PROMPT first. After access is confirmed, ask the listed questions ONE AT A TIME, exactly as written.
-
-In POC2 type `/new`, then paste `/ask ` followed by that SAME question. Use `/new` before each independent test. In ChatGPT start a fresh chat/setup for strict independent comparisons, or use the same question order and avoid giving feedback until all tests finish. Keep the same data files/versions in Drive and PostgreSQL. General procedural knowledge may aid reasoning, but product facts must come from the dataset.
-
-Do not paste either system's answer into the other before it answers. Do not put the claimed Woodgrove version into the question. Compare correct evidence-backed conclusions and honest limits, not exact wording or which system sounds more confident. Different retrieval systems/models mean this is an answer-quality test, not an isolated HNSW speed benchmark.
-
-## What you should notice
-
-- Fewer catalogue results and irrelevant saved findings.
-- Focused term searches and fuller source reads, with one follow-up investigation if needed.
-- Numeric version comparison and explicit chronology limits for latest-release questions.
-- A concise answer with numbered source references, rather than repeated JSON locators.
-- Insufficient evidence now goes through the Verifier; no misleading handoff followed by immediate refusal.
-
-These changes are tested plumbing, not a guarantee that your exact corpus contains the necessary Woodgrove passages or that the model never makes semantic mistakes. A qualified or insufficient answer may still be appropriate. For release questions, keywords may not capture every synonym; incomplete imports/partial extraction or inventory/read caps prevent an exhaustive newest claim.
-
-## Export each test BEFORE running the next
-
-In a SECOND CMD:
-
-```bat
-cd /d C:\TD-POC-v0.19
-Export-LatestRetrieval.cmd
-```
-
-Keep the generated `TD-knowledge-...zip` next to the matching ChatGPT answer and question number. It includes initial evidence, expanded evidence if used, drafts, verifier checks and logs. Credentials are excluded; source excerpts remain internal material. You can also zip a particular question directory under `runtime/knowledge-runs` if needed.
-
-## Instructions and solution
-
-- `agents/knowledge-assistant.md`: normalization, evidence-backed answers and labelled reasoning.
-- `agents/knowledge-verifier.md`: relevance/provenance checks and follow-up requests.
-- `contracts/knowledge-qa.schema.json`: strict handoff formats.
-- `tools/knowledge_search.py`: QA-only source investigation and chronology.
-- `tools/knowledge_qa.py`: audit persistence and final citation/freshness gates.
-- `src/TD.Poc.Core/KnowledgeRetrieval.cs`: bounded agent handoffs and final output.
-- `src/TD.Poc.Launcher`: set this as Startup Project if launching from Visual Studio.
-
-The two agents remain independent roles. Each active role opens its activity viewer; a follow-up may reopen that role for its correction phase. Individual Codex calls remain hidden; status windows show progress, not private reasoning. Five-minute per-call retrieval timeout remains configurable in `KnowledgeAgentTimeoutMinutes`. Ctrl+C or Q in an active role viewer cancels the current work. No final success is claimed after a failed evidence gate.
-
-Question history remains in `knowledge_qa.sessions/turns/events/evidence`; generated answers are not automatically embedded into trusted knowledge. Existing source embeddings remain in `retrieval.content_embeddings`; gap findings retain their existing storage/embedding workflow.
-
-Commands: plain question or `/ask`, `/new`, `/last`, `/diagnose keyword`, `/status`, `/scan`, `/process`, `/help`, `/exit`. Gap `/review` and comparison modes belong under menu1.
+## Optional: separate retrieval quality from answer quality
+If answers differ, perform a second comparison using **the identical evidence**. In a fresh ChatGPT chat, attach only `evidence.json` (or the final `evidence-expanded.json`) and the run's `sampled-frames` folder images. Do not attach `result.txt`, drafts, verdicts or the full run ZIP, which would reveal the POC answer. Ask ChatGPT to answer the original question using only that packet, with the same citation IDs and limits. If this agrees while independent searches differ, retrieval/source selection is the likely gap. If identical evidence leads to different claims, inspect reasoning/instructions/verification. This diagnostic is separate from the independent-source test.

@@ -1,0 +1,29 @@
+......EFF
+======================================================================
+ERROR: test_exact_relative_path_resolves_duplicate_basename (test_knowledge_v020.ReviewerRegressions.test_exact_relative_path_resolves_duplicate_basename)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v020/TD-POC-v0.20/tests/test_knowledge_v020.py", line 44, in test_exact_relative_path_resolves_duplicate_basename
+    from knowledge_visual import recording_matches
+ImportError: cannot import name 'recording_matches' from 'knowledge_visual' (/workspace/scratch/aed6c87a9d4c/v020/TD-POC-v0.20/tools/knowledge_visual.py)
+
+======================================================================
+FAIL: test_missing_visual_plan_rejected (test_knowledge_v020.ReviewerRegressions.test_missing_visual_plan_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v020/TD-POC-v0.20/tests/test_knowledge_v020.py", line 38, in test_missing_visual_plan_rejected
+    self.assertTrue(q.validate_normalization('Did the video save?',n))
+AssertionError: [] is not true
+
+======================================================================
+FAIL: test_visual_plan_without_name_requires_clarification (test_knowledge_v020.ReviewerRegressions.test_visual_plan_without_name_requires_clarification)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v020/TD-POC-v0.20/tests/test_knowledge_v020.py", line 42, in test_visual_plan_without_name_requires_clarification
+    self.assertTrue(q.validate_normalization('Did the video save?',n))
+AssertionError: [] is not true
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.181s
+
+FAILED (failures=2, errors=1)

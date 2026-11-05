@@ -1,3 +1,11 @@
+# v0.20 — POC 2 evidence coverage and visual checks
+- Question-focused original-source reads include relevant sections, neighbours and both ends; complete short-source reads up to 24 units.
+- Exact named local recording lookup, bounded timestamped samples, shared images for Assistant/Verifier, run-local copies for diagnosis.
+- VISUAL citation basis requires frame evidence. Final validation checks image and recording hashes.
+- Verifier must assess evidence coverage and cannot PASS with outstanding retrieval requests.
+- Additive QA frame foreign key; existing source vectors, Qwen model and Gap Analysis behavior retained.
+- Fresh setup and independent ChatGPT comparison instructions included.
+
 # v0.19 — improved knowledge-source investigation
 
 See docs/CHANGES-v019.md, START-HERE.md and GPT-Comparison-Prompt-and-Questions.txt. Existing source vectors and Gap POC retained.

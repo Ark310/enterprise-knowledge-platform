@@ -7,7 +7,7 @@ public interface IKnowledgeHost
 {
     string Root {get;}
     Task<JsonNode> Worker(string operation,JsonObject arguments);
-    Task<JsonNode> Model(string role,string instructions,string context,string folder);
+    Task<JsonNode> Model(string role,string instructions,string context,string folder,IEnumerable<string>? images=null);
     void Begin(string folder,string role);
     void End(bool success,string message);
     void Failure(string folder,Exception error);
@@ -16,7 +16,7 @@ public sealed class KnowledgeRuntimeHost(Runtime runtime):IKnowledgeHost
 {
     public string Root=>runtime.Root;
     public Task<JsonNode> Worker(string op,JsonObject args)=>runtime.Worker(op,args);
-    public Task<JsonNode> Model(string role,string instructions,string context,string folder)=>runtime.Codex(role,instructions,context,folder);
+    public Task<JsonNode> Model(string role,string instructions,string context,string folder,IEnumerable<string>? images=null)=>runtime.Codex(role,instructions,context,folder,images);
     public void Begin(string folder,string role)=>runtime.BeginRole(folder,role);
     public void End(bool success,string message)=>runtime.EndRole(success,message);
     public void Failure(string folder,Exception error)=>runtime.RecordFailure(folder,"knowledge-retrieval",error);
@@ -62,11 +62,12 @@ public sealed class KnowledgeRetrieval(IKnowledgeHost host)
             var evidence=retrieved["evidence"]!.AsArray();
             var packet=new JsonObject{{"original_question",question},{"normalization",normalized.DeepClone()},{"conversation",new JsonArray(history.Select(x=>x.DeepClone()).ToArray())},{"retrieval",retrieved.DeepClone()}};
             JsonNode? feedback=null;
+            string[] Images()=>evidence.Where(p=>p?["kind"]?.ToString()=="FRAME").Select(p=>p!["path"]!.ToString()).Distinct().ToArray();
             for(var attempt=0;attempt<2;attempt++)
             {
                 if(!active){host.Begin(folder,"Knowledge");active=true;}
                 var input=packet.DeepClone().AsObject();if(feedback is not null)input["correction_feedback"]=feedback.DeepClone();
-                var candidate=await host.Model("answer-"+attempt,Instructions("knowledge-assistant.md","answer")+"\nTASK: ANSWER. Return the answer contract. A correction must address all feedback without inventing evidence.",input.ToJsonString(),folder);
+                var candidate=await host.Model("answer-"+attempt,Instructions("knowledge-assistant.md","answer")+"\nTASK: ANSWER. Return the answer contract. A correction must address all feedback without inventing evidence.",input.ToJsonString(),folder,Images());
                 await Event("DRAFT",candidate);
                 var av=await Work("qa_validate",new(){{"part","answer"},{"object",candidate.DeepClone()},{"evidence",evidence.DeepClone()}});await Event("VALIDATION",av);
                 host.End(true,"Draft ready for evidence checking. No answer published yet.");active=false;
@@ -75,7 +76,7 @@ public sealed class KnowledgeRetrieval(IKnowledgeHost host)
                     return await Stop("CLARIFY",candidate["clarification_question"]!.GetValue<string>());
                 host.Begin(folder,"Verifier");active=true;
                 var verificationInput=packet.DeepClone().AsObject();verificationInput["candidate"]=candidate.DeepClone();
-                var verdict=await host.Model("verify-"+attempt,Instructions("knowledge-verifier.md","verdict"),verificationInput.ToJsonString(),folder);
+                var verdict=await host.Model("verify-"+attempt,Instructions("knowledge-verifier.md","verdict"),verificationInput.ToJsonString(),folder,Images());
                 await Event("VERIFICATION",verdict);
                 var vv=await Work("qa_validate",new(){{"part","verdict"},{"object",verdict.DeepClone()},{"answer",candidate.DeepClone()}});await Event("VALIDATION",vv);
                 var passed=vv["valid"]?.GetValue<bool>()==true && verdict["decision"]?.GetValue<string>()=="PASS";
@@ -138,7 +139,7 @@ public sealed class KnowledgeRetrieval(IKnowledgeHost host)
                 numbers.Add(fileNumbers[file]);
                 if(!selected[file].Any(x=>x.Evidence["evidence_id"]!.ToString()==p["evidence_id"]!.ToString()))selected[file].Add((p,cite["excerpt"]!.ToString()));
             }
-            var prefix=c["basis"]!.ToString() switch{"INFERENCE"=>"Reasoned interpretation: ","REVIEW_REPORT"=>"Saved review finding (approval may be pending): ",_=>""};
+            var prefix=c["basis"]!.ToString() switch{"INFERENCE"=>"Reasoned interpretation: ","VISUAL"=>"Sampled frame observation: ","REVIEW_REPORT"=>"Saved review finding (approval may be pending): ",_=>""};
             output.AppendLine("\n"+prefix+c["text"]+" ["+string.Join(", ",numbers.Order())+"]");
         }
         foreach(var limit in answer["limitations"]!.AsArray())output.AppendLine("Evidence limit: "+limit);

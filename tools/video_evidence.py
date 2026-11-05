@@ -16,9 +16,9 @@ def decoded_times(stderr,count):
     if count<1 or len(times)<count:raise ValueError('Cannot map every decoded frame to its actual timestamp')
     return times[:count]
 
-def frames(db,cfg,rec,start,end,cap=60):
+def frames(db,cfg,rec,start,end,cap=60,verified_source_hash=None):
     import module_review
-    rec=Path(rec);source_hash=w.file_hash(rec)
+    rec=Path(rec);source_hash=verified_source_hash or w.file_hash(rec)
     ffmpeg=cfg.get('FFmpegExecutable') or __import__('shutil').which('ffmpeg')
     if not ffmpeg:raise ValueError('ffmpeg not available; no visual evidence can be claimed')
     version=subprocess.run([ffmpeg,'-version'],capture_output=True,text=True,encoding='utf-8',errors='replace',timeout=20)
@@ -37,7 +37,7 @@ def frames(db,cfg,rec,start,end,cap=60):
         rows=[{'path':str(p),'seconds':float(start)+times[i],'source_id':f'{float(start)+times[i]:.3f}','sha256':w.file_hash(p)} for i,p in enumerate(paths)]
         if any(r['seconds']<float(start)-.01 or r['seconds']>float(end)+.1 for r in rows):raise ValueError('Decoded frame outside requested range')
         manifest.write_text(w.j(rows),encoding='utf-8')
-    if w.file_hash(rec)!=source_hash:raise ValueError('Recording changed during frame preparation')
+    if verified_source_hash is None and w.file_hash(rec)!=source_hash:raise ValueError('Recording changed during frame preparation')
     sv=w.one(db,"select id from knowledge.source_versions where storage_uri=%s and content_sha256=%s and lifecycle_status='ACTIVE'",(rec.absolute().as_uri(),source_hash))
     if not sv:raise ValueError('Import this exact recording revision before extracting frames')
     out=[]

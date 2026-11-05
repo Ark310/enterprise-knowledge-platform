@@ -66,12 +66,18 @@ internal static class KnowledgeTests
             Check(h.Models.Contains("verify-0") && h.Models.Contains("verify-1"),"insufficient draft goes to verifier, then final answer is rechecked");
             Check(h.Operations.Count(x=>x=="qa_retrieve")==2 && h.FinalStatus=="VERIFIED","verifier can trigger one additional investigation round");
         }
+        using(var h=new Fixture(source){WithFrame=true})
+        {
+            await new KnowledgeRetrieval(h).Ask("edit a user");
+            Check(h.ImageRoles.SequenceEqual(new[]{"answer-0","verify-0"}),"same frame attachment reaches Assistant and Verifier but not normalization");
+        }
         Console.WriteLine($"Knowledge host checks passed: {count}");return count;
     }
     private sealed class Fixture:IKnowledgeHost,IDisposable
     {
         public string Root{get;}=Path.Combine(Path.GetTempPath(),"td018-qa-"+Guid.NewGuid().ToString("N"));
         private readonly string source;
+        public bool WithFrame; public List<string> ImageRoles=[];
         public bool WrongQuote,RejectFirst,RejectAll,Clarify,EmptyEvidence,Cancel,FailFinalSave,Failed,BlockLocalFinal,InitiallyInsufficient;
         public List<string> Models=[],Operations=[],Begins=[],Events=[];
         public string? FinalStatus;public JsonNode? FinalAnswer;
@@ -79,15 +85,15 @@ internal static class KnowledgeTests
         public void Begin(string f,string r)=>Begins.Add(r);
         public void End(bool success,string message){}
         public void Failure(string folder,Exception e)=>Failed=true;
-        public Task<JsonNode> Model(string role,string instructions,string context,string folder)
+        public Task<JsonNode> Model(string role,string instructions,string context,string folder,IEnumerable<string>? images=null)
         {
-            Models.Add(role);if(Cancel)throw new OperationCanceledException();
-            if(role=="normalize")return Task.FromResult<JsonNode>(new JsonObject{{"normalized_question","How do I edit a user?"},{"needs_clarification",Clarify},{"clarification_question",Clarify?"Which product do you mean?":""},{"changes",new JsonArray("spelling")},{"search_queries",new JsonArray()}});
+            Models.Add(role);if(images?.Any()==true){if(images.Single()!="fixture.jpg")throw new Exception("Unexpected image");ImageRoles.Add(role);}if(Cancel)throw new OperationCanceledException();
+            if(role=="normalize")return Task.FromResult<JsonNode>(new JsonObject{{"normalized_question","How do I edit a user?"},{"visual_check",false},{"recording_names",new JsonArray()},{"needs_clarification",Clarify},{"clarification_question",Clarify?"Which product do you mean?":""},{"changes",new JsonArray("spelling")},{"search_queries",new JsonArray()}});
             if(role.StartsWith("answer")&&EmptyEvidence || role=="answer-0"&&InitiallyInsufficient)return Task.FromResult<JsonNode>(new JsonObject{{"status","INSUFFICIENT_EVIDENCE"},{"clarification_question",""},{"claims",new JsonArray()},{"limitations",new JsonArray("Need source detail.")}});
-            if(role.StartsWith("verify")&&EmptyEvidence || role=="verify-0"&&InitiallyInsufficient)return Task.FromResult<JsonNode>(new JsonObject{{"decision","INSUFFICIENT_EVIDENCE"},{"addresses_question",false},{"normalization_faithful",true},{"premise_supported",true},{"human_readable",true},{"claim_checks",new JsonArray()},{"feedback",new JsonArray("Read user instructions.")},{"retrieval_queries",new JsonArray("user edit instructions")},{"read_source_versions",new JsonArray()}});
+            if(role.StartsWith("verify")&&EmptyEvidence || role=="verify-0"&&InitiallyInsufficient)return Task.FromResult<JsonNode>(new JsonObject{{"decision","INSUFFICIENT_EVIDENCE"},{"addresses_question",false},{"normalization_faithful",true},{"premise_supported",true},{"human_readable",true},{"evidence_coverage_sufficient",true},{"coverage_reason","Fixture packet checked"},{"claim_checks",new JsonArray()},{"feedback",new JsonArray("Read user instructions.")},{"retrieval_queries",new JsonArray("user edit instructions")},{"read_source_versions",new JsonArray()}});
             if(role.StartsWith("answer"))return Task.FromResult<JsonNode>(new JsonObject{{"status","ANSWER"},{"clarification_question",""},{"claims",new JsonArray(new JsonObject{{"id","C1"},{"text",WrongQuote?"SECRET_BAD_DRAFT":"Select Edit to edit a user."},{"basis","SOURCE"},{"citations",new JsonArray(new JsonObject{{"evidence_id","S1"},{"excerpt",WrongQuote?"Invented quote":"Select Edit"}})}})},{"limitations",new JsonArray("Saving is not demonstrated.")}});
             var reject=RejectAll||RejectFirst&&role=="verify-0";
-            return Task.FromResult<JsonNode>(new JsonObject{{"decision",reject?"REVISE":"PASS"},{"addresses_question",true},{"normalization_faithful",true},{"premise_supported",true},{"human_readable",true},{"claim_checks",new JsonArray(new JsonObject{{"claim_id","C1"},{"supported",!reject},{"reason",reject?"Fix scope":"Directly supported"}})},{"feedback",new JsonArray(reject?"Narrow the answer":"")}});
+            return Task.FromResult<JsonNode>(new JsonObject{{"decision",reject?"REVISE":"PASS"},{"addresses_question",true},{"normalization_faithful",true},{"premise_supported",true},{"human_readable",true},{"evidence_coverage_sufficient",true},{"coverage_reason","Fixture packet checked"},{"claim_checks",new JsonArray(new JsonObject{{"claim_id","C1"},{"supported",!reject},{"reason",reject?"Fix scope":"Directly supported"}})},{"feedback",new JsonArray(reject?"Narrow the answer":"")}});
         }
         public async Task<JsonNode> Worker(string op,JsonObject args)
         {
@@ -99,6 +105,7 @@ internal static class KnowledgeTests
                 await p.StandardInput.WriteAsync(args.ToJsonString());p.StandardInput.Close();var stdout=await p.StandardOutput.ReadToEndAsync();var stderr=await p.StandardError.ReadToEndAsync();await p.WaitForExitAsync();
                 if(p.ExitCode!=0)throw new Exception(stderr);return JsonNode.Parse(stdout)!;
             }
+            if(op=="qa_retrieve"&&WithFrame)return new JsonObject{{"evidence",new JsonArray(new JsonObject{{"evidence_id","S1"},{"kind","SOURCE"},{"text","Select Edit"},{"file","user.md"},{"locator",new JsonObject()}},new JsonObject{{"evidence_id","F2"},{"kind","FRAME"},{"text","Frame at 1 second"},{"path","fixture.jpg"},{"file","video.mp4"},{"locator",new JsonObject{{"start_seconds",1},{"end_seconds",1}}}})}};
             if(op=="qa_retrieve")return new JsonObject{{"evidence",EmptyEvidence?new JsonArray():new JsonArray(new JsonObject{{"evidence_id","S1"},{"kind","SOURCE"},{"text","Select Edit to open the existing user."},{"unit_id","fixture"},{"file","user.md"},{"locator",new JsonObject{{"line",1}}}})}};
             if(op=="qa_event")Events.Add(args["stage"]!.ToString());
             if(op=="qa_finish")

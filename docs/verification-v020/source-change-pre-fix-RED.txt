@@ -1,0 +1,16 @@
+......F...
+======================================================================
+FAIL: test_batch_checks_recording_again_after_frame_preparation (test_knowledge_v020.FrameBatchIntegrity.test_batch_checks_recording_again_after_frame_preparation)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v020/TD-POC-v0.20/tests/test_knowledge_v020.py", line 62, in test_batch_checks_recording_again_after_frame_preparation
+    self.assertEqual(report['recordings'][0]['status'],'UNAVAILABLE')
+AssertionError: 'SAMPLED' != 'UNAVAILABLE'
+- SAMPLED
++ UNAVAILABLE
+
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.428s
+
+FAILED (failures=1)

@@ -19,7 +19,7 @@ def run():
   assert ok,name;checks.append(name);print('PASS QA DB',name,flush=True)
  def newturn():
   tid=str(uuid.uuid4());qa.begin(db,{'session_id':sid,'turn_id':tid,'question':'How do I open user settings?'});return tid
- def verdict(answer):return {'decision':'PASS','addresses_question':True,'normalization_faithful':True,'premise_supported':True,'human_readable':True,'claim_checks':[{'claim_id':c['id'],'supported':True,'reason':'Fixture support'} for c in answer['claims']],'feedback':[]}
+ def verdict(answer):return {'decision':'PASS','addresses_question':True,'normalization_faithful':True,'premise_supported':True,'human_readable':True,'evidence_coverage_sufficient':True,'coverage_reason':'Fixture packet checked','claim_checks':[{'claim_id':c['id'],'supported':True,'reason':'Fixture support'} for c in answer['claims']],'feedback':[]}
  def answer(p,basis='SOURCE'):
   return {'status':'ANSWER','clarification_question':'','claims':[{'id':'C1','text':'The fixture describes user settings.','basis':basis,'citations':[{'evidence_id':p['evidence_id'],'excerpt':p['text'][:35]}]}],'limitations':['Synthetic fixture only']}
  def finish(t,a):return qa.finish(db,{'turn_id':t,'status':'VERIFIED','answer':a,'verdict':verdict(a)})
@@ -35,7 +35,7 @@ def run():
   w.migration(db);w.migration(db);db.commit();check(True,'migration repeats without resetting data')
   w.q(db,"update knowledge.source_versions set lifecycle_status='ACTIVE'");db.commit()
   before=w.one(db,'select count(*) n from retrieval.content_embeddings')['n']
-  t=newturn();normal={'normalized_question':'How do I open user settings?','needs_clarification':False,'clarification_question':'','changes':[],'search_queries':['user settings']}
+  t=newturn();normal={'normalized_question':'How do I open user settings?','visual_check':False,'recording_names':[],'needs_clarification':False,'clarification_question':'','changes':[],'search_queries':['user settings']}
   qa.event(db,{'turn_id':t,'stage':'NORMALIZATION','payload':normal})
   ev=qa.retrieve(db,{'SearchMode':'old_exact'},{'turn_id':t,'normalization':normal})
   check(all(s['diagnostics']['hnsw_index_used'] for s in ev['searches']),'QA forces actual HNSW even when inherited config says old_exact')

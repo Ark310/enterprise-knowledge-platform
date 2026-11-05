@@ -47,6 +47,18 @@
         },
         "latest_release": {
           "type": "boolean"
+        },
+        "visual_check": {
+          "type": "boolean"
+        },
+        "recording_names": {
+          "type": "array",
+          "maxItems": 2,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          }
         }
       },
       "required": [
@@ -54,7 +66,9 @@
         "needs_clarification",
         "clarification_question",
         "changes",
-        "search_queries"
+        "search_queries",
+        "visual_check",
+        "recording_names"
       ],
       "additionalProperties": false
     },
@@ -89,7 +103,8 @@
                 "enum": [
                   "SOURCE",
                   "INFERENCE",
-                  "REVIEW_REPORT"
+                  "REVIEW_REPORT",
+                  "VISUAL"
                 ]
               },
               "citations": {
@@ -214,6 +229,14 @@
             "pattern": "^[0-9a-fA-F-]{36}$"
           },
           "maxItems": 4
+        },
+        "evidence_coverage_sufficient": {
+          "type": "boolean"
+        },
+        "coverage_reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
         }
       },
       "required": [
@@ -223,7 +246,9 @@
         "premise_supported",
         "human_readable",
         "claim_checks",
-        "feedback"
+        "feedback",
+        "evidence_coverage_sufficient",
+        "coverage_reason"
       ],
       "additionalProperties": false
     }

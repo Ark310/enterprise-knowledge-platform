@@ -46,12 +46,12 @@ def rank_pool(rows,terms):
  return [p for _,p in sorted(best.values(),key=lambda item:(-item[0],not item[1].get('storage_uri','').endswith('/article.md'),str(item[1]['id'])))]
 
 def merge_evidence(old,new,char_budget=100000,max_items=80):
- out=[dict(p) for p in old];seen={(p['kind'],str(p.get('unit_id',p.get('record_id')))) for p in out};used=sum(len(p['text']) for p in out)
+ out=[dict(p) for p in old];seen={(p['kind'],str(p.get('unit_id',p.get('record_id',p.get('frame_id'))))) for p in out};used=sum(len(p['text']) for p in out)
  for p in new:
-  key=(p['kind'],str(p.get('unit_id',p.get('record_id'))))
+  key=(p['kind'],str(p.get('unit_id',p.get('record_id',p.get('frame_id')))))
   if key in seen:continue
   if len(out)>=max_items or used+len(p['text'])>char_budget:continue
-  p=dict(p,evidence_id=('S' if p['kind']=='SOURCE' else 'R')+str(len(out)+1));out.append(p);seen.add(key);used+=len(p['text'])
+  p=dict(p,evidence_id=({'SOURCE':'S','REVIEW':'R','FRAME':'F'}[p['kind']])+str(len(out)+1));out.append(p);seen.add(key);used+=len(p['text'])
  return out
 
 def enrich(db,rows):
@@ -65,13 +65,24 @@ def enrich(db,rows):
   p['note_last_updated']=m.group(1).strip() if m else None
  return rows
 
-def read_versions(db,profile,version_ids,per_version=12):
+def read_versions(db,profile,version_ids,per_version=24,terms=None):
  base=r.base_sql('improved_hnsw',profile,True);out=[];reports=[]
+ terms=terms or [];pattern=keyword_pattern(terms)
  for version_id in list(dict.fromkeys(str(uuid.UUID(str(x))) for x in version_ids))[:8]:
   total=w.one(db,f'WITH b AS ({base}) select count(*) n from b where version_id=%s',(None,None,version_id))['n']
-  rows=w.q(db,f"""WITH b AS ({base}) select * from b where version_id=%s
-   order by coalesce(start_seconds,0),case when unit_key ~ '^[0-9]+$' then unit_key::numeric else 0 end,unit_key limit %s""",(None,None,version_id,per_version)).fetchall()
-  out.extend(rows);reports.append({'version_id':version_id,'usable_units_total':total,'units_read':len(rows),'complete_usable_text':bool(total) and total==len(rows)})
+  # Choose question hits + neighbouring units and both ends, rather than a source prefix.
+  score=' + '.join("case when content_text ~* %s then 1 else 0 end" for _ in terms) or '0'
+  rows=w.q(db,f"""WITH b AS ({base}), ordered AS (
+   select b.*,row_number() over(order by coalesce(start_seconds,0),case when unit_key ~ '^[0-9]+$' then unit_key::numeric else 0 end,unit_key,id) rn,
+   count(*) over() total,({score}) focus_score from b where version_id=%s), hits AS (
+   select rn from ordered where focus_score>0 order by focus_score desc,rn limit 8), chosen AS (
+   select o.* from ordered o where total<=%s or rn<=2 or rn>total-4
+   or exists(select 1 from hits h where abs(h.rn-o.rn)<=1))
+   select * from chosen order by case when total<=%s then 0 when rn>total-4 then 1 when focus_score>0 then 2 when rn<=2 then 3 else 4 end,
+   focus_score desc,rn limit %s""",(None,None,*[keyword_pattern([t]) for t in terms],version_id,per_version,per_version,per_version)).fetchall()
+  out.extend(rows);reports.append({'version_id':version_id,'usable_units_total':total,'units_read':len(rows),
+   'selection':'Question keyword hits, neighbouring context, opening and ending; whole short source when within limit.',
+   'complete_usable_text':bool(total) and total==len(rows)})
  return out,reports
 
 def chronology(db,profile,terms):
@@ -149,8 +160,8 @@ def collect(db,cfg,normalized,extra_queries=None,read_ids=None,prior=None):
  permitted={str(p['version_id']) for p in (prior or []) if p['kind']=='SOURCE'}|{str(p['version_id']) for p in pool}
  requested=list(read_ids or [])
  if any(str(i) not in permitted for i in requested):raise ValueError('Verifier requested a source version outside the supplied evidence')
- surrounding,read_report=read_versions(db,profile,requested+read_versions_ids)
- new=qa.evidence_packet({'passages':enrich(db,pool+surrounding)})
+ surrounding,read_report=read_versions(db,profile,requested+read_versions_ids,terms=terms)
+ new=qa.evidence_packet({'passages':enrich(db,surrounding+pool)})
  # Carry source metadata through the citation adapter.
  byid={str(p['id']):p for p in pool+surrounding}
  for p in new:
@@ -165,7 +176,10 @@ def collect(db,cfg,normalized,extra_queries=None,read_ids=None,prior=None):
  for read in read_report:
   n=sum(str(p['id']) in supplied for p in surrounding if str(p['version_id'])==read['version_id'])
   read['units_supplied']=n;read['complete_usable_text']=read['complete_usable_text'] and n==read['usable_units_total']
- return {'evidence':evidence,'searches':diagnostics,'source_reads':read_report,'release_comparison':report,
+ import knowledge_visual
+ visual,visual_report=knowledge_visual.prepare(db,cfg,normalized,surrounding+pool)
+ evidence=merge_evidence(evidence,visual,char_budget=110000,max_items=110)
+ return {'evidence':evidence,'visual_inspection':visual_report,'searches':diagnostics,'source_reads':read_report,'release_comparison':report,
   'coverage':'Bounded original-source investigation. Catalog files excluded from factual search. A complete usable-text read is not proof that images, blocked files or unimported content were examined. Inferences and proposed reviews remain labelled.'}
 
 def diagnose(db,cfg,query):

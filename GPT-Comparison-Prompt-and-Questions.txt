@@ -1,50 +1,40 @@
-TD v0.19 — fresh ChatGPT comparison
+TD v0.20 — independent POC 2 comparison
 
-SETUP PROMPT — paste this first, with Google Drive connected:
+PASTE THIS INTO A FRESH CHAT FOR EACH QUESTION:
 
-I am comparing your dataset-grounded answers with a local knowledge-retrieval POC.
-Dataset folder: [PASTE THE GOOGLE DRIVE FOLDER LINK]
+I am comparing your dataset-grounded answer with a local knowledge-retrieval POC.
+Dataset folder: [PASTE THE SAME GOOGLE DRIVE FOLDER LINK / SELECT ITS CONNECTOR]
 
-Use only original files in this folder and its subfolders for product facts. Do not use web searches, prior conversations, or the POC's answers. Confirm that you can read the data; explain any access limitations. Do not claim to search all files if you did not.
+Use only original files in that folder and its subfolders for product-specific facts. Do not use web searches, prior chats or the other system's answers. First confirm which files/folders you can actually read and any limitations. Do not claim to search all files if you did not. If files are inside ZIPs, disclose which archives you could inspect.
 
-Correct obvious typos while preserving intent, product names, identifiers and versions. Ask one clarification if meaning is materially ambiguous. Use general knowledge responsibly to interpret and explain the evidence, but label inferences and never invent product settings, steps or outcomes.
+Correct obvious typos without changing intent, names, versions or identifiers. Use general knowledge only for clearly labelled reasoning from source facts, not invented product steps. Retrieve relevant originals and inspect the passages needed to answer, including later sections when the question concerns an outcome. Compare applicable release versions before deciding which is latest; distinguish exact names from broader related names. Source last_updated is not a deployment date.
 
-Search the relevant ORIGINAL articles, release notes and video transcripts. Navigation indexes can help locate a file, but must not substitute for its contents. If the first search is insufficient, try focused terms and read relevant source sections. Independently check your final answer for relevance, unsupported assumptions and citation support.
+For video questions, distinguish spoken transcript instructions, directly inspected frames, previously reported AI observations and outcomes still unverified. State the exact recording and inspected timestamps. Do not claim to watch an MP4 if you only read its transcript. A visible Save button/prompt does not prove successful creation or persistence. Do not invent visual access if the connector does not supply it.
 
-For a latest-release question, compare numeric version numbers in the applicable product/version family, inspect relevant newer notes, distinguish exact-name mentions from broader vendor/format names, and report what you actually checked. A source-note update date is not a deployment date. Do not assume a top-ranked search result is the latest relevant release. If coverage is incomplete, qualify the conclusion.
+Give a direct, readable answer, supported steps where applicable, original source paths, short literal supporting passages and useful evidence limits. Explain conflicting documentation. Do not assume more sources mean more accuracy. State the number of distinct original source files cited; an MP4 and its transcripts are related evidence, not independent demonstrations. If evidence is insufficient, say exactly what is missing.
 
-Cite exact source paths, a supporting passage and timestamps for transcript claims where available. Transcripts establish spoken content, not independent proof of clicks or successful saves. Separate facts, inferences and unknowns. No results do not prove global absence. Do not treat unapproved saved AI findings as product truth.
+Now answer this question:
+[PASTE ONE QUESTION BELOW]
 
-Keep answers concise and human-readable, with numbered sources and an Evidence limits note. State how many distinct source files support the answer. Do not guess when evidence is insufficient.
+QUESTIONS — paste exactly; add /ask only in the POC:
 
-Wait for my first question. Do not answer the questions below until I send them individually.
-
-END SETUP PROMPT
-
-MATCHED TEST QUESTIONS — send one at a time. In the POC prepend /ask; in ChatGPT use the text exactly as written. Start each independent POC test with /new. Use matching fresh-chat conditions in ChatGPT. Do not reveal either answer to the other system beforehand.
-
-Q1 — original failure, with typos:
+Q1 — typos and release comparison
 whcih TD verison had teh latest Woodgrove harrsi chnages and waht chnaged? cite teh relase notes pls
 
-Q2 — explicit latest-release comparison:
-Based on the imported TD release notes, which version contains the most recent Woodgrove Bank changes? Explain what changed and cite the release-note file and supporting passage. Compare the relevant versions before deciding; do not assume the highest search result is the latest.
+Q2 — video evidence and successful outcome
+Does the System Admin Security User Master Walkthrough establish that a new user was successfully created and saved? Separate spoken instructions, directly inspected visual observations and outcomes that remain unverified. Cite the recording/transcript and exact timestamps examined.
 
-Q3 — documented procedure:
-How do I change an existing TradeDesk user's password? Give me the documented steps and cite the supporting article. Clearly identify any steps the sources do not explain.
+Q3 — steps, settings and contradictory articles
+How do I view posting entries after clicking the Post button in TradeDesk? Find the relevant documentation, explain any required setting or permission, and cite the sources. Identify conflicting instructions if you find any.
 
-Q4 — posting entries:
-How do I view posting entries after clicking the Post button in TradeDesk? Find the relevant documentation, explain any required setting or permission, and cite the sources. Ask for clarification if the answer depends on which screen I am using.
+Q4 — article plus recording
+How do I change an existing TradeDesk user's password? Compare the supporting article with the System Admin Security User Master Walkthrough. Explain what is documented, what the presenter says, and any steps or successful outcomes the sources do not establish. Cite paths and timestamps.
 
-Q5 — one video:
-What is the difference between User Master and Manage Users according to the System Admin Security User Master Walkthrough transcript? Explain simply and cite timestamps.
+Q5 — distinguish related settings
+In TradeDesk, are View Posted Entries and Posting Warning the same setting? Explain what each controls according to the documentation, how they affect what happens after posting, and any conflicting navigation instructions. Cite the original articles.
 
-Q6 — two videos:
-Compare the transcripts for "Adding a New User in User Master" and "Add Users and Change Permissions". What does each teach about creating users and assigning permissions? Cite both transcript paths and timestamps, and state if evidence from either video is missing.
+OPTIONAL FOLLOW-UP — run after Q2 in the same session in BOTH systems:
+Which evidence supports your conclusion, and what additional evidence would you need to confirm successful creation and saving? Separate missing evidence from proof that the action failed.
 
-Q7 — challenge an assumption:
-Does the System Admin Security User Master Walkthrough establish that a new user was successfully created and saved? Separate spoken instructions, reported visual observations and outcomes that remain unverified.
-
-HOW TO ASSESS
-For each answer record: question ID, original source paths, whether cited passages support the claims, unsupported assertions, missing evidence/limits, and elapsed time. For Q1/Q2 compare naming scope and version ordering, not merely whether the outputs agree. Have an SME or original file review decide the answer key; the earlier ChatGPT answer is not assumed correct. If needed, compare both using the same evidence passages as a second test to separate retrieval from reasoning.
-
-Dataset consistency: Drive and PostgreSQL must contain the same file revisions. POC may have saved gap findings not present in Drive; exclude findings-only questions from this matched source test unless the same review exports are supplied to both. Corpus access differences mean elapsed times are observational, not an isolated indexing benchmark.
+HOW TO RETURN RESULTS:
+Label Q1–Q5; retain the full answer, source paths and limitations. For the POC retain the run export per question. Compare factual support, coverage, directness, uncertainty and elapsed time. These are evaluation questions, not an answer key.

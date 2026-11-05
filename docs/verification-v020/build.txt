@@ -1,0 +1,19 @@
+  Determining projects to restore...
+  Restored /workspace/scratch/aed6c87a9d4c/v020/TD-POC-v0.20/src/TD.Poc.Infrastructure/TD.Poc.Infrastructure.csproj (in 257 ms).
+  Restored /workspace/scratch/aed6c87a9d4c/v020/TD-POC-v0.20/src/TD.Poc.Launcher/TD.Poc.Launcher.csproj (in 292 ms).
+  Restored /workspace/scratch/aed6c87a9d4c/v020/TD-POC-v0.20/src/TD.Poc.Core/TD.Poc.Core.csproj (in 292 ms).
+  Restored /workspace/scratch/aed6c87a9d4c/v020/TD-POC-v0.20/tests/TD.Poc.HostTests/TD.Poc.HostTests.csproj (in 292 ms).
+  Restored /workspace/scratch/aed6c87a9d4c/v020/TD-POC-v0.20/src/TD.Poc.Console/TD.Poc.Console.csproj (in 292 ms).
+  Restored /workspace/scratch/aed6c87a9d4c/v020/TD-POC-v0.20/src/TD.Poc.Retrieval.Console/TD.Poc.Retrieval.Console.csproj (in 292 ms).
+  TD.Poc.Infrastructure -> /workspace/scratch/aed6c87a9d4c/v020/TD-POC-v0.20/src/TD.Poc.Infrastructure/bin/Release/net10.0/TD.Poc.Infrastructure.dll
+  TD.Poc.Core -> /workspace/scratch/aed6c87a9d4c/v020/TD-POC-v0.20/src/TD.Poc.Core/bin/Release/net10.0/TD.Poc.Core.dll
+  TD.Poc.Console -> /workspace/scratch/aed6c87a9d4c/v020/TD-POC-v0.20/src/TD.Poc.Console/bin/Release/net10.0/TD.Poc.Console.dll
+  TD.Poc.Retrieval.Console -> /workspace/scratch/aed6c87a9d4c/v020/TD-POC-v0.20/src/TD.Poc.Retrieval.Console/bin/Release/net10.0/TD.Poc.Retrieval.Console.dll
+  TD.Poc.Launcher -> /workspace/scratch/aed6c87a9d4c/v020/TD-POC-v0.20/src/TD.Poc.Launcher/bin/Release/net10.0/TD.Poc.Launcher.dll
+  TD.Poc.HostTests -> /workspace/scratch/aed6c87a9d4c/v020/TD-POC-v0.20/tests/TD.Poc.HostTests/bin/Release/net10.0/TD.Poc.HostTests.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:44.83

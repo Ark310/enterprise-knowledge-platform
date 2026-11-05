@@ -146,6 +146,7 @@ def migration(db):
  q(db,(BASE/'database/migrations/010-local-files.sql').read_text(encoding='utf-8-sig'))
  q(db,(BASE/'database/migrations/017-search-video.sql').read_text(encoding='utf-8-sig'))
  q(db,(BASE/'database/migrations/018-knowledge-qa.sql').read_text(encoding='utf-8-sig'))
+ q(db,(BASE/'database/migrations/020-qa-visual.sql').read_text(encoding='utf-8-sig'))
 
 def ollama(cfg,endpoint,body=None):
  url=cfg.get('OllamaUrl','http://localhost:11434').rstrip('/')+endpoint
@@ -472,7 +473,7 @@ def main(req):
    import module_review
    require_db(db)
    return module_review.main(db,cfg,op,args)
-  if op=='migrate':migration(db);return {'migration':'010-local-files + 017-search-video + 018-knowledge-qa applied; historical records retained','database':'knowledge_poc'}
+  if op=='migrate':migration(db);return {'migration':'010-local-files + 017-search-video + 018-knowledge-qa + 020-qa-visual applied; historical records retained','database':'knowledge_poc'}
   if op in ('build_indexes','compare_search','search_health'):
    import retrieval_v017
    if op=='build_indexes':return retrieval_v017.build_indexes(db,cfg)
