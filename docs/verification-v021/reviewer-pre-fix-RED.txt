@@ -1,0 +1,44 @@
+.FFFF......
+======================================================================
+FAIL: test_empty_visual_recording_list_blocks_scope (test_knowledge_v021.ReviewRegressions.test_empty_visual_recording_list_blocks_scope)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v021/TD-POC-v0.21/tests/test_knowledge_v021.py", line 52, in test_empty_visual_recording_list_blocks_scope
+    self.assertTrue(completeness(b,[],[],{'requested':True,'recordings':[]})['blocking_errors'])
+AssertionError: [] is not true
+
+======================================================================
+FAIL: test_explicit_other_product_families_are_scoped (test_knowledge_v021.ReviewRegressions.test_explicit_other_product_families_are_scoped)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v021/TD-POC-v0.21/tests/test_knowledge_v021.py", line 63, in test_explicit_other_product_families_are_scoped
+    self.assertEqual(requested_family({'normalized_question':f'Latest {name} release changes?'}),expected)
+AssertionError: 'any' != 'formflow'
+- any
++ formflow
+
+
+======================================================================
+FAIL: test_followup_new_required_displaces_old_optional_without_id_reuse (test_knowledge_v021.ReviewRegressions.test_followup_new_required_displaces_old_optional_without_id_reuse)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v021/TD-POC-v0.21/tests/test_knowledge_v021.py", line 58, in test_followup_new_required_displaces_old_optional_without_id_reuse
+    self.assertEqual(out[0]['unit_id'],'new');self.assertEqual(out[0]['evidence_id'],'S81')
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '0' != 'new'
+- 0
++ new
+
+
+======================================================================
+FAIL: test_sampled_flag_without_supplied_frame_blocks_scope (test_knowledge_v021.ReviewRegressions.test_sampled_flag_without_supplied_frame_blocks_scope)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v021/TD-POC-v0.21/tests/test_knowledge_v021.py", line 48, in test_sampled_flag_without_supplied_frame_blocks_scope
+    self.assertTrue(completeness(b,[],[],visual)['blocking_errors'])
+AssertionError: [] is not true
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.321s
+
+FAILED (failures=4)

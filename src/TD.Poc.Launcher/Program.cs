@@ -3,13 +3,13 @@ using TD.Poc.Core;
 using TD.Poc.Infrastructure;
 Runtime.DisableQuickEdit();
 Console.OutputEncoding=System.Text.Encoding.UTF8;
-if(args.Contains("--version")){Console.WriteLine("TD POC launcher 0.20.0");return;}
+if(args.Contains("--version")){Console.WriteLine("TD POC launcher 0.21.0");return;}
 try
 {
     var root=PocPaths.FindRoot();
     while(true)
     {
-        Console.WriteLine("\nTD POC 0.20\n1. Documentation Gap Analysis\n2. Knowledge Retrieval and Verification\n0. Exit");
+        Console.WriteLine("\nTD POC 0.21\n1. Documentation Gap Analysis\n2. Knowledge Retrieval and Verification\n0. Exit");
         Console.Write("Choose 1 or 2: ");var choice=Console.ReadLine();if(choice is null || choice.Trim()=="0")break;
         var project=PocPaths.ProjectForChoice(choice);
         if(project is null){Console.WriteLine("Enter 1, 2 or 0.");continue;}

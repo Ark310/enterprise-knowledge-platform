@@ -41,7 +41,7 @@ def run():
   w.q(db,'insert into knowledge_qa.evidence(turn_id,evidence_key,source_version_id,frame_id,snapshot) values(%s,%s,%s,%s,%s::jsonb)',(tid,f['evidence_id'],rv,f['frame_id'],w.j(f)));db.commit()
   check(True,'additive evidence constraint accepts pinned frame FK')
   ans={'status':'ANSWER','clarification_question':'','claims':[{'id':'C1','basis':'VISUAL','text':'Synthetic blue test frame','citations':[{'evidence_id':f['evidence_id'],'excerpt':f['text']}]}],'limitations':['Synthetic fixture only']}
-  verdict={'decision':'PASS','addresses_question':True,'normalization_faithful':True,'premise_supported':True,'human_readable':True,'evidence_coverage_sufficient':True,'coverage_reason':'Synthetic fixture','claim_checks':[{'claim_id':'C1','supported':True,'reason':'Synthetic fixture'}],'feedback':[]}
+  verdict={'decision':'PASS','addresses_question':True,'normalization_faithful':True,'premise_supported':True,'human_readable':True,'requested_scope_complete':True,'evidence_coverage_sufficient':True,'coverage_reason':'Synthetic fixture','claim_checks':[{'claim_id':'C1','supported':True,'reason':'Synthetic fixture'}],'feedback':[]}
   check(not qa.validate_answer(ans,ev),'visual frame citation accepted without fabricating transcript quotation')
   # Exercise the real retrieve → snapshot → publish boundary with actual frame FKs.
   full=str(uuid.uuid4());qa.begin(db,{'session_id':sid,'turn_id':full,'question':'Show Review Sample save outcome'})

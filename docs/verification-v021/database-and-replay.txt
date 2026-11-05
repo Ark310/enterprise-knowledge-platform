@@ -1,0 +1,84 @@
+RUN integration_v017.py
+PASS additive migration is repeatable
+PASS transcript passage pins matching recording revision and duration check
+PASS persistent transcript-to-recording relationship
+PASS grouped passages combine original cues
+PASS original citation IDs remain intact
+PASS grouped passages link to original cues
+PASS retry does not duplicate grouped units
+Building/verifying HNSW: td017_content_3a86383dbb6445e8a6401a71c328ea4d; may take several minutes on the first upgrade
+Building/verifying HNSW: td017_analysis_3a86383dbb6445e8a6401a71c328ea4d; may take several minutes on the first upgrade
+PASS both halfvec HNSW indexes are valid at 2560 dimensions
+PASS legacy mode uses original cues
+PASS improved mode selects grouped passages
+PASS exact baseline does not use ANN index
+PASS comparison query really uses source HNSW index
+PASS comparison exports both reports
+PASS incomplete grouped vectors fall back to original cues
+PASS comparison blocks misleading all-baseline fallback
+PASS second review reuses hash-verified frames
+PASS frame IDs and actual timestamps remain stable
+PASS frame metadata deduplicates
+PASS corrupt frame cache is regenerated
+PASS saved findings use analysis HNSW candidate search and full-vector reranking
+PASS visual finding stores one explicit reusable frame link
+PASS role filter excludes current-state passages
+PASS superseded source revisions do not enter results
+INTEGRATION PASSED: 23 checks; PostgreSQL 170007 pgvector 0.8.1
+RUN integration_v018.py
+PASS QA DB migration repeats without resetting data
+PASS QA DB QA forces actual HNSW even when inherited config says old_exact
+PASS QA DB multi-query evidence deduplicated with unique IDs
+PASS QA DB verified answer and normalized question persisted
+PASS QA DB normalization, draft and verification audit persisted
+PASS QA DB QA history does not contaminate source vectors
+PASS QA DB terminal turns cannot be mutated with new drafts
+PASS QA DB citation IDs from another turn cannot be reused without its evidence
+PASS QA DB review rejected during answer generation cannot be published
+PASS QA DB review whose underlying source changes cannot be published
+PASS QA DB multiple questions reuse one conversation identity
+QA DATABASE INTEGRATION PASSED: 11 checks
+RUN integration_v019.py
+PASS QA19 catalog chunks never appear as factual body evidence
+PASS QA19 ordinary release question excludes unrelated saved reviews
+PASS QA19 target article body retrieved despite many catalogs
+PASS QA19 QA19 uses actual halfvec HNSW path
+PASS QA19 note date metadata carried into evidence
+PASS QA19 partial extraction prevents claiming exhaustive release coverage
+PASS QA19 release comparison uses numeric order
+PASS QA19 later release inventory represented rather than assuming top semantic result latest
+PASS QA19 matching article receives complete usable-text read when within budget
+PASS QA19 expansion preserves prior citation IDs
+PASS QA19 second investigation expansion is blocked
+PASS QA19 diagnostic distinguishes text present from missing vectors
+PASS QA19 verifier cannot open arbitrary source IDs outside its packet
+PASS QA19 keyword diversity before global cap preserves a short unembedded target beside a 200-plus-chunk article
+V019 DATABASE PASSED: 14 checks
+RUN integration_v020.py
+PASS QA20 late question hit, neighbours and both ends supplied
+PASS QA20 long-source read bounded and incomplete disclosed
+PASS QA20 18-unit transcript read completely instead of prefix 12
+PASS QA20 real FFmpeg samples registered from exact named recording
+PASS QA20 every visual sample pins original video and bounded timestamp
+PASS QA20 run-local images exported reproducibly
+PASS QA20 additive evidence constraint accepts pinned frame FK
+PASS QA20 visual frame citation accepted without fabricating transcript quotation
+PASS QA20 real QA retrieval persists every shared image snapshot with frame FK
+PASS QA20 untampered visual answer passes complete audit publication boundary
+PASS QA20 changed image prevents final publication
+PASS QA20 similar but wrong recording never substituted
+PASS QA20 duplicate basename requires clarification
+PASS QA20 visual migration repeatable with stored frame audit rows
+QA20 checks passed: 14
+RUN integration_v021.py
+PASS QA21 named recording receives all 30 companion units despite irrelevant keyword hits and no companion vectors
+PASS QA21 complete companion bundle has no host coverage blockers
+PASS QA21 removing companion evidence creates deterministic scope blockers
+PASS QA21 older exact phrase passage retained beside six newer broad matches
+PASS QA21 Web product cannot consume TradeDesk release evidence allowance
+PASS QA21 exact phrase explicitly tracked as required evidence
+PASS QA21 stored missing-source gate blocks a model PASS at publication
+PASS QA21 ambiguous recording identity asks for exact relative path
+QA21 checks passed: 8
+RUN captured export replay
+EXPORT REPLAY PASSED: original Q2 supplied 0 matching units; identity-first read supplies all 30 recorded companion units from Q4. No model/vector calls.

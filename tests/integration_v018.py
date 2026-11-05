@@ -19,7 +19,7 @@ def run():
   assert ok,name;checks.append(name);print('PASS QA DB',name,flush=True)
  def newturn():
   tid=str(uuid.uuid4());qa.begin(db,{'session_id':sid,'turn_id':tid,'question':'How do I open user settings?'});return tid
- def verdict(answer):return {'decision':'PASS','addresses_question':True,'normalization_faithful':True,'premise_supported':True,'human_readable':True,'evidence_coverage_sufficient':True,'coverage_reason':'Fixture packet checked','claim_checks':[{'claim_id':c['id'],'supported':True,'reason':'Fixture support'} for c in answer['claims']],'feedback':[]}
+ def verdict(answer):return {'decision':'PASS','addresses_question':True,'normalization_faithful':True,'premise_supported':True,'human_readable':True,'requested_scope_complete':True,'evidence_coverage_sufficient':True,'coverage_reason':'Fixture packet checked','claim_checks':[{'claim_id':c['id'],'supported':True,'reason':'Fixture support'} for c in answer['claims']],'feedback':[]}
  def answer(p,basis='SOURCE'):
   return {'status':'ANSWER','clarification_question':'','claims':[{'id':'C1','text':'The fixture describes user settings.','basis':basis,'citations':[{'evidence_id':p['evidence_id'],'excerpt':p['text'][:35]}]}],'limitations':['Synthetic fixture only']}
  def finish(t,a):return qa.finish(db,{'turn_id':t,'status':'VERIFIED','answer':a,'verdict':verdict(a)})

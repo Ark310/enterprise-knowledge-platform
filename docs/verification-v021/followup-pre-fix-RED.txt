@@ -1,0 +1,14 @@
+..E..........
+======================================================================
+ERROR: test_invalid_verdict_does_not_unlock_followup_arguments (test_knowledge_v021.FollowupSafetyTests.test_invalid_verdict_does_not_unlock_followup_arguments)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v021/TD-POC-v0.21/tests/test_knowledge_v021.py", line 73, in test_invalid_verdict_does_not_unlock_followup_arguments
+    self.assertFalse(q.may_investigate(malformed,{'scope':{'blocking_errors':['missing transcript']}}))
+                     ^^^^^^^^^^^^^^^^^
+AttributeError: module 'knowledge_qa' has no attribute 'may_investigate'
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.211s
+
+FAILED (errors=1)

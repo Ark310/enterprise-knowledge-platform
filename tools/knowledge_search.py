@@ -45,13 +45,15 @@ def rank_pool(rows,terms):
   if key not in best or relevance>best[key][0]:best[key]=(relevance,row)
  return [p for _,p in sorted(best.values(),key=lambda item:(-item[0],not item[1].get('storage_uri','').endswith('/article.md'),str(item[1]['id'])))]
 
-def merge_evidence(old,new,char_budget=100000,max_items=80):
+def merge_evidence(old,new,char_budget=100000,max_items=80,reserved_ids=()):
  out=[dict(p) for p in old];seen={(p['kind'],str(p.get('unit_id',p.get('record_id',p.get('frame_id'))))) for p in out};used=sum(len(p['text']) for p in out)
+ counter=max([int(i[1:]) for i in list(reserved_ids)+[p.get('evidence_id','') for p in out] if i[1:].isdigit()]+[0])
  for p in new:
   key=(p['kind'],str(p.get('unit_id',p.get('record_id',p.get('frame_id')))))
   if key in seen:continue
   if len(out)>=max_items or used+len(p['text'])>char_budget:continue
-  p=dict(p,evidence_id=({'SOURCE':'S','REVIEW':'R','FRAME':'F'}[p['kind']])+str(len(out)+1));out.append(p);seen.add(key);used+=len(p['text'])
+  counter+=1
+  p=dict(p,evidence_id=({'SOURCE':'S','REVIEW':'R','FRAME':'F'}[p['kind']])+str(counter));out.append(p);seen.add(key);used+=len(p['text'])
  return out
 
 def enrich(db,rows):
@@ -85,43 +87,53 @@ def read_versions(db,profile,version_ids,per_version=24,terms=None):
    'complete_usable_text':bool(total) and total==len(rows)})
  return out,reports
 
-def chronology(db,profile,terms):
- if not terms:return [],{'requested':True,'complete':False,'reason':'No focused topic keywords; cannot establish a latest matching release.'}
+def chronology(db,profile,terms,scope='any'):
+ import knowledge_scope as ks
+ if not terms:return [],{'requested':True,'complete':False,'reason':'No focused topic keywords; cannot establish a latest matching release.','required_matches':[]}
  base=r.base_sql('improved_hnsw',profile,True);pattern=keyword_pattern(terms)
+ counts=','.join(f"count(b.id) filter(where b.content_text ~* %s) term_{i}" for i in range(len(terms)))
  rows=w.q(db,f"""WITH b AS ({base}) select v.id version_id,v.storage_uri,s.title,v.source_modified_at,
-  count(b.id) usable_units,count(b.id) filter(where b.content_text ~* %s) matching_units,
+  count(b.id) usable_units,count(b.id) filter(where b.content_text ~* %s) matching_units,{counts},
   exists(select 1 from knowledge.extractions ex where ex.source_version_id=v.id and ex.is_active and ex.status<>'COMPLETE') incomplete_extraction
   from knowledge.source_versions v join knowledge.sources s on s.id=v.source_id left join b on b.version_id=v.id
   where v.lifecycle_status='ACTIVE' and lower(v.storage_uri) like '%%/release_notes/%%'
   and lower(v.storage_uri) ~ '/article[.](md|json)$'
-  group by v.id,s.title order by v.storage_uri,v.id limit 1001""",(None,None,pattern)).fetchall()
- truncated=len(rows)>1000;rows=rows[:1000]
- # Deduplicate physical Markdown/JSON exports. Prefer a readable body over a missing body.
- groups={}
+  group by v.id,s.title order by v.storage_uri,v.id limit 1001""",(None,None,pattern,*[keyword_pattern([t]) for t in terms])).fetchall()
+ truncated=len(rows)>1000;rows=rows[:1000];groups={}
  for p in rows:
+  if scope!='any' and ks.product_family(p['storage_uri'])!=scope:continue
+  p['term_counts']={t:p.pop('term_'+str(i)) for i,t in enumerate(terms)}
   key=family(p['storage_uri']);old=groups.get(key)
-  if old is None or (bool(p['usable_units']),bool(p['matching_units']),p['storage_uri'].endswith('.md'))>(bool(old['usable_units']),bool(old['matching_units']),old['storage_uri'].endswith('.md')):groups[key]=p
+  quality=lambda d:(sum(bool(v) for v in d['term_counts'].values()),bool(d['usable_units']),d['storage_uri'].endswith('.md'))
+  if old is None or quality(p)>quality(old):groups[key]=p
  docs=list(groups.values());docs.sort(key=lambda p:release_version(p['storage_uri']),reverse=True)
  matched=[p for p in docs if p['matching_units']];unread=[p for p in docs if not p['usable_units']]
- # Read highest matching notes and later notes, not unrelated ancient releases.
- chosen=matched[:4]
- if matched:
-  newest=release_version(matched[0]['storage_uri'])
-  chosen+= [p for p in docs if release_version(p['storage_uri'])>newest and p not in chosen][:4]
- ids=[p['version_id'] for p in chosen]
- report={'requested':True,'keywords':terms,'release_path_scope':'Imported active /release_notes/ article bodies, all product families; compare only applicable product/version families.',
+ ids,required=ks.choose_releases(docs,terms,scope)
+ report={'requested':True,'keywords':terms,'product_scope':scope,'required_matches':required,
+  'release_path_scope':'Imported active release-note article bodies; comparison and reading slots separated by product family.',
   'article_families_scanned':len(docs),'matching_article_families':len(matched),'families_without_usable_text':len(unread),'inventory_truncated':truncated,
-  'complete':not truncated and not unread and not any(p['incomplete_extraction'] for p in docs),'method':'Case-insensitive keyword search over imported usable text, not proof that synonyms or unimported notes are absent. Source update dates are not deployment dates.',
+  'complete':not truncated and not unread and not any(p['incomplete_extraction'] for p in docs),
+  'method':'Independent keyword counts per exact phrase/component. Latest matching passage per term/product is required; bounded keyword scan is not proof of synonym or original-file absence. Update dates are not deployment dates.',
   'matches':[dict(p,release_version='.'.join(map(str,release_version(p['storage_uri'])))) for p in matched[:40]],
   'later_notes':[dict(p,release_version='.'.join(map(str,release_version(p['storage_uri'])))) for p in docs if matched and release_version(p['storage_uri'])>release_version(matched[0]['storage_uri'])][:40],
   'missing_text_paths':[p['storage_uri'] for p in unread[:20]]}
  return ids,report
 
+def release_anchors(db,profile,requirements):
+ base=r.base_sql('improved_hnsw',profile,True);out=[]
+ for a in requirements:
+  rows=w.q(db,f"WITH b AS ({base}) select * from b where version_id=%s and content_text ~* %s order by unit_key,id limit 3",
+   (None,None,a['version_id'],keyword_pattern([a['term']]))).fetchall()
+  out.extend(rows)
+ return out
+
 def collect(db,cfg,normalized,extra_queries=None,read_ids=None,prior=None):
  import knowledge_qa as qa
+ import knowledge_scope as ks
  profile=w.model_profile(db,cfg);spec,indexes=r.indexes(db,profile)
  if not any(x['relname']==spec['source_index'] and x['indisvalid'] for x in indexes):raise ValueError('Build-Search-Indexes.cmd must succeed before QA search')
  question=normalized['normalized_question'];terms=keywords(question,normalized.get('keywords',[]))
+ bundle=ks.resolve_bundle(db,cfg,normalized)
  queries=list(dict.fromkeys((extra_queries or normalized['search_queries'])+[question]))[:3]
  pool=[];diagnostics=[];review_candidates=[]
  # Focused original text keyword search is independent of semantic similarity and requires no new embeddings.
@@ -152,34 +164,47 @@ def collect(db,cfg,normalized,extra_queries=None,read_ids=None,prior=None):
     if len(p['text'])>10000:p['text']=p['text'][:10000];p['snapshot_truncated']=True
    review_candidates.extend(review_packet)
  # Priority order: original body matches then diverse semantic hits. No bank-specific answers/aliases are hardcoded.
- pool=diverse(rank_pool(pool,terms),32,3);read_versions_ids=[p['version_id'] for p in pool[:4]]
- report={'requested':False}
  if wants_chronology(normalized):
-  release_ids,report=chronology(db,profile,terms);read_versions_ids=release_ids+read_versions_ids
+  fam=ks.requested_family(normalized)
+  pool=[p for p in pool if '/release_notes/' in urllib.parse.unquote(p.get('storage_uri','')).lower() and (fam=='any' or ks.product_family(p['storage_uri'])==fam)]
+ pool=diverse(rank_pool(pool,terms),32,3)
+ # Choose DISTINCT sources before the limit, not four chunks from one source.
+ read_versions_ids=list(dict.fromkeys(str(p['version_id']) for p in pool))[:4]
+ report={'requested':False,'required_matches':[]}
+ if wants_chronology(normalized):
+  release_ids,report=chronology(db,profile,terms,ks.requested_family(normalized));read_versions_ids=release_ids+read_versions_ids
  # Verifier can only ask to read versions already present in its evidence packet.
  permitted={str(p['version_id']) for p in (prior or []) if p['kind']=='SOURCE'}|{str(p['version_id']) for p in pool}
  requested=list(read_ids or [])
  if any(str(i) not in permitted for i in requested):raise ValueError('Verifier requested a source version outside the supplied evidence')
+ # Companion reads are independent of vector rank. Each named recording gets its own read allowance.
+ companions,companion_report=read_versions(db,profile,bundle['required_version_ids'],terms=terms)
+ anchors=release_anchors(db,profile,report.get('required_matches',[]))
  surrounding,read_report=read_versions(db,profile,requested+read_versions_ids,terms=terms)
- new=qa.evidence_packet({'passages':enrich(db,surrounding+pool)})
+ read_report=companion_report+read_report
+ required_rows=companions+anchors
+ all_rows=required_rows+surrounding+pool
+ new=qa.evidence_packet({'passages':enrich(db,all_rows)})
  # Carry source metadata through the citation adapter.
- byid={str(p['id']):p for p in pool+surrounding}
+ byid={str(p['id']):p for p in all_rows}
  for p in new:
   row=byid[p['unit_id']]
   for key in ['release_version','note_last_updated','source_modified_at']:p[key]=row.get(key)
   p['storage_uri']=row.get('storage_uri');p['source_title']=row.get('title');p['source_metadata']=row.get('source_metadata',{})
- evidence=merge_evidence(prior or [],new,char_budget=100000 if prior else 70000)
+ required_ids={str(p['id']) for p in required_rows}
+ evidence=ks.assemble(prior or [],[p for p in new if p['unit_id'] in required_ids],[p for p in new if p['unit_id'] not in required_ids],char_budget=100000 if prior else 70000)
  review_ids={p['record_id'] for p in evidence if p['kind']=='REVIEW'}
  remaining=max(0,3-len(review_ids))
- evidence=merge_evidence(evidence,[p for p in review_candidates if p['record_id'] not in review_ids][:remaining])
+ evidence=merge_evidence(evidence,[p for p in review_candidates if p['record_id'] not in review_ids][:remaining],reserved_ids=[p['evidence_id'] for p in (prior or [])])
  supplied={p.get('unit_id') for p in evidence if p['kind']=='SOURCE'}
  for read in read_report:
-  n=sum(str(p['id']) in supplied for p in surrounding if str(p['version_id'])==read['version_id'])
+  n=sum(str(p['id']) in supplied for p in {str(x['id']):x for x in all_rows}.values() if str(p['version_id'])==read['version_id'])
   read['units_supplied']=n;read['complete_usable_text']=read['complete_usable_text'] and n==read['usable_units_total']
  import knowledge_visual
- visual,visual_report=knowledge_visual.prepare(db,cfg,normalized,surrounding+pool)
- evidence=merge_evidence(evidence,visual,char_budget=110000,max_items=110)
- return {'evidence':evidence,'visual_inspection':visual_report,'searches':diagnostics,'source_reads':read_report,'release_comparison':report,
+ visual,visual_report=knowledge_visual.prepare(db,cfg,normalized,companions+surrounding+pool)
+ evidence=merge_evidence(evidence,visual,char_budget=110000,max_items=110,reserved_ids=[p['evidence_id'] for p in (prior or [])])
+ scope=ks.completeness(bundle,report.get('required_matches',[]),evidence,visual_report)
+ return {'scope':scope,'evidence':evidence,'visual_inspection':visual_report,'searches':diagnostics,'source_reads':read_report,'release_comparison':report,
   'coverage':'Bounded original-source investigation. Catalog files excluded from factual search. A complete usable-text read is not proof that images, blocked files or unimported content were examined. Inferences and proposed reviews remain labelled.'}
 
 def diagnose(db,cfg,query):

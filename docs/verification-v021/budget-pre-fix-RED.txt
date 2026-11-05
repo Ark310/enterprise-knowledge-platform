@@ -1,0 +1,13 @@
+F......
+======================================================================
+FAIL: test_required_sources_share_small_budget (test_knowledge_v021.EvidenceBudgetTests.test_required_sources_share_small_budget)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v021/TD-POC-v0.21/tests/test_knowledge_v021.py", line 41, in test_required_sources_share_small_budget
+    self.assertIn('last',[p['unit_id'] for p in ev])
+AssertionError: 'last' not found in ['0', '1', '2']
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.245s
+
+FAILED (failures=1)

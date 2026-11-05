@@ -63,18 +63,23 @@ def validate_answer(obj,evidence):
   if claim['basis']=='REVIEW_REPORT' and not any(refs.get(c['evidence_id'],{}).get('kind')=='REVIEW' for c in claim['citations']):errors.append('Review report must cite a saved review')
  return errors
 
-def validate_verdict(obj,answer):
+def validate_verdict(obj,answer,retrieval=None):
  errors=schema_errors(obj,'verdict')
  if errors:return errors
  ids=[c['id'] for c in answer.get('claims',[])];checked=[c['claim_id'] for c in obj['claim_checks']]
  if sorted(ids)!=sorted(checked):errors.append('Verifier must check every claim exactly once')
  if obj['decision']=='PASS':
+  if not obj['requested_scope_complete']:errors.append('PASS requires the requested scope to be complete')
+  if (retrieval or {}).get('scope',{}).get('blocking_errors'):errors.append('PASS blocked by missing required source evidence')
   if not obj['evidence_coverage_sufficient']:errors.append('PASS requires sufficient evidence coverage')
   if obj.get('retrieval_queries') or obj.get('read_source_versions'):errors.append('PASS cannot have outstanding evidence requests')
   if not all(obj[k] for k in ['addresses_question','normalization_faithful','premise_supported','human_readable']):errors.append('PASS requires all answer checks')
   if not all(c['supported'] for c in obj['claim_checks']):errors.append('PASS contains unsupported claims')
   if answer.get('status')!='ANSWER':errors.append('Cannot pass a non-answer')
  return errors
+
+def may_investigate(verdict,retrieval):
+ return not schema_errors(verdict,'verdict') and bool((retrieval or {}).get('scope',{}).get('blocking_errors'))
 
 def ensure(db):
  if not w.one(db,"select exists(select 1 from information_schema.columns where table_schema='knowledge_qa' and table_name='evidence' and column_name='frame_id') t")['t']:raise ValueError('Run Initialize-Database.cmd or Setup-POC.cmd for the additive v0.20 migration first.')
@@ -126,7 +131,7 @@ def finish(db,args):
  if status not in {'VERIFIED','INSUFFICIENT_EVIDENCE','CLARIFY','FAILED','CANCELLED'}:raise ValueError('Invalid QA completion status')
  answer=args.get('answer');verdict=args.get('verdict');evidence=[r['snapshot'] for r in w.q(db,'select snapshot from knowledge_qa.evidence where turn_id=%s order by evidence_key',(tid,)).fetchall()]
  if status=='VERIFIED':
-  errors=validate_answer(answer,evidence)+validate_verdict(verdict,answer)
+  errors=validate_answer(answer,evidence)+validate_verdict(verdict,answer,((row.get('retrieval') or {}).get('rounds') or [{}])[-1])
   if verdict.get('decision')!='PASS':errors.append('Verifier did not pass')
   # Recheck image bytes and original recording revision immediately before publication.
   for p in evidence:
@@ -161,8 +166,8 @@ def main(db,cfg,op,args):
  if op=='qa_finish':return finish(db,args)
  if op=='qa_validate':
   part=args['part'];obj=args['object']
-  errors=validate_normalization(args['original'],obj) if part=='normalization' else validate_answer(obj,args['evidence']) if part=='answer' else validate_verdict(obj,args['answer']) if part=='verdict' else ['Unknown contract']
-  return {'valid':not errors,'errors':errors}
+  errors=validate_normalization(args['original'],obj) if part=='normalization' else validate_answer(obj,args['evidence']) if part=='answer' else validate_verdict(obj,args['answer'],args.get('retrieval')) if part=='verdict' else ['Unknown contract']
+  return {'valid':not errors,'errors':errors,'needs_investigation':part=='verdict' and may_investigate(obj,args.get('retrieval'))}
  if op=='qa_ready':ensure(db);return {'ready':True}
  if op=='qa_diagnose':
   import knowledge_search

@@ -1,24 +1,24 @@
-# TD v0.20 — setup and fair POC 2 retest
+# TD v0.21 — setup and fair POC 2 retest
 
-This release improves **Knowledge Retrieval and Verification (menu 2)**: question-focused source reading, selected video frames, and a verifier coverage check. Gap Analysis's Agent A/B workflow is retained.
+This release corrects **Knowledge Retrieval and Verification (menu 2)**: named video/transcript pairing before semantic search, separate exact-name and broader release comparisons, required-evidence priority, and a host-enforced completeness check. Gap Analysis's Agent A/B workflow is retained.
 
 ## 1. Prepare
 1. Close the older POC and its activity/processing windows.
 2. Back up `knowledge_poc` in pgAdmin. Keep the old folder as a fallback.
-3. Extract this ZIP so `Setup-POC.cmd` is directly inside `C:\TD-POC-v0.20`.
+3. Extract this ZIP so `Setup-POC.cmd` is directly inside `C:\TD-POC-v0.21`.
 4. Keep your data in `C:\S3 bucket Data`. Keep matching MP4/SRT files together. Do not recreate the database or run the fresh-schema SQL installer.
 
 ## 2. Run setup once
 Open CMD under the same Windows account you normally use:
 
 ```cmd
-cd /d C:\TD-POC-v0.20
+cd /d C:\TD-POC-v0.21
 Setup-POC.cmd
 ```
 
 Enter the existing PostgreSQL connection details when asked: host `localhost`, port `5432`, your existing database username and password. Setup creates this folder's Python environment, checks/downloads the same local embedding model, builds the solution, applies additive migrations, checks HNSW indexes, FFmpeg and Codex login. Complete Codex login if requested. Existing source vectors are reused; setup does not re-embed the dataset.
 
-New database change: `knowledge_qa.evidence.frame_id` links QA frame citations to the existing video-frame table. It stores IDs, hashes, timestamps and paths, not image blobs. Existing rows remain. Answers remain audit records, not automatically trusted learning or embedded source facts.
+Retained v0.20 database change (v0.21 adds no new migration): `knowledge_qa.evidence.frame_id` links QA frame citations to the existing video-frame table. It stores IDs, hashes, timestamps and paths, not image blobs. Existing rows remain. Answers remain audit records, not automatically trusted learning or embedded source facts.
 
 Do not copy old `.venv`, `bin` or `obj` directories. No need to copy old run folders for source retrieval. Run setup in the new folder even if the old release worked. Stop if setup reports FAILED and send the full error.
 
@@ -45,7 +45,7 @@ Use the questions in `GPT-Comparison-Prompt-and-Questions.txt`. For **each indep
 4. Export immediately from a separate CMD (the script exports the latest question):
 
 ```cmd
-cd /d C:\TD-POC-v0.20
+cd /d C:\TD-POC-v0.21
 Export-LatestRetrieval.cmd
 ```
 
@@ -90,3 +90,14 @@ Engineering checks accompany the release, but real Windows/Codex answers and par
 
 ## Optional: separate retrieval quality from answer quality
 If answers differ, perform a second comparison using **the identical evidence**. In a fresh ChatGPT chat, attach only `evidence.json` (or the final `evidence-expanded.json`) and the run's `sampled-frames` folder images. Do not attach `result.txt`, drafts, verdicts or the full run ZIP, which would reveal the POC answer. Ask ChatGPT to answer the original question using only that packet, with the same citation IDs and limits. If this agrees while independent searches differ, retrieval/source selection is the likely gap. If identical evidence leads to different claims, inspect reasoning/instructions/verification. This diagnostic is separate from the independent-source test.
+
+## v0.21 acceptance checks
+Run the same five questions, independently with `/new` before each. For Q1 the packet should contain original supporting passages for BOTH the exact-name result and the broader Woodgrove result, with product families separated. For Q2 the packet should include the requested recording's own SRT/DOCX, not only another training video's transcript. Q4 should continue to include its matching transcript, and Q3/Q5 should retain the documented settings distinction. A known missing source must trigger a follow-up or clarification, not full verification merely because remaining claims are narrowly true.
+
+In the run export inspect `scope.recordings`, `scope.required_transcript_versions`, `scope.required_release_matches`, `scope.blocking_errors`, `source_reads` and `visual_inspection`. The verdict now contains `requested_scope_complete` separately from supported-claim checks. The host checks blockers again at database publication.
+
+The title mismatch in your prior export was real: the opening still said Bank Upload Module Walkthrough although the file was named User Master Walkthrough. Preserve that caveat; do not rename the recording just to make a test pass. Filename/link pairing is not independent proof of audio alignment.
+
+The prior Firecrawl authentication warning belonged to a connector worker; all 15 captured Codex calls completed with exit code 0. This release focuses on evidenced retrieval omissions and does not claim to repair that separate connector authorization. Never add an external API key merely to make this local dataset retrieval work.
+
+Release tests replay recorded source snapshots and use a disposable SQL fixture. They demonstrate evidence selection and gates; your live test must still establish answer quality. No raw user run exports or credentials are bundled.

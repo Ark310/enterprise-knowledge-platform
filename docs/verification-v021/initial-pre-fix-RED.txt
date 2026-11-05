@@ -1,0 +1,46 @@
+.EEEEE
+======================================================================
+ERROR: test_companion_is_same_directory_and_same_stem (test_knowledge_v021.ScopeTests.test_companion_is_same_directory_and_same_stem)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v021/TD-POC-v0.21/tests/test_knowledge_v021.py", line 16, in test_companion_is_same_directory_and_same_stem
+    from knowledge_scope import companion
+ModuleNotFoundError: No module named 'knowledge_scope'
+
+======================================================================
+ERROR: test_exact_release_is_not_lost_beneath_four_newer_broad_matches (test_knowledge_v021.ScopeTests.test_exact_release_is_not_lost_beneath_four_newer_broad_matches)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v021/TD-POC-v0.21/tests/test_knowledge_v021.py", line 6, in test_exact_release_is_not_lost_beneath_four_newer_broad_matches
+    from knowledge_scope import choose_releases
+ModuleNotFoundError: No module named 'knowledge_scope'
+
+======================================================================
+ERROR: test_host_rejects_pass_with_missing_requested_scope (test_knowledge_v021.ScopeTests.test_host_rejects_pass_with_missing_requested_scope)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v021/TD-POC-v0.21/tests/test_knowledge_v021.py", line 31, in test_host_rejects_pass_with_missing_requested_scope
+    self.assertTrue(q.validate_verdict(v,a,{'scope':{'blocking_errors':['Matching transcript not supplied']}}))
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: validate_verdict() takes 2 positional arguments but 3 were given
+
+======================================================================
+ERROR: test_mandatory_passage_survives_optional_crowding (test_knowledge_v021.ScopeTests.test_mandatory_passage_survives_optional_crowding)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v021/TD-POC-v0.21/tests/test_knowledge_v021.py", line 23, in test_mandatory_passage_survives_optional_crowding
+    from knowledge_scope import assemble
+ModuleNotFoundError: No module named 'knowledge_scope'
+
+======================================================================
+ERROR: test_unrelated_product_cannot_take_release_read_slots (test_knowledge_v021.ScopeTests.test_unrelated_product_cannot_take_release_read_slots)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v021/TD-POC-v0.21/tests/test_knowledge_v021.py", line 12, in test_unrelated_product_cannot_take_release_read_slots
+    from knowledge_scope import choose_releases
+ModuleNotFoundError: No module named 'knowledge_scope'
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.940s
+
+FAILED (errors=5)

@@ -1,3 +1,11 @@
+# v0.21 — POC 2 identity-first evidence retrieval
+- Named video resolves to imported companion SRT/VTT/DOCX before generic search, including existing transcript links.
+- Exact phrase and broader name release matches each get a required original passage, scoped by product family.
+- Distinct-source selection and required-first fair evidence budget; follow-up may displace optional prior evidence without reusing citation IDs.
+- Requested scope checked separately from claim support; host blocks full verification when required evidence/images are missing.
+- Ambiguous recording names request a relative path. Existing schema, source vectors, Qwen model and Gap workflow retained.
+- Captured export replay and synthetic changed-name SQL cases accompany verification. No claim of live answer parity.
+
 # v0.20 — POC 2 evidence coverage and visual checks
 - Question-focused original-source reads include relevant sections, neighbours and both ends; complete short-source reads up to 24 units.
 - Exact named local recording lookup, bounded timestamped samples, shared images for Assistant/Verifier, run-local copies for diagnosis.

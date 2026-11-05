@@ -30,12 +30,12 @@ class KnowledgeQaTests(unittest.TestCase):
  def test_verifier_must_check_all_claims(self):
   from knowledge_qa import validate_verdict
   a={'status':'ANSWER','claims':[{'id':'C1'},{'id':'C2'}]}
-  v={'decision':'PASS','addresses_question':True,'normalization_faithful':True,'premise_supported':True,'human_readable':True,'evidence_coverage_sufficient':True,'coverage_reason':'Fixture packet checked','claim_checks':[{'claim_id':'C1','supported':True,'reason':'Supported'}],'feedback':[]}
+  v={'decision':'PASS','addresses_question':True,'normalization_faithful':True,'premise_supported':True,'human_readable':True,'requested_scope_complete':True,'evidence_coverage_sufficient':True,'coverage_reason':'Fixture packet checked','claim_checks':[{'claim_id':'C1','supported':True,'reason':'Supported'}],'feedback':[]}
   self.assertTrue(validate_verdict(v,a))
  def test_verifier_pass_cannot_hide_unsupported_claim(self):
   from knowledge_qa import validate_verdict
   a={'status':'ANSWER','claims':[{'id':'C1'}]}
-  v={'decision':'PASS','addresses_question':True,'normalization_faithful':True,'premise_supported':True,'human_readable':True,'evidence_coverage_sufficient':True,'coverage_reason':'Fixture packet checked','claim_checks':[{'claim_id':'C1','supported':False,'reason':'Not shown'}],'feedback':[]}
+  v={'decision':'PASS','addresses_question':True,'normalization_faithful':True,'premise_supported':True,'human_readable':True,'requested_scope_complete':True,'evidence_coverage_sufficient':True,'coverage_reason':'Fixture packet checked','claim_checks':[{'claim_id':'C1','supported':False,'reason':'Not shown'}],'feedback':[]}
   self.assertTrue(validate_verdict(v,a))
  def test_review_evidence_labelled_and_stale_excluded(self):
   from knowledge_qa import evidence_packet

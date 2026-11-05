@@ -16,7 +16,7 @@ class CoverageTests(unittest.TestCase):
  def test_verifier_cannot_pass_incomplete_investigation(self):
   import knowledge_qa as q
   a={'status':'ANSWER','claims':[]}
-  v={'decision':'PASS','addresses_question':True,'normalization_faithful':True,'premise_supported':True,'human_readable':True,'claim_checks':[],'feedback':[],'evidence_coverage_sufficient':False,'coverage_reason':'Ending not read'}
+  v={'decision':'PASS','addresses_question':True,'normalization_faithful':True,'premise_supported':True,'human_readable':True,'claim_checks':[],'feedback':[],'requested_scope_complete':False,'evidence_coverage_sufficient':False,'coverage_reason':'Ending not read'}
   self.assertTrue(any('coverage' in e.lower() for e in q.validate_verdict(v,a)))
  def test_video_name_normalization_preserves_identity(self):
   from knowledge_visual import recording_key

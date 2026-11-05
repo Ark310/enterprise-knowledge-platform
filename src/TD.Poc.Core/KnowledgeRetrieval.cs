@@ -59,6 +59,7 @@ public sealed class KnowledgeRetrieval(IKnowledgeHost host)
             File.WriteAllText(Path.Combine(folder,"normalization.json"),normalized.ToJsonString());
             var retrieved=await Work("qa_retrieve",new(){{"normalization",normalized.DeepClone()}});
             File.WriteAllText(Path.Combine(folder,"evidence.json"),retrieved.ToJsonString());
+            if(retrieved["scope"]?["clarification"]?.GetValue<string>() is {} clarify)return await Stop("CLARIFY",clarify);
             var evidence=retrieved["evidence"]!.AsArray();
             var packet=new JsonObject{{"original_question",question},{"normalization",normalized.DeepClone()},{"conversation",new JsonArray(history.Select(x=>x.DeepClone()).ToArray())},{"retrieval",retrieved.DeepClone()}};
             JsonNode? feedback=null;
@@ -78,7 +79,7 @@ public sealed class KnowledgeRetrieval(IKnowledgeHost host)
                 var verificationInput=packet.DeepClone().AsObject();verificationInput["candidate"]=candidate.DeepClone();
                 var verdict=await host.Model("verify-"+attempt,Instructions("knowledge-verifier.md","verdict"),verificationInput.ToJsonString(),folder,Images());
                 await Event("VERIFICATION",verdict);
-                var vv=await Work("qa_validate",new(){{"part","verdict"},{"object",verdict.DeepClone()},{"answer",candidate.DeepClone()}});await Event("VALIDATION",vv);
+                var vv=await Work("qa_validate",new(){{"part","verdict"},{"object",verdict.DeepClone()},{"answer",candidate.DeepClone()},{"retrieval",retrieved.DeepClone()}});await Event("VALIDATION",vv);
                 var passed=vv["valid"]?.GetValue<bool>()==true && verdict["decision"]?.GetValue<string>()=="PASS";
                 host.End(passed,passed?"Evidence and relevance checks passed. Saving the final answer.":"Answer not approved. "+(attempt==0?"One correction is allowed.":"Stopping without an unverified answer."));active=false;
                 if(passed)
@@ -97,12 +98,12 @@ public sealed class KnowledgeRetrieval(IKnowledgeHost host)
                     return result+localWarning+"\nRun: "+folder;
                 }
                 feedback=new JsonObject{{"verifier",verdict.DeepClone()},{"contract_validation",vv.DeepClone()}};
-                if(attempt==0 && vv["valid"]?.GetValue<bool>()==true)
+                if(attempt==0 && (vv["valid"]?.GetValue<bool>()==true || vv["needs_investigation"]?.GetValue<bool>()==true))
                 {
                     var queries=verdict["retrieval_queries"]?.DeepClone()??new JsonArray();
                     var versions=verdict["read_source_versions"]?.DeepClone()??new JsonArray();
                     // Insufficient evidence gets an independent check and a bounded follow-up, not a dead end.
-                    if(queries.AsArray().Count>0 || versions.AsArray().Count>0 || candidate["status"]!.ToString()=="INSUFFICIENT_EVIDENCE")
+                    if(queries.AsArray().Count>0 || versions.AsArray().Count>0 || candidate["status"]!.ToString()=="INSUFFICIENT_EVIDENCE" || vv["needs_investigation"]?.GetValue<bool>()==true)
                     {
                         if(queries.AsArray().Count==0)queries=new JsonArray(normalized["normalized_question"]!.ToString());
                         host.Begin(folder,"Knowledge");active=true;
@@ -112,7 +113,9 @@ public sealed class KnowledgeRetrieval(IKnowledgeHost host)
                     }
                 }
             }
-            return await Stop("INSUFFICIENT_EVIDENCE","I could not produce an answer that passed the evidence and relevance checks after one correction. No unverified answer is being shown. The drafts and verifier feedback are saved for diagnosis.");
+            var missing=retrieved["scope"]?["blocking_errors"]?.AsArray().Select(x=>x!.ToString()).Take(4).ToArray()??[];
+            var detail=missing.Length>0?"\nMissing required evidence:\n"+string.Join("\n",missing):"";
+            return await Stop("INSUFFICIENT_EVIDENCE","I could not complete the evidence and relevance checks after one follow-up. No unverified answer is being shown. Drafts and verifier feedback are saved for diagnosis."+detail);
         }
         catch(Exception e)
         {

@@ -237,6 +237,9 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 2000
+        },
+        "requested_scope_complete": {
+          "type": "boolean"
         }
       },
       "required": [
@@ -248,7 +251,8 @@
         "claim_checks",
         "feedback",
         "evidence_coverage_sufficient",
-        "coverage_reason"
+        "coverage_reason",
+        "requested_scope_complete"
       ],
       "additionalProperties": false
     }

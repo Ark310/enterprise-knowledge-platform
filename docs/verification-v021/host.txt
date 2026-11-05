@@ -1,0 +1,51 @@
+PASS safe process invocation
+PASS database secret removed from Codex environment
+PASS user text travels through stdin without shell interpolation
+PASS shell tools explicitly disabled
+PASS ambient Codex configuration omitted
+PASS isolated Codex home used
+PASS event file written
+PASS completion recorded
+PASS agent progress reaches the main-console subscription
+PASS Codex final JSON consumed
+PASS events available before process exits
+PASS stderr available before process exits
+PASS cancel file stops call
+PASS cancel state retained
+PASS timeout stops call and keeps logs
+PASS partial events survive timeout
+PASS nonzero exit status and stderr retained
+PASS UTF-8 C#/Python worker roundtrip with large non-ASCII packet
+PASS worker exception and raw output persisted
+PASS one aggregate status stream per A/B role
+PASS A sections share one activity stream
+PASS B aggregate completion recorded
+PASS invalid batch repaired with validation feedback
+PASS persistent invalid batch stops after two corrections
+PASS cancellation propagates without retry
+Host tests passed: 25
+PASS QA: launcher only selects the two allowed projects
+PASS QA: normalization then answer then independent verifier
+PASS QA: verified final answer includes normalization and original source
+PASS QA: verified answer saved before publication
+PASS QA: verifier result retained in audit history
+PASS QA: one activity phase for each agent on successful turn
+PASS QA: retrieval does not ingest or promote answers to gap/source vectors
+PASS QA: fabricated citation receives only one correction and never reaches semantic pass
+PASS QA: invalid draft is withheld and saved only as audit
+PASS QA: one bounded verifier correction followed by re-verification
+PASS QA: corrected answer can pass
+PASS QA: repeated semantic rejection withholds the answer
+PASS QA: ambiguous normalization asks instead of searching wrong scope
+PASS QA: no retrieved evidence cannot yield invented general-knowledge answer
+PASS QA: cancellation persists a non-success outcome
+PASS QA: database save failure never returns a verified answer
+PASS QA: local final-file failure cannot contradict a committed verified answer
+PASS QA: insufficient draft goes to verifier, then final answer is rechecked
+PASS QA: verifier can trigger one additional investigation round
+PASS QA: same frame attachment reaches Assistant and Verifier but not normalization
+PASS QA: host coverage blocker triggers follow-up despite model PASS
+PASS QA: scope repaired in follow-up is reverified before publication
+PASS QA: missing required source cannot be published after retry even when both model verdicts PASS
+PASS QA: unresolved source gap is explained in the main console
+Knowledge host checks passed: 24
