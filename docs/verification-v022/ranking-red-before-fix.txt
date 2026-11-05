@@ -1,0 +1,40 @@
+EEEF
+======================================================================
+ERROR: test_exact_body_duplicates_do_not_take_two_read_slots (test_knowledge_v022.RetrievalTests.test_exact_body_duplicates_do_not_take_two_read_slots)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v022/TD-POC-v0.22/tests/test_knowledge_v022.py", line 14, in test_exact_body_duplicates_do_not_take_two_read_slots
+    from knowledge_topics import distinct_sources
+ModuleNotFoundError: No module named 'knowledge_topics'
+
+======================================================================
+ERROR: test_followup_replaces_generic_keywords_with_feedback_topics (test_knowledge_v022.RetrievalTests.test_followup_replaces_generic_keywords_with_feedback_topics)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v022/TD-POC-v0.22/tests/test_knowledge_v022.py", line 10, in test_followup_replaces_generic_keywords_with_feedback_topics
+    from knowledge_topics import search_terms
+ModuleNotFoundError: No module named 'knowledge_topics'
+
+======================================================================
+ERROR: test_generic_only_query_is_not_made_unsearchable (test_knowledge_v022.RetrievalTests.test_generic_only_query_is_not_made_unsearchable)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v022/TD-POC-v0.22/tests/test_knowledge_v022.py", line 19, in test_generic_only_query_is_not_made_unsearchable
+    from knowledge_topics import search_terms
+ModuleNotFoundError: No module named 'knowledge_topics'
+
+======================================================================
+FAIL: test_topic_procedure_beats_generic_settings (test_knowledge_v022.RetrievalTests.test_topic_procedure_beats_generic_settings)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v022/TD-POC-v0.22/tests/test_knowledge_v022.py", line 8, in test_topic_procedure_beats_generic_settings
+    self.assertEqual(rank_pool(rows,['Post button','posting entries','setting','permission'])[0]['id'],'specific')
+AssertionError: 'generic' != 'specific'
+- generic
++ specific
+
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.121s
+
+FAILED (failures=1, errors=3)

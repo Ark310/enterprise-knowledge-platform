@@ -65,6 +65,7 @@ internal static class KnowledgeTests
             var text=await new KnowledgeRetrieval(h).Ask("edit a user");
             Check(h.Models.Contains("verify-0") && h.Models.Contains("verify-1"),"insufficient draft goes to verifier, then final answer is rechecked");
             Check(h.Operations.Count(x=>x=="qa_retrieve")==2 && h.FinalStatus=="VERIFIED","verifier can trigger one additional investigation round");
+            Check(h.FollowupKeywords=="user edit","verifier topic keywords reach the expanded worker search");
         }
         using(var h=new Fixture(source){WithFrame=true})
         {
@@ -83,6 +84,14 @@ internal static class KnowledgeTests
             Check(h.FinalStatus=="INSUFFICIENT_EVIDENCE" && h.FinalAnswer is null,"missing required source cannot be published after retry even when both model verdicts PASS");
             Check(text.Contains("Matching transcript missing"),"unresolved source gap is explained in the main console");
         }
+        var display=KnowledgeRetrieval.Render("q",new JsonObject{{"normalized_question","q"}},new JsonObject{{"claims",new JsonArray(
+            new JsonObject{{"id","C1"},{"section","ANSWER"},{"basis","SOURCE"},{"text","You can view the entries."},{"citations",new JsonArray(new JsonObject{{"evidence_id","S1"},{"excerpt","# Account display"}})}},
+            new JsonObject{{"id","C2"},{"section","STEPS"},{"basis","SOURCE"},{"text","Select Posted."},{"citations",new JsonArray(new JsonObject{{"evidence_id","S2"},{"excerpt","Select Posted to open the display."}})}})},{"limitations",new JsonArray("Your version may use a different menu.")}},new JsonArray(
+            new JsonObject{{"evidence_id","S1"},{"kind","SOURCE"},{"file","existing-assets/Long Folder/Account display/article.md"},{"locator",new JsonObject{{"line_start",1},{"line_end",1}}}},
+            new JsonObject{{"evidence_id","S2"},{"kind","SOURCE"},{"file","existing-assets/Long Folder/Account display/article.md"},{"locator",new JsonObject{{"line_start",2},{"line_end",4}}}}));
+        Check(display.Contains("Steps:")&&display.Contains("1. Select Posted."),"human-readable procedure has numbered steps");
+        Check(display.Contains("Important notes:")&&display.Contains("Account display")&&!display.Contains("existing-assets/Long Folder"),"concise source names and notes replace internal path clutter");
+        Check(display.Contains("Passage: Select Posted to open the display."),"display chooses supporting text rather than title-only quote");
         Console.WriteLine($"Knowledge host checks passed: {count}");return count;
     }
     private sealed class Fixture:IKnowledgeHost,IDisposable
@@ -92,7 +101,7 @@ internal static class KnowledgeTests
         public bool MissingScope,PersistMissing; public bool WithFrame; public List<string> ImageRoles=[];
         public bool WrongQuote,RejectFirst,RejectAll,Clarify,EmptyEvidence,Cancel,FailFinalSave,Failed,BlockLocalFinal,InitiallyInsufficient;
         public List<string> Models=[],Operations=[],Begins=[],Events=[];
-        public string? FinalStatus;public JsonNode? FinalAnswer;
+        public string? FollowupKeywords;public string? FinalStatus;public JsonNode? FinalAnswer;
         public Fixture(string source){this.source=source;foreach(var dir in new[]{"agents","contracts"}){Directory.CreateDirectory(Path.Combine(Root,dir));foreach(var file in Directory.GetFiles(Path.Combine(source,dir)))File.Copy(file,Path.Combine(Root,dir,Path.GetFileName(file)));}}
         public void Begin(string f,string r)=>Begins.Add(r);
         public void End(bool success,string message){}
@@ -102,7 +111,7 @@ internal static class KnowledgeTests
             Models.Add(role);if(images?.Any()==true){if(images.Single()!="fixture.jpg")throw new Exception("Unexpected image");ImageRoles.Add(role);}if(Cancel)throw new OperationCanceledException();
             if(role=="normalize")return Task.FromResult<JsonNode>(new JsonObject{{"normalized_question","How do I edit a user?"},{"visual_check",false},{"recording_names",new JsonArray()},{"needs_clarification",Clarify},{"clarification_question",Clarify?"Which product do you mean?":""},{"changes",new JsonArray("spelling")},{"search_queries",new JsonArray()}});
             if(role.StartsWith("answer")&&EmptyEvidence || role=="answer-0"&&InitiallyInsufficient)return Task.FromResult<JsonNode>(new JsonObject{{"status","INSUFFICIENT_EVIDENCE"},{"clarification_question",""},{"claims",new JsonArray()},{"limitations",new JsonArray("Need source detail.")}});
-            if(role.StartsWith("verify")&&EmptyEvidence || role=="verify-0"&&InitiallyInsufficient)return Task.FromResult<JsonNode>(new JsonObject{{"decision","INSUFFICIENT_EVIDENCE"},{"addresses_question",false},{"normalization_faithful",true},{"premise_supported",true},{"human_readable",true},{"requested_scope_complete",true},{"evidence_coverage_sufficient",true},{"coverage_reason","Fixture packet checked"},{"claim_checks",new JsonArray()},{"feedback",new JsonArray("Read user instructions.")},{"retrieval_queries",new JsonArray("user edit instructions")},{"read_source_versions",new JsonArray()}});
+            if(role.StartsWith("verify")&&EmptyEvidence || role=="verify-0"&&InitiallyInsufficient)return Task.FromResult<JsonNode>(new JsonObject{{"decision","INSUFFICIENT_EVIDENCE"},{"addresses_question",false},{"normalization_faithful",true},{"premise_supported",true},{"human_readable",true},{"requested_scope_complete",true},{"evidence_coverage_sufficient",true},{"coverage_reason","Fixture packet checked"},{"claim_checks",new JsonArray()},{"feedback",new JsonArray("Read user instructions.")},{"retrieval_queries",new JsonArray("user edit instructions")},{"retrieval_keywords",new JsonArray("user edit")},{"read_source_versions",new JsonArray()}});
             if(role.StartsWith("answer"))return Task.FromResult<JsonNode>(new JsonObject{{"status","ANSWER"},{"clarification_question",""},{"claims",new JsonArray(new JsonObject{{"id","C1"},{"text",WrongQuote?"SECRET_BAD_DRAFT":"Select Edit to edit a user."},{"basis","SOURCE"},{"citations",new JsonArray(new JsonObject{{"evidence_id","S1"},{"excerpt",WrongQuote?"Invented quote":"Select Edit"}})}})},{"limitations",new JsonArray("Saving is not demonstrated.")}});
             var reject=RejectAll||RejectFirst&&role=="verify-0";
             return Task.FromResult<JsonNode>(new JsonObject{{"decision",reject?"REVISE":"PASS"},{"addresses_question",true},{"normalization_faithful",true},{"premise_supported",true},{"human_readable",true},{"requested_scope_complete",true},{"evidence_coverage_sufficient",true},{"coverage_reason","Fixture packet checked"},{"claim_checks",new JsonArray(new JsonObject{{"claim_id","C1"},{"supported",!reject},{"reason",reject?"Fix scope":"Directly supported"}})},{"feedback",new JsonArray(reject?"Narrow the answer":"")}});
@@ -110,6 +119,7 @@ internal static class KnowledgeTests
         public async Task<JsonNode> Worker(string op,JsonObject args)
         {
             Operations.Add(op);
+            if(op=="qa_retrieve"&&args["expand"]?.GetValue<bool>()==true)FollowupKeywords=args["keywords"]?.AsArray().FirstOrDefault()?.ToString();
             if(op=="qa_validate")
             {
                 var psi=new ProcessStartInfo(OperatingSystem.IsWindows()?Path.Combine(source,".venv","Scripts","python.exe"):"python3"){RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true,UseShellExecute=false};

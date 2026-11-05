@@ -38,7 +38,7 @@ def run():
   t=newturn();normal={'normalized_question':'How do I open user settings?','visual_check':False,'recording_names':[],'needs_clarification':False,'clarification_question':'','changes':[],'search_queries':['user settings']}
   qa.event(db,{'turn_id':t,'stage':'NORMALIZATION','payload':normal})
   ev=qa.retrieve(db,{'SearchMode':'old_exact'},{'turn_id':t,'normalization':normal})
-  check(all(s['diagnostics']['hnsw_index_used'] for s in ev['searches']),'QA forces actual HNSW even when inherited config says old_exact')
+  check(any(s['kind']=='HYBRID_HNSW' for s in ev['searches']) and all(s['diagnostics']['hnsw_index_used'] for s in ev['searches'] if s['kind']=='HYBRID_HNSW'),'QA forces actual HNSW even when inherited config says old_exact')
   check(len({p['evidence_id'] for p in ev['evidence']})==len(ev['evidence']),'multi-query evidence deduplicated with unique IDs')
   p=next(p for p in ev['evidence'] if p['kind']=='SOURCE');a=answer(p)
   qa.event(db,{'turn_id':t,'stage':'DRAFT','payload':a});qa.event(db,{'turn_id':t,'stage':'VERIFICATION','payload':verdict(a)})

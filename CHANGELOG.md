@@ -1,3 +1,11 @@
+# v0.22 — focused retrieval and readable answers
+- Topic/title matching uses PostgreSQL English stemming; generic settings/permission terms no longer dominate the topic rank.
+- Long-source focused reads use the same word-inflection matching; release chronology preserves exact-name matching.
+- Complete usable-text duplicates share optional candidate slots, including before lexical caps; the most relevant matching title wins. No original source or vector is deleted.
+- Verifier can repair follow-up keywords; newer optional evidence can replace earlier optional material without changing citation IDs or required-source protections.
+- Main answer has clear sections, numbered steps, useful caveats, short source labels and clock timestamps. Full paths, quotes and diagnostics remain in the run export.
+- No new schema migration or model change. Existing source vectors and Gap Analysis are retained.
+
 # v0.21 — POC 2 identity-first evidence retrieval
 - Named video resolves to imported companion SRT/VTT/DOCX before generic search, including existing transcript links.
 - Exact phrase and broader name release matches each get a required original passage, scoped by product family.

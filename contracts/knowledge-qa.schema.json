@@ -128,6 +128,13 @@
                   "additionalProperties": false
                 },
                 "maxItems": 8
+              },
+              "section": {
+                "enum": [
+                  "ANSWER",
+                  "STEPS",
+                  "DETAILS"
+                ]
               }
             },
             "required": [
@@ -240,6 +247,15 @@
         },
         "requested_scope_complete": {
           "type": "boolean"
+        },
+        "retrieval_keywords": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100
+          }
         }
       },
       "required": [

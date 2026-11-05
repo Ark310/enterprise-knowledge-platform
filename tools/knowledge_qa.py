@@ -72,7 +72,7 @@ def validate_verdict(obj,answer,retrieval=None):
   if not obj['requested_scope_complete']:errors.append('PASS requires the requested scope to be complete')
   if (retrieval or {}).get('scope',{}).get('blocking_errors'):errors.append('PASS blocked by missing required source evidence')
   if not obj['evidence_coverage_sufficient']:errors.append('PASS requires sufficient evidence coverage')
-  if obj.get('retrieval_queries') or obj.get('read_source_versions'):errors.append('PASS cannot have outstanding evidence requests')
+  if obj.get('retrieval_queries') or obj.get('read_source_versions') or obj.get('retrieval_keywords'):errors.append('PASS cannot have outstanding evidence requests')
   if not all(obj[k] for k in ['addresses_question','normalization_faithful','premise_supported','human_readable']):errors.append('PASS requires all answer checks')
   if not all(c['supported'] for c in obj['claim_checks']):errors.append('PASS contains unsupported claims')
   if answer.get('status')!='ANSWER':errors.append('Cannot pass a non-answer')
@@ -113,8 +113,9 @@ def retrieve(db,cfg,args):
  if expanding:
   if (row:=w.one(db,'select retrieval from knowledge_qa.turns where id=%s',(tid,)))['retrieval'].get('expanded',False):raise ValueError('Only one bounded retrieval expansion is allowed')
   if len(args.get('queries',[]))>2 or any(not isinstance(x,str) or not 1<=len(x)<=2000 for x in args.get('queries',[])):raise ValueError('Invalid expansion queries')
+  if len(args.get('keywords',[]))>8 or any(not isinstance(x,str) or not 2<=len(x)<=100 for x in args.get('keywords',[])):raise ValueError('Invalid revised keywords')
   if len(args.get('read_source_versions',[]))>4:raise ValueError('Too many requested source versions')
- result=knowledge_search.collect(db,cfg,normalized,args.get('queries') if expanding else None,args.get('read_source_versions') if expanding else None,previous)
+ result=knowledge_search.collect(db,cfg,normalized,args.get('queries') if expanding else None,args.get('read_source_versions') if expanding else None,previous,args.get('keywords') if expanding else None)
  import knowledge_visual
  if any(p['kind']=='FRAME' for p in result['evidence']):result['evidence']=knowledge_visual.stage_images(result['evidence'],args['work'])
  for p in result['evidence']:

@@ -37,11 +37,10 @@ def diverse(rows,limit=24,per_source=3):
  return out
 
 def rank_pool(rows,terms):
+ from knowledge_topics import topic_score
  best={}
  for row in rows:
-  body=row['content_text'].casefold();title=row.get('title','').casefold()
-  relevance=sum((3 if term.casefold() in title else 0)+(1 if term.casefold() in body else 0) for term in terms)+25*row.get('score',0)
-  key=str(row['id'])
+  relevance=topic_score(row,terms);key=str(row['id'])
   if key not in best or relevance>best[key][0]:best[key]=(relevance,row)
  return [p for _,p in sorted(best.values(),key=lambda item:(-item[0],not item[1].get('storage_uri','').endswith('/article.md'),str(item[1]['id'])))]
 
@@ -67,13 +66,13 @@ def enrich(db,rows):
   p['note_last_updated']=m.group(1).strip() if m else None
  return rows
 
-def read_versions(db,profile,version_ids,per_version=24,terms=None):
+def read_versions(db,profile,version_ids,per_version=24,terms=None,morphology=False):
  base=r.base_sql('improved_hnsw',profile,True);out=[];reports=[]
  terms=terms or [];pattern=keyword_pattern(terms)
  for version_id in list(dict.fromkeys(str(uuid.UUID(str(x))) for x in version_ids))[:8]:
   total=w.one(db,f'WITH b AS ({base}) select count(*) n from b where version_id=%s',(None,None,version_id))['n']
   # Choose question hits + neighbouring units and both ends, rather than a source prefix.
-  score=' + '.join("case when content_text ~* %s then 1 else 0 end" for _ in terms) or '0'
+  score=' + '.join(("case when to_tsvector('english',content_text) @@ plainto_tsquery('english',%s) then 1 else 0 end" if morphology else "case when content_text ~* %s then 1 else 0 end") for _ in terms) or '0'
   rows=w.q(db,f"""WITH b AS ({base}), ordered AS (
    select b.*,row_number() over(order by coalesce(start_seconds,0),case when unit_key ~ '^[0-9]+$' then unit_key::numeric else 0 end,unit_key,id) rn,
    count(*) over() total,({score}) focus_score from b where version_id=%s), hits AS (
@@ -81,7 +80,7 @@ def read_versions(db,profile,version_ids,per_version=24,terms=None):
    select o.* from ordered o where total<=%s or rn<=2 or rn>total-4
    or exists(select 1 from hits h where abs(h.rn-o.rn)<=1))
    select * from chosen order by case when total<=%s then 0 when rn>total-4 then 1 when focus_score>0 then 2 when rn<=2 then 3 else 4 end,
-   focus_score desc,rn limit %s""",(None,None,*[keyword_pattern([t]) for t in terms],version_id,per_version,per_version,per_version)).fetchall()
+   focus_score desc,rn limit %s""",(None,None,*[(t if morphology else keyword_pattern([t])) for t in terms],version_id,per_version,per_version,per_version)).fetchall()
   out.extend(rows);reports.append({'version_id':version_id,'usable_units_total':total,'units_read':len(rows),
    'selection':'Question keyword hits, neighbouring context, opening and ending; whole short source when within limit.',
    'complete_usable_text':bool(total) and total==len(rows)})
@@ -127,18 +126,20 @@ def release_anchors(db,profile,requirements):
   out.extend(rows)
  return out
 
-def collect(db,cfg,normalized,extra_queries=None,read_ids=None,prior=None):
+def collect(db,cfg,normalized,extra_queries=None,read_ids=None,prior=None,revised_keywords=None):
  import knowledge_qa as qa
  import knowledge_scope as ks
+ import knowledge_topics as kt
  profile=w.model_profile(db,cfg);spec,indexes=r.indexes(db,profile)
  if not any(x['relname']==spec['source_index'] and x['indisvalid'] for x in indexes):raise ValueError('Build-Search-Indexes.cmd must succeed before QA search')
  question=normalized['normalized_question'];terms=keywords(question,normalized.get('keywords',[]))
+ if not wants_chronology(normalized):terms=kt.search_terms(question,terms,extra_queries,revised_keywords)
  bundle=ks.resolve_bundle(db,cfg,normalized)
  queries=list(dict.fromkeys((extra_queries or normalized['search_queries'])+[question]))[:3]
  pool=[];diagnostics=[];review_candidates=[]
  # Focused original text keyword search is independent of semantic similarity and requires no new embeddings.
  base=r.base_sql('improved_hnsw',profile,True)
- if terms:
+ if terms and wants_chronology(normalized):
   pattern=keyword_pattern(terms)
   keyword_score=' + '.join("case when content_text ~* %s then 1 else 0 end" for _ in terms)
   lexical=w.q(db,f"""WITH b AS ({base}), matched AS (
@@ -152,6 +153,8 @@ def collect(db,cfg,normalized,extra_queries=None,read_ids=None,prior=None):
     select * from ranked where family_rank<=3 order by keyword_score desc,article_family,id limit 201""",
     (None,None,*[keyword_pattern([term]) for term in terms],pattern,pattern)).fetchall()
   diagnostics.append({'kind':'FOCUSED_KEYWORDS','terms':terms,'returned':min(200,len(lexical)),'truncated':len(lexical)>200});pool.extend(lexical[:200])
+ if not wants_chronology(normalized):
+  topic_rows,topic_diag=kt.lexical(db,profile,terms);pool.extend(topic_rows);diagnostics.append(topic_diag)
  for query in queries:
   queryvec=w.vector(w.embed(cfg,query,True));db.commit()
   result=r.execute(db,profile,query,queryvec,'improved_hnsw',None,32,cfg.get('SearchCandidateBudget',100),True,True)
@@ -167,7 +170,10 @@ def collect(db,cfg,normalized,extra_queries=None,read_ids=None,prior=None):
  if wants_chronology(normalized):
   fam=ks.requested_family(normalized)
   pool=[p for p in pool if '/release_notes/' in urllib.parse.unquote(p.get('storage_uri','')).lower() and (fam=='any' or ks.product_family(p['storage_uri'])==fam)]
- pool=diverse(rank_pool(pool,terms),32,3)
+ pool=diverse(rank_pool(pool,terms),len(pool),3)
+ kt.annotate_signatures(db,profile,pool)
+ distinct,duplicate_sources=kt.distinct_sources(pool)
+ pool=[p for p in pool if str(p['version_id']) in set(distinct)][:32]
  # Choose DISTINCT sources before the limit, not four chunks from one source.
  read_versions_ids=list(dict.fromkeys(str(p['version_id']) for p in pool))[:4]
  report={'requested':False,'required_matches':[]}
@@ -180,7 +186,7 @@ def collect(db,cfg,normalized,extra_queries=None,read_ids=None,prior=None):
  # Companion reads are independent of vector rank. Each named recording gets its own read allowance.
  companions,companion_report=read_versions(db,profile,bundle['required_version_ids'],terms=terms)
  anchors=release_anchors(db,profile,report.get('required_matches',[]))
- surrounding,read_report=read_versions(db,profile,requested+read_versions_ids,terms=terms)
+ surrounding,read_report=read_versions(db,profile,requested+read_versions_ids,terms=terms,morphology=not wants_chronology(normalized))
  read_report=companion_report+read_report
  required_rows=companions+anchors
  all_rows=required_rows+surrounding+pool
@@ -192,7 +198,7 @@ def collect(db,cfg,normalized,extra_queries=None,read_ids=None,prior=None):
   for key in ['release_version','note_last_updated','source_modified_at']:p[key]=row.get(key)
   p['storage_uri']=row.get('storage_uri');p['source_title']=row.get('title');p['source_metadata']=row.get('source_metadata',{})
  required_ids={str(p['id']) for p in required_rows}
- evidence=ks.assemble(prior or [],[p for p in new if p['unit_id'] in required_ids],[p for p in new if p['unit_id'] not in required_ids],char_budget=100000 if prior else 70000)
+ evidence=ks.assemble(prior or [],[p for p in new if p['unit_id'] in required_ids],[p for p in new if p['unit_id'] not in required_ids],char_budget=100000 if prior else 70000,prefer_new=bool(extra_queries))
  review_ids={p['record_id'] for p in evidence if p['kind']=='REVIEW'}
  remaining=max(0,3-len(review_ids))
  evidence=merge_evidence(evidence,[p for p in review_candidates if p['record_id'] not in review_ids][:remaining],reserved_ids=[p['evidence_id'] for p in (prior or [])])
@@ -204,7 +210,7 @@ def collect(db,cfg,normalized,extra_queries=None,read_ids=None,prior=None):
  visual,visual_report=knowledge_visual.prepare(db,cfg,normalized,companions+surrounding+pool)
  evidence=merge_evidence(evidence,visual,char_budget=110000,max_items=110,reserved_ids=[p['evidence_id'] for p in (prior or [])])
  scope=ks.completeness(bundle,report.get('required_matches',[]),evidence,visual_report)
- return {'scope':scope,'evidence':evidence,'visual_inspection':visual_report,'searches':diagnostics,'source_reads':read_report,'release_comparison':report,
+ return {'duplicate_sources':duplicate_sources,'scope':scope,'evidence':evidence,'visual_inspection':visual_report,'searches':diagnostics,'source_reads':read_report,'release_comparison':report,
   'coverage':'Bounded original-source investigation. Catalog files excluded from factual search. A complete usable-text read is not proof that images, blocked files or unimported content were examined. Inferences and proposed reviews remain labelled.'}
 
 def diagnose(db,cfg,query):

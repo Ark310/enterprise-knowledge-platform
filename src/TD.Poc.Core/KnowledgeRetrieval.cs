@@ -102,12 +102,13 @@ public sealed class KnowledgeRetrieval(IKnowledgeHost host)
                 {
                     var queries=verdict["retrieval_queries"]?.DeepClone()??new JsonArray();
                     var versions=verdict["read_source_versions"]?.DeepClone()??new JsonArray();
+                    var keywords=verdict["retrieval_keywords"]?.DeepClone()??new JsonArray();
                     // Insufficient evidence gets an independent check and a bounded follow-up, not a dead end.
-                    if(queries.AsArray().Count>0 || versions.AsArray().Count>0 || candidate["status"]!.ToString()=="INSUFFICIENT_EVIDENCE" || vv["needs_investigation"]?.GetValue<bool>()==true)
+                    if(keywords.AsArray().Count>0 || queries.AsArray().Count>0 || versions.AsArray().Count>0 || candidate["status"]!.ToString()=="INSUFFICIENT_EVIDENCE" || vv["needs_investigation"]?.GetValue<bool>()==true)
                     {
                         if(queries.AsArray().Count==0)queries=new JsonArray(normalized["normalized_question"]!.ToString());
                         host.Begin(folder,"Knowledge");active=true;
-                        retrieved=await Work("qa_retrieve",new(){{"normalization",normalized.DeepClone()},{"expand",true},{"queries",queries},{"read_source_versions",versions}});
+                        retrieved=await Work("qa_retrieve",new(){{"normalization",normalized.DeepClone()},{"expand",true},{"queries",queries},{"keywords",keywords},{"read_source_versions",versions}});
                         File.WriteAllText(Path.Combine(folder,"evidence-expanded.json"),retrieved.ToJsonString());
                         evidence=retrieved["evidence"]!.AsArray();packet["retrieval"]=retrieved.DeepClone();
                     }
@@ -128,10 +129,12 @@ public sealed class KnowledgeRetrieval(IKnowledgeHost host)
     private void TrimHistory(){if(history.Count>4)history.RemoveRange(0,history.Count-4);}
     public static string Render(string original,JsonNode normalized,JsonNode answer,JsonArray evidence)
     {
+        static string Time(JsonNode? value)=>TimeSpan.FromSeconds(value?.GetValue<double>()??0).ToString(@"hh\:mm\:ss\.fff");
         var refs=evidence.ToDictionary(x=>x!["evidence_id"]!.GetValue<string>(),x=>x!);
         var fileNumbers=new Dictionary<string,int>();var selected=new Dictionary<string,List<(JsonNode Evidence,string Quote)>>();
         var output=new StringBuilder();output.AppendLine("Evidence-checked answer (AI verification; not human approval)");
         if(normalized["normalized_question"]!.GetValue<string>()!=original)output.AppendLine("Interpreted question: "+normalized["normalized_question"]);
+        string lastSection="";int step=0;
         foreach(var c in answer["claims"]!.AsArray())
         {
             var numbers=new HashSet<int>();
@@ -143,23 +146,30 @@ public sealed class KnowledgeRetrieval(IKnowledgeHost host)
                 if(!selected[file].Any(x=>x.Evidence["evidence_id"]!.ToString()==p["evidence_id"]!.ToString()))selected[file].Add((p,cite["excerpt"]!.ToString()));
             }
             var prefix=c["basis"]!.ToString() switch{"INFERENCE"=>"Reasoned interpretation: ","VISUAL"=>"Sampled frame observation: ","REVIEW_REPORT"=>"Saved review finding (approval may be pending): ",_=>""};
-            output.AppendLine("\n"+prefix+c["text"]+" ["+string.Join(", ",numbers.Order())+"]");
+            var section=c["section"]?.ToString()??"ANSWER";
+            if(section!=lastSection){output.AppendLine("\n"+(section=="STEPS"?"Steps:":section=="DETAILS"?"Details:":"Answer:"));lastSection=section;}
+            output.AppendLine((section=="STEPS"?$"{++step}. ":"\n")+prefix+c["text"]+" ["+string.Join(", ",numbers.Order())+"]");
         }
-        foreach(var limit in answer["limitations"]!.AsArray())output.AppendLine("Evidence limit: "+limit);
+        if(answer["limitations"]!.AsArray().Count>0)output.AppendLine("\nImportant notes:");
+        foreach(var limit in answer["limitations"]!.AsArray())output.AppendLine("- "+limit);
         output.AppendLine("\nSources:");
         foreach(var (file,items) in selected)
         {
-            output.AppendLine($"[{fileNumbers[file]}] {file}");
+            var parts=file.Replace('\\','/').Split('/');
+            var name=parts[^1];if((name=="article.md"||name=="article.json")&&parts.Length>1)name=parts[^2];
+            output.AppendLine($"[{fileNumbers[file]}] {name}");
             foreach(var (p,quote) in items)
             {
-                var loc=p["locator"];var label=loc?["start_seconds"] is not null?$"{loc["start_seconds"]}–{loc["end_seconds"]} seconds":loc?["line_start"] is not null?$"lines {loc["line_start"]}–{loc["line_end"]}":loc?["page"] is not null?"page "+loc["page"]:"saved evidence";
+                var loc=p["locator"];var label=loc?["start_seconds"] is not null?$"{Time(loc["start_seconds"])}–{Time(loc["end_seconds"])}":loc?["line_start"] is not null?$"lines {loc["line_start"]}–{loc["line_end"]}":loc?["page"] is not null?"page "+loc["page"]:"saved evidence";
                 output.AppendLine("    "+p["evidence_id"]+": "+label);
             }
-            var sample=items[0];var excerpt=sample.Quote.Replace("\r","").Replace("\n"," ");
+            var sample=items.FirstOrDefault(x=>!x.Quote.TrimStart().StartsWith("#")&&!x.Quote.TrimStart().StartsWith("Title:",StringComparison.OrdinalIgnoreCase));
+            if(sample.Evidence is null)sample=items[0];var excerpt=sample.Quote.Replace("\r","").Replace("\n"," ");
             output.AppendLine("    Passage: "+(excerpt.Length>260?excerpt[..260]+"…":excerpt));
             if(sample.Evidence["note_last_updated"] is {} date)output.AppendLine("    Note last updated: "+date+" (not deployment date)");
         }
         output.AppendLine($"\n{selected.Count} distinct source paths/review labels; {selected.Values.Sum(x=>x.Count)} cited passages. Search and source reads are bounded.");
+        output.AppendLine("Full source paths and evidence are saved in this run’s export.");
         return output.ToString();
     }
 }

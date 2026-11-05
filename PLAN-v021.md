@@ -1,4 +1,4 @@
-# v0.21 POC 2 correction plan
+# v0.22 POC 2 correction plan
 User-approved correction to diagnosed v0.20 failures. Keep Qwen, source vectors, schema and POC 1 behavior.
 1. Resolve named recordings against registered originals. Read linked/current companion transcripts before generic hits; ambiguous names require clarification; missing transcript or unusable text blocks full-scope verification.
 2. Chronology compares within product families and exact phrases separately from broader component terms. Required matching passages get priority over optional context; no bank names or answers hardcoded.

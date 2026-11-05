@@ -75,7 +75,7 @@ def choose_releases(docs,terms,scope):
   if str(p['version_id']) not in selected:selected.append(str(p['version_id']))
  return selected[:8],required
 
-def assemble(prior,required,optional,char_budget=70000,max_items=80):
+def assemble(prior,required,optional,char_budget=70000,max_items=80,prefer_new=False):
  def key(p):return (p['kind'],str(p.get('unit_id',p.get('record_id',p.get('frame_id')))))
  known={key(p):dict(p) for p in prior}
  counter=max([int(p['evidence_id'][1:]) for p in prior if p.get('evidence_id','')[1:].isdigit()]+[0])
@@ -87,7 +87,7 @@ def assemble(prior,required,optional,char_budget=70000,max_items=80):
    if rows:ordered.append(rows.pop(0))
  out=[];seen=set();used=0
  # Mandatory rows first, then retained old optional rows, then new optional rows.
- for p in ordered+list(prior)+list(optional):
+ for p in ordered+(list(optional)+list(prior) if prefer_new else list(prior)+list(optional)):
   k=key(p)
   if k in seen:continue
   if len(out)>=max_items or used+len(p['text'])>char_budget:continue

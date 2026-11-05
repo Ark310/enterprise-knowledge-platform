@@ -1,4 +1,4 @@
-# v0.21 validation and acceptance evidence
+# v0.22 validation and acceptance evidence
 
 Scope: POC 2 retrieval/completeness correction. Original Qwen profile/vectors, pgvector indexes, schema and POC 1 workflow retained. No new database migration.
 
