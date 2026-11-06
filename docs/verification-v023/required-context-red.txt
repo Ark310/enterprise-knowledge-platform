@@ -1,0 +1,13 @@
+..F.........
+======================================================================
+FAIL: test_missing_structured_intent_fields_is_rejected (test_knowledge_v023.PartialTests.test_missing_structured_intent_fields_is_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v023/TD-POC-v0.23/tests/test_knowledge_v023.py", line 35, in test_missing_structured_intent_fields_is_rejected
+    self.assertTrue(qa.validate_normalization('Configure approvals',n))
+AssertionError: [] is not true
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.003s
+
+FAILED (failures=1)

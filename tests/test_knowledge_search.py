@@ -41,6 +41,6 @@ class KnowledgeSearchTests(unittest.TestCase):
   self.assertEqual(rank_pool(rows,['user','password','change'])[0]['id'],'b')
  def test_latest_version_request_cannot_skip_chronology_due_to_missing_plan_flag(self):
   from knowledge_search import wants_chronology
-  self.assertTrue(wants_chronology({'normalized_question':'Which version contains the latest bank changes?'}))
-  self.assertFalse(wants_chronology({'normalized_question':'How do I reset a password?'}))
+  self.assertTrue(wants_chronology({'conversation_relation':'NEW','request_parts':['Fixture requested task'],'confirmed_context':[],'assumptions':[],'normalized_question':'Which version contains the latest bank changes?'}))
+  self.assertFalse(wants_chronology({'conversation_relation':'NEW','request_parts':['Fixture requested task'],'confirmed_context':[],'assumptions':[],'normalized_question':'How do I reset a password?'}))
 if __name__=='__main__':unittest.main()

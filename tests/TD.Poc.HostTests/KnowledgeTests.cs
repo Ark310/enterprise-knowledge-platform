@@ -44,6 +44,7 @@ internal static class KnowledgeTests
         {
             var text=await new KnowledgeRetrieval(h).Ask("unknown topic");
             Check(h.Models.Contains("verify-0")&&h.Models.Contains("verify-1")&&h.FinalStatus=="INSUFFICIENT_EVIDENCE"&&!text.Contains("Select Edit"),"no retrieved evidence cannot yield invented general-knowledge answer");
+            Check(text.Contains("Evidence gap:"),"insufficient answer explains the unresolved verification gap");
         }
         using(var h=new Fixture(source){Cancel=true})
         {
@@ -92,15 +93,46 @@ internal static class KnowledgeTests
         Check(display.Contains("Steps:")&&display.Contains("1. Select Posted."),"human-readable procedure has numbered steps");
         Check(display.Contains("Important notes:")&&display.Contains("Account display")&&!display.Contains("existing-assets/Long Folder"),"concise source names and notes replace internal path clutter");
         Check(display.Contains("Passage: Select Posted to open the display."),"display chooses supporting text rather than title-only quote");
+        using(var h=new Fixture(source){Clarify=true,BlockStopContext=true})
+        {
+            var text=await new KnowledgeRetrieval(h).Ask("which user?");
+            Check(h.FinalStatus=="CLARIFY"&&!h.Failed&&text.Contains("Which product"),"saved clarification survives local memory snapshot write failure");
+        }
+        using(var h=new Fixture(source){Clarify=true})
+        {
+            var q=new KnowledgeRetrieval(h);await q.Ask("two checkers for wire templates");h.Clarify=false;await q.Ask("this is for TradeDesk");
+            Check(h.NormalizeContexts[1].Contains("two checkers for wire templates")&&h.NormalizeContexts[1].Contains("Which product"),"actual follow-up normalization input retains pending question and original request");
+            q.NewSession();await q.Ask("password repetition");
+            Check(!h.NormalizeContexts[2].Contains("two checkers"),"new conversation excludes prior topic from actual model input");
+        }
+        var memory=new ConversationState();
+        memory.Record("Two checkers for wire templates",new JsonObject{{"normalized_question","Two checkers for wire templates"}},"CLARIFY","Desktop or Web?");
+        Check(memory.Snapshot().ToJsonString().Contains("Two checkers")&&memory.Snapshot().ToJsonString().Contains("Desktop or Web?"),"clarification retains original task and pending question");
+        memory.Record("TradeDesk",new JsonObject{{"normalized_question","Two checkers for wire templates in TradeDesk"}},"INSUFFICIENT_EVIDENCE","Assignment details unresolved");
+        Check(memory.Snapshot().ToJsonString().Contains("Assignment details unresolved"),"insufficient response retains task context");
+        memory.Record("Is MFA available?",new JsonObject{{"normalized_question","Is MFA available?"},{"conversation_relation","NEW"}},"ANSWER","");
+        Check(!memory.Snapshot().ToJsonString().Contains("Two checkers")&&memory.Snapshot()["active_task"]?["normalized_question"]?.ToString()=="Is MFA available?","topic change replaces active task instead of retaining old approval goal");
+        memory.Clear();Check(!memory.Snapshot().ToJsonString().Contains("Two checkers"),"new session clears structured context");
+        using(var h=new Fixture(source){Partial=true})
+        {
+            var text=await new KnowledgeRetrieval(h).Ask("edit a user");
+            Check(h.FinalStatus=="VERIFIED"&&h.FinalAnswer?["status"]?.ToString()=="PARTIAL"&&text.Contains("Unresolved:")&&text.Contains("Next question:"),"approved partial publishes cited answer and gap");
+            Check(text.Contains("incomplete"),"partial procedure clearly labelled incomplete");
+        }
+        using(var h=new Fixture(source){Partial=true,RejectAll=true})
+        {
+            var text=await new KnowledgeRetrieval(h).Ask("edit a user");
+            Check(h.FinalStatus=="INSUFFICIENT_EVIDENCE"&&!text.Contains("Select Edit"),"rejected partial never auto-published");
+        }
         Console.WriteLine($"Knowledge host checks passed: {count}");return count;
     }
     private sealed class Fixture:IKnowledgeHost,IDisposable
     {
         public string Root{get;}=Path.Combine(Path.GetTempPath(),"td018-qa-"+Guid.NewGuid().ToString("N"));
         private readonly string source;
-        public bool MissingScope,PersistMissing; public bool WithFrame; public List<string> ImageRoles=[];
+        public bool BlockStopContext;public bool Partial;public bool MissingScope,PersistMissing; public bool WithFrame; public List<string> ImageRoles=[];
         public bool WrongQuote,RejectFirst,RejectAll,Clarify,EmptyEvidence,Cancel,FailFinalSave,Failed,BlockLocalFinal,InitiallyInsufficient;
-        public List<string> Models=[],Operations=[],Begins=[],Events=[];
+        public List<string> NormalizeContexts=[];public List<string> Models=[],Operations=[],Begins=[],Events=[];
         public string? FollowupKeywords;public string? FinalStatus;public JsonNode? FinalAnswer;
         public Fixture(string source){this.source=source;foreach(var dir in new[]{"agents","contracts"}){Directory.CreateDirectory(Path.Combine(Root,dir));foreach(var file in Directory.GetFiles(Path.Combine(source,dir)))File.Copy(file,Path.Combine(Root,dir,Path.GetFileName(file)));}}
         public void Begin(string f,string r)=>Begins.Add(r);
@@ -108,10 +140,12 @@ internal static class KnowledgeTests
         public void Failure(string folder,Exception e)=>Failed=true;
         public Task<JsonNode> Model(string role,string instructions,string context,string folder,IEnumerable<string>? images=null)
         {
-            Models.Add(role);if(images?.Any()==true){if(images.Single()!="fixture.jpg")throw new Exception("Unexpected image");ImageRoles.Add(role);}if(Cancel)throw new OperationCanceledException();
-            if(role=="normalize")return Task.FromResult<JsonNode>(new JsonObject{{"normalized_question","How do I edit a user?"},{"visual_check",false},{"recording_names",new JsonArray()},{"needs_clarification",Clarify},{"clarification_question",Clarify?"Which product do you mean?":""},{"changes",new JsonArray("spelling")},{"search_queries",new JsonArray()}});
+            if(role=="normalize")NormalizeContexts.Add(context);Models.Add(role);if(images?.Any()==true){if(images.Single()!="fixture.jpg")throw new Exception("Unexpected image");ImageRoles.Add(role);}if(Cancel)throw new OperationCanceledException();
+            if(role=="normalize")return Task.FromResult<JsonNode>(new JsonObject{{"conversation_relation","NEW"},{"request_parts",new JsonArray("Edit a user")},{"confirmed_context",new JsonArray()},{"assumptions",new JsonArray()},{"normalized_question","How do I edit a user?"},{"visual_check",false},{"recording_names",new JsonArray()},{"needs_clarification",Clarify},{"clarification_question",Clarify?"Which product do you mean?":""},{"changes",new JsonArray("spelling")},{"search_queries",new JsonArray()}});
             if(role.StartsWith("answer")&&EmptyEvidence || role=="answer-0"&&InitiallyInsufficient)return Task.FromResult<JsonNode>(new JsonObject{{"status","INSUFFICIENT_EVIDENCE"},{"clarification_question",""},{"claims",new JsonArray()},{"limitations",new JsonArray("Need source detail.")}});
             if(role.StartsWith("verify")&&EmptyEvidence || role=="verify-0"&&InitiallyInsufficient)return Task.FromResult<JsonNode>(new JsonObject{{"decision","INSUFFICIENT_EVIDENCE"},{"addresses_question",false},{"normalization_faithful",true},{"premise_supported",true},{"human_readable",true},{"requested_scope_complete",true},{"evidence_coverage_sufficient",true},{"coverage_reason","Fixture packet checked"},{"claim_checks",new JsonArray()},{"feedback",new JsonArray("Read user instructions.")},{"retrieval_queries",new JsonArray("user edit instructions")},{"retrieval_keywords",new JsonArray("user edit")},{"read_source_versions",new JsonArray()}});
+            if(Partial&&role.StartsWith("answer"))return Task.FromResult<JsonNode>(new JsonObject{{"status","PARTIAL"},{"clarification_question","Is the provider configured?"},{"claims",new JsonArray(new JsonObject{{"id","C1"},{"text","Select Edit to edit a user."},{"basis","SOURCE"},{"section","STEPS"},{"citations",new JsonArray(new JsonObject{{"evidence_id","S1"},{"excerpt","Select Edit"}})}})},{"limitations",new JsonArray()},{"unresolved",new JsonArray("Provider integration unconfirmed")},{"procedure_complete",false}});
+            if(Partial&&role.StartsWith("verify"))return Task.FromResult<JsonNode>(new JsonObject{{"decision",RejectAll?"REVISE":"PARTIAL_PASS"},{"addresses_question",true},{"normalization_faithful",true},{"premise_supported",true},{"human_readable",true},{"requested_scope_complete",false},{"evidence_coverage_sufficient",true},{"coverage_reason","User steps supported, integration missing"},{"claim_checks",new JsonArray(new JsonObject{{"claim_id","C1"},{"supported",!RejectAll},{"reason","Fixture"}})},{"feedback",new JsonArray()}});
             if(role.StartsWith("answer"))return Task.FromResult<JsonNode>(new JsonObject{{"status","ANSWER"},{"clarification_question",""},{"claims",new JsonArray(new JsonObject{{"id","C1"},{"text",WrongQuote?"SECRET_BAD_DRAFT":"Select Edit to edit a user."},{"basis","SOURCE"},{"citations",new JsonArray(new JsonObject{{"evidence_id","S1"},{"excerpt",WrongQuote?"Invented quote":"Select Edit"}})}})},{"limitations",new JsonArray("Saving is not demonstrated.")}});
             var reject=RejectAll||RejectFirst&&role=="verify-0";
             return Task.FromResult<JsonNode>(new JsonObject{{"decision",reject?"REVISE":"PASS"},{"addresses_question",true},{"normalization_faithful",true},{"premise_supported",true},{"human_readable",true},{"requested_scope_complete",true},{"evidence_coverage_sufficient",true},{"coverage_reason","Fixture packet checked"},{"claim_checks",new JsonArray(new JsonObject{{"claim_id","C1"},{"supported",!reject},{"reason",reject?"Fix scope":"Directly supported"}})},{"feedback",new JsonArray(reject?"Narrow the answer":"")}});
@@ -134,7 +168,7 @@ internal static class KnowledgeTests
             if(op=="qa_finish")
             {
                 if(FailFinalSave&&args["status"]!.ToString()=="VERIFIED")throw new IOException("Fixture database unavailable");
-                FinalStatus=args["status"]!.ToString();FinalAnswer=args["answer"]?.DeepClone();
+                FinalStatus=args["status"]!.ToString();if(BlockStopContext&&FinalStatus=="CLARIFY")Directory.CreateDirectory(Path.Combine(args["work"]!.ToString(),"conversation-after.json"));FinalAnswer=args["answer"]?.DeepClone();
                 if(BlockLocalFinal&&FinalStatus=="VERIFIED")Directory.CreateDirectory(Path.Combine(args["work"]!.ToString(),"result.txt"));
             }
             return new JsonObject{{"saved",true}};

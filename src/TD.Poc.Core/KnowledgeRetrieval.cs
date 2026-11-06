@@ -24,45 +24,50 @@ public sealed class KnowledgeRuntimeHost(Runtime runtime):IKnowledgeHost
 public sealed class KnowledgeRetrieval(IKnowledgeHost host)
 {
     private string session=Guid.NewGuid().ToString();
-    private readonly List<JsonNode> history=[];
+    private readonly ConversationState conversation=new();
     public string? LastFolder {get;private set;}
     public string? LastResult {get;private set;}
-    public void NewSession(){session=Guid.NewGuid().ToString();history.Clear();LastFolder=null;LastResult=null;}
+    public void NewSession(){session=Guid.NewGuid().ToString();conversation.Clear();LastFolder=null;LastResult=null;}
     private string Instructions(string file,string part)=>File.ReadAllText(Path.Combine(host.Root,"agents",file))+"\nOUTPUT CONTRACT (only this definition):\n"+JsonNode.Parse(File.ReadAllText(Path.Combine(host.Root,"contracts","knowledge-qa.schema.json")))!["$defs"]![part]!.ToJsonString();
     public async Task<string> Ask(string question)
     {
         question=question.Trim();
         if(question.Length is 0 or >12000)throw new ArgumentException("Enter a question between 1 and 12000 characters.");
         var id=Guid.NewGuid().ToString();var folder=Path.Combine(host.Root,"runtime","knowledge-runs",DateTime.UtcNow.ToString("yyyyMMdd-HHmmss")+"-"+id[..8]);
-        Directory.CreateDirectory(folder);LastFolder=folder;LastResult=null;bool started=false;bool active=false;
+        Directory.CreateDirectory(folder);LastFolder=folder;LastResult=null;bool started=false;bool active=false;JsonNode? intent=null;
         async Task<JsonNode> Work(string op,JsonObject? arguments=null){arguments??=new();arguments["turn_id"]=id;arguments["work"]=folder;return await host.Worker(op,arguments);}
         void Snapshot(string status,string note=""){File.WriteAllText(Path.Combine(folder,"turn.json"),new JsonObject{{"turn_id",id},{"session_id",session},{"question",question},{"status",status},{"note",note}}.ToJsonString());}
         async Task Event(string stage,JsonNode value)=>await Work("qa_event",new(){{"stage",stage},{"payload",value.DeepClone()}});
         async Task<string> Stop(string status,string note)
         {
             if(active){host.End(false,note);active=false;}
-            await Work("qa_finish",new(){{"status",status},{"note",note}});Snapshot(status,note);
-            history.Add(new JsonObject{{"question",question},{"outcome",note}});TrimHistory();
-            File.WriteAllText(Path.Combine(folder,"result.txt"),note);LastResult=note;
-            return note+"\nRun: "+folder;
+            await Work("qa_finish",new(){{"status",status},{"note",note}});
+            conversation.Record(question,intent,status,note);LastResult=note;
+            string warning="";
+            try{Snapshot(status,note);File.WriteAllText(Path.Combine(folder,"conversation-after.json"),conversation.Snapshot().ToJsonString());File.WriteAllText(Path.Combine(folder,"result.txt"),note);}
+            catch(Exception e) when(e is IOException or UnauthorizedAccessException){warning="\nResult saved in PostgreSQL; local diagnostic files could not be finalized. Session context is retained.";}
+            return note+warning+"\nRun: "+folder;
         }
         try
         {
             await Work("qa_begin",new(){{"session_id",session},{"question",question}});started=true;Snapshot("PROCESSING");
             host.Begin(folder,"Knowledge");active=true;
-            var context=new JsonObject{{"original_question",question},{"conversation",new JsonArray(history.Select(x=>x.DeepClone()).ToArray())}};
+            var before=conversation.Snapshot();File.WriteAllText(Path.Combine(folder,"conversation-before.json"),before.ToJsonString());
+            var context=new JsonObject{{"original_question",question},{"conversation",before}};
             var normalized=await host.Model("normalize",Instructions("knowledge-assistant.md","normalization")+"\nTASK: NORMALIZE ONLY. Return the normalization contract, not an answer.",context.ToJsonString(),folder);
             await Event("NORMALIZATION",normalized);
             var nv=await Work("qa_validate",new(){{"part","normalization"},{"original",question},{"object",normalized.DeepClone()}});
             if(nv["valid"]?.GetValue<bool>()!=true)return await Stop("CLARIFY","I could not safely normalize that question while preserving its names and identifiers. Please rephrase it or confirm the intended product, version and source names.");
+            intent=normalized.DeepClone();
+            File.WriteAllText(Path.Combine(folder,"normalization.json"),normalized.ToJsonString());
             if(normalized["needs_clarification"]!.GetValue<bool>())return await Stop("CLARIFY",normalized["clarification_question"]!.GetValue<string>());
             File.WriteAllText(Path.Combine(folder,"normalization.json"),normalized.ToJsonString());
             var retrieved=await Work("qa_retrieve",new(){{"normalization",normalized.DeepClone()}});
             File.WriteAllText(Path.Combine(folder,"evidence.json"),retrieved.ToJsonString());
             if(retrieved["scope"]?["clarification"]?.GetValue<string>() is {} clarify)return await Stop("CLARIFY",clarify);
             var evidence=retrieved["evidence"]!.AsArray();
-            var packet=new JsonObject{{"original_question",question},{"normalization",normalized.DeepClone()},{"conversation",new JsonArray(history.Select(x=>x.DeepClone()).ToArray())},{"retrieval",retrieved.DeepClone()}};
-            JsonNode? feedback=null;
+            var packet=new JsonObject{{"original_question",question},{"normalization",normalized.DeepClone()},{"conversation",conversation.Snapshot()},{"retrieval",retrieved.DeepClone()}};
+            JsonNode? feedback=null;string lastGap="";
             string[] Images()=>evidence.Where(p=>p?["kind"]?.ToString()=="FRAME").Select(p=>p!["path"]!.ToString()).Distinct().ToArray();
             for(var attempt=0;attempt<2;attempt++)
             {
@@ -80,21 +85,24 @@ public sealed class KnowledgeRetrieval(IKnowledgeHost host)
                 var verdict=await host.Model("verify-"+attempt,Instructions("knowledge-verifier.md","verdict"),verificationInput.ToJsonString(),folder,Images());
                 await Event("VERIFICATION",verdict);
                 var vv=await Work("qa_validate",new(){{"part","verdict"},{"object",verdict.DeepClone()},{"answer",candidate.DeepClone()},{"retrieval",retrieved.DeepClone()}});await Event("VALIDATION",vv);
-                var passed=vv["valid"]?.GetValue<bool>()==true && verdict["decision"]?.GetValue<string>()=="PASS";
-                host.End(passed,passed?"Evidence and relevance checks passed. Saving the final answer.":"Answer not approved. "+(attempt==0?"One correction is allowed.":"Stopping without an unverified answer."));active=false;
+                if(vv["valid"]?.GetValue<bool>()==true)lastGap=verdict["coverage_reason"]?.ToString()??"";
+                var passed=vv["valid"]?.GetValue<bool>()==true && verdict["decision"]?.GetValue<string>() is "PASS" or "PARTIAL_PASS";
+                host.End(passed,passed?(candidate["status"]!.ToString()=="PARTIAL"?"Supported information checked. Saving a partial answer; gaps remain.":"Evidence and relevance checks passed. Saving the final answer."):"Answer not approved. "+(attempt==0?"One correction is allowed.":"Stopping without an unverified answer."));active=false;
                 if(passed)
                 {
                     // Prepare local output before committing. DB completion is authoritative after this point.
                     var result=Render(question,normalized,candidate,evidence);
                     var pending=Path.Combine(folder,"verified-answer.pending.txt");
                     File.WriteAllText(pending,result);Snapshot("AWAITING_SAVE");
-                    await Work("qa_finish",new(){{"status","VERIFIED"},{"answer",candidate.DeepClone()},{"verdict",verdict.DeepClone()}});
+                    await Work("qa_finish",new(){{"status","VERIFIED"},{"answer",candidate.DeepClone()},{"verdict",verdict.DeepClone()},{"note",candidate["status"]!.ToString()=="PARTIAL"?"Verified partial answer; see unresolved items. No complete setup claimed.":""}});
                     LastResult=result;
                     string localWarning="";
                     try{File.Move(pending,Path.Combine(folder,"result.txt"),true);}
                     catch(Exception e) when(e is IOException or UnauthorizedAccessException){localWarning="\nThe verified answer is saved in PostgreSQL; local result-file finalization failed. /last can still display it in this session. The pending file is retained for recovery.";}
                     try{Snapshot("VERIFIED",localWarning);}catch(Exception e) when(e is IOException or UnauthorizedAccessException){localWarning+="\nLocal status snapshot could not be updated; PostgreSQL has the final status.";}
-                    history.Add(new JsonObject{{"question",question},{"normalized_question",normalized["normalized_question"]!.DeepClone()},{"outcome",result[..Math.Min(result.Length,3000)]}});TrimHistory();
+                    conversation.Record(question,intent,candidate["status"]!.ToString(),candidate["clarification_question"]?.ToString()+" "+candidate["unresolved"]?.ToJsonString());
+                    try{File.WriteAllText(Path.Combine(folder,"conversation-after.json"),conversation.Snapshot().ToJsonString());}
+                    catch(Exception e) when(e is IOException or UnauthorizedAccessException){localWarning+="\nAnswer is saved; local conversation snapshot could not be written. Session context remains available.";}
                     return result+localWarning+"\nRun: "+folder;
                 }
                 feedback=new JsonObject{{"verifier",verdict.DeepClone()},{"contract_validation",vv.DeepClone()}};
@@ -116,7 +124,7 @@ public sealed class KnowledgeRetrieval(IKnowledgeHost host)
             }
             var missing=retrieved["scope"]?["blocking_errors"]?.AsArray().Select(x=>x!.ToString()).Take(4).ToArray()??[];
             var detail=missing.Length>0?"\nMissing required evidence:\n"+string.Join("\n",missing):"";
-            return await Stop("INSUFFICIENT_EVIDENCE","I could not complete the evidence and relevance checks after one follow-up. No unverified answer is being shown. Drafts and verifier feedback are saved for diagnosis."+detail);
+            return await Stop("INSUFFICIENT_EVIDENCE","I could not complete the evidence and relevance checks after one follow-up. No unverified answer is being shown. Drafts and verifier feedback are saved for diagnosis."+(string.IsNullOrWhiteSpace(lastGap)?"":"\nEvidence gap: "+lastGap)+detail);
         }
         catch(Exception e)
         {
@@ -126,13 +134,14 @@ public sealed class KnowledgeRetrieval(IKnowledgeHost host)
             throw;
         }
     }
-    private void TrimHistory(){if(history.Count>4)history.RemoveRange(0,history.Count-4);}
     public static string Render(string original,JsonNode normalized,JsonNode answer,JsonArray evidence)
     {
         static string Time(JsonNode? value)=>TimeSpan.FromSeconds(value?.GetValue<double>()??0).ToString(@"hh\:mm\:ss\.fff");
         var refs=evidence.ToDictionary(x=>x!["evidence_id"]!.GetValue<string>(),x=>x!);
         var fileNumbers=new Dictionary<string,int>();var selected=new Dictionary<string,List<(JsonNode Evidence,string Quote)>>();
-        var output=new StringBuilder();output.AppendLine("Evidence-checked answer (AI verification; not human approval)");
+        var partial=answer["status"]?.ToString()=="PARTIAL";
+        var incomplete=partial&&answer["procedure_complete"]?.GetValue<bool>()==false;
+        var output=new StringBuilder();output.AppendLine(partial?"Partially answered — supported information checked by AI; gaps remain.":"Evidence-checked answer (AI verification; not human approval)");
         if(normalized["normalized_question"]!.GetValue<string>()!=original)output.AppendLine("Interpreted question: "+normalized["normalized_question"]);
         string lastSection="";int step=0;
         foreach(var c in answer["claims"]!.AsArray())
@@ -147,9 +156,11 @@ public sealed class KnowledgeRetrieval(IKnowledgeHost host)
             }
             var prefix=c["basis"]!.ToString() switch{"INFERENCE"=>"Reasoned interpretation: ","VISUAL"=>"Sampled frame observation: ","REVIEW_REPORT"=>"Saved review finding (approval may be pending): ",_=>""};
             var section=c["section"]?.ToString()??"ANSWER";
-            if(section!=lastSection){output.AppendLine("\n"+(section=="STEPS"?"Steps:":section=="DETAILS"?"Details:":"Answer:"));lastSection=section;}
+            if(section!=lastSection){output.AppendLine("\n"+(section=="STEPS"?(incomplete?"Documented steps (incomplete — resolve the missing details before treating this as a complete procedure):":"Steps:"):section=="DETAILS"?"Details:":partial?"Confirmed information:":"Answer:"));lastSection=section;}
             output.AppendLine((section=="STEPS"?$"{++step}. ":"\n")+prefix+c["text"]+" ["+string.Join(", ",numbers.Order())+"]");
         }
+        if(partial){output.AppendLine("\nUnresolved:");foreach(var gap in answer["unresolved"]!.AsArray())output.AppendLine("- "+gap);}
+        if(!string.IsNullOrWhiteSpace(answer["clarification_question"]?.ToString()))output.AppendLine("\nNext question: "+answer["clarification_question"]);
         if(answer["limitations"]!.AsArray().Count>0)output.AppendLine("\nImportant notes:");
         foreach(var limit in answer["limitations"]!.AsArray())output.AppendLine("- "+limit);
         output.AppendLine("\nSources:");

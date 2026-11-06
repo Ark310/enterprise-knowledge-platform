@@ -147,6 +147,7 @@ def migration(db):
  q(db,(BASE/'database/migrations/017-search-video.sql').read_text(encoding='utf-8-sig'))
  q(db,(BASE/'database/migrations/018-knowledge-qa.sql').read_text(encoding='utf-8-sig'))
  q(db,(BASE/'database/migrations/020-qa-visual.sql').read_text(encoding='utf-8-sig'))
+ q(db,(BASE/'database/migrations/023-verified-partial.sql').read_text(encoding='utf-8-sig'))
 
 def ollama(cfg,endpoint,body=None):
  url=cfg.get('OllamaUrl','http://localhost:11434').rstrip('/')+endpoint

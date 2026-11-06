@@ -1,0 +1,91 @@
+TD v0.23 — POC2 natural-question retest
+
+Start: Start-POC.cmd → choose 2.
+For independent questions: /new, then /ask QUESTION.
+For connected scenarios below: no /new between turns; answer any agent clarification in plain text.
+If the agent already gives a complete supported answer, do not force an unnecessary clarification.
+Export after each turn, rename the ZIP, then continue.
+
+ORIGINAL QUESTION 1
+How does password repetition work in TradeDesk? Explain what the password policy restricts, where the restriction applies, and any documented exceptions. Cite the original articles and separate documented behaviour from assumptions.
+
+ORIGINAL QUESTION 2
+how do i change a user's password in tradedesk?
+
+ORIGINAL QUESTION 3
+How do i set up Approval Policies?
+
+ORIGINAL QUESTION 4
+I want to setup approval policies to have two checkers on wire templates how do i do that?
+
+ORIGINAL QUESTION 5
+this is for TradeDesk
+
+ORIGINAL QUESTION 6
+I want to setup approval policies to have two checkers on wire templates how do i do that? This is for TradeDesk
+
+ORIGINAL QUESTION 7
+how do i setup two approvers for wire templates in tradedesk?
+
+ORIGINAL QUESTION 8
+I want to create multiple maker/checkers for newly created wire templates.  How do I set this up?
+
+ORIGINAL QUESTION 9
+is multifactor authentication availible for TradeDesk?
+
+ORIGINAL QUESTION 10
+is multifactor authentication availible for TradeDesk and Web? Also how do i set it up?
+
+ORIGINAL QUESTION 11
+is multifactor authentication availible for Web Users? Also how do i set it up?
+
+RECOMMENDED CONNECTED SCENARIOS
+
+S1 — Direct password question
+/new
+/ask how do i change a user's password in tradedesk?
+
+S2 — Approval setup and clarification
+/new
+/ask I want to setup approval policies to have two checkers on wire templates how do i do that?
+If asked desktop or Web, reply: this is for TradeDesk
+Then: /ask Show the documented configuration steps and separately identify what is still unconfirmed about requiring two different people.
+Then correction: /ask I mean multiple eligible checkers, not exactly two required approvals. Please revise the scope accordingly.
+Expected: preserve original topic/product, correct the changed count/goal, no invented self-approval rules.
+
+S3 — Natural multiple-maker/checker question independently
+/new
+/ask I want to create multiple maker/checkers for newly created wire templates. How do I set this up?
+If product is unclear, reply: TradeDesk desktop.
+If number/eligibility is unclear, answer based on your actual need rather than accepting an inferred count.
+Expected: no silent assumption that multiple means exactly two.
+
+S4 — MFA availability then setup
+/new
+/ask is multifactor authentication availible for TradeDesk?
+/ask is multifactor authentication availible for TradeDesk and Web? Also how do i set it up?
+If asked about integration and it is a simulated test only: For this test, assume the authentication provider is already configured. I need the steps for enabling an individual Web user.
+For a real installation, give its actual state; do not say it is configured unless you know.
+Expected: retain MFA topic, include both requested products initially, distinguish per-user enablement from first-time deployment.
+
+S5 — First-time Web MFA setup
+/new
+/ask is multifactor authentication availible for Web Users? Also how do i set it up?
+If asked about integration: For this scenario, treat it as a first-time installation. Which steps are documented and which configuration details remain unconfirmed?
+Expected: supported availability/user steps may be shown as PARTIAL, incomplete integration clearly identified; no guessed API-key locations.
+
+S6 — Topic change after approvals
+/new
+/ask How do i set up Approval Policies?
+/ask How does password repetition work in TradeDesk? Explain what the password policy restricts, where the restriction applies, and any documented exceptions.
+Expected: password question must not inherit wire-template/checker requirements.
+
+S7 — Intent-preserving paraphrase and follow-up
+/new
+/ask What is the documented process for resetting an existing TradeDesk user's password, and how does it compare with the System Admin Security User Master Walkthrough? Distinguish replacement password entry from requiring a change at next login. Cite paths and timestamps and identify unverified outcomes.
+/ask I mean an administrator resetting another existing user's password, not the user changing their own password.
+Expected: keep article/video comparison and evidence distinctions; clarification should not discard requested timestamps or treat earlier AI output as evidence.
+
+OPTIONAL CHATGPT COMPARISON PROMPT
+Use only original files in the connected dataset for product facts. Confirm access limitations first. Correct typos without changing intent. Maintain the current task across clarification replies; explicit corrections override older context and topic changes start a new task. Cite original paths, short supporting passages and exact inspected video timestamps. Separate supported facts from unresolved details; give a useful partial answer when appropriate and ask one focused follow-up question. Do not invent missing steps or treat previous AI replies as evidence. Distinguish product/version applicability, per-user enablement vs first-time integration, and eligible checkers vs required distinct approvals. Wait for my questions.
+Paste identical questions without /ask and run the same reply sequence. Do not show either system the other's answer.

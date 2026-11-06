@@ -59,6 +59,41 @@
             "minLength": 1,
             "maxLength": 300
           }
+        },
+        "conversation_relation": {
+          "enum": [
+            "NEW",
+            "FOLLOW_UP",
+            "CORRECTION"
+          ]
+        },
+        "request_parts": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "minItems": 1
+        },
+        "confirmed_context": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          }
+        },
+        "assumptions": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          }
         }
       },
       "required": [
@@ -68,7 +103,11 @@
         "changes",
         "search_queries",
         "visual_check",
-        "recording_names"
+        "recording_names",
+        "conversation_relation",
+        "request_parts",
+        "confirmed_context",
+        "assumptions"
       ],
       "additionalProperties": false
     },
@@ -79,7 +118,8 @@
           "enum": [
             "ANSWER",
             "INSUFFICIENT_EVIDENCE",
-            "CLARIFY"
+            "CLARIFY",
+            "PARTIAL"
           ]
         },
         "clarification_question": {
@@ -154,6 +194,18 @@
             "maxLength": 2000
           },
           "maxItems": 12
+        },
+        "unresolved": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          }
+        },
+        "procedure_complete": {
+          "type": "boolean"
         }
       },
       "required": [
@@ -171,7 +223,8 @@
           "enum": [
             "PASS",
             "REVISE",
-            "INSUFFICIENT_EVIDENCE"
+            "INSUFFICIENT_EVIDENCE",
+            "PARTIAL_PASS"
           ]
         },
         "addresses_question": {

@@ -36,7 +36,7 @@ def run():
    later,_=add(prefix+'Version 3.0.11.0/article.md','last_updated: 2026-09-01\nUnrelated screen styling fixes.')
    missing,_=add(prefix+'Version 3.0.12.0/article.md','RIVERBANK migration guidance.',embedded=False,status='PARTIAL')
    t=str(uuid.uuid4());qa.begin(db,{'session_id':str(uuid.uuid4()),'turn_id':t,'question':'Latest RIVERBANK release changes?'})
-   norm={'normalized_question':'Latest RIVERBANK release changes?','visual_check':False,'recording_names':[],'needs_clarification':False,'clarification_question':'','changes':[],'search_queries':['RIVERBANK'],'keywords':['RIVERBANK'],'include_reviews':False,'latest_release':True}
+   norm={'conversation_relation':'NEW','request_parts':['Fixture requested task'],'confirmed_context':[],'assumptions':[],'normalized_question':'Latest RIVERBANK release changes?','visual_check':False,'recording_names':[],'needs_clarification':False,'clarification_question':'','changes':[],'search_queries':['RIVERBANK'],'keywords':['RIVERBANK'],'include_reviews':False,'latest_release':True}
    first=qa.retrieve(db,cfg,{'turn_id':t,'normalization':norm})
    check(not any(ks.is_catalog(p['file']) for p in first['evidence']),'catalog chunks never appear as factual body evidence')
    check(not any(p['kind']=='REVIEW' for p in first['evidence']),'ordinary release question excludes unrelated saved reviews')

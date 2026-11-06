@@ -60,7 +60,7 @@ class ReviewRegressions(unittest.TestCase):
  def test_explicit_other_product_families_are_scoped(self):
   from knowledge_scope import requested_family
   for name,expected in [('FormFlow','formflow'),('SalesHub','saleshub'),('REST API','api')]:
-   self.assertEqual(requested_family({'normalized_question':f'Latest {name} release changes?'}),expected)
+   self.assertEqual(requested_family({'conversation_relation':'NEW','request_parts':['Fixture requested task'],'confirmed_context':[],'assumptions':[],'normalized_question':f'Latest {name} release changes?'}),expected)
 
 class FollowupSafetyTests(unittest.TestCase):
  def test_frame_ids_do_not_reuse_dropped_audit_ids(self):

@@ -45,7 +45,7 @@ def run():
   check(not qa.validate_answer(ans,ev),'visual frame citation accepted without fabricating transcript quotation')
   # Exercise the real retrieve → snapshot → publish boundary with actual frame FKs.
   full=str(uuid.uuid4());qa.begin(db,{'session_id':sid,'turn_id':full,'question':'Show Review Sample save outcome'})
-  normalization={'normalized_question':'Show Review Sample save outcome','needs_clarification':False,'clarification_question':'','changes':[],
+  normalization={'conversation_relation':'NEW','request_parts':['Fixture requested task'],'confirmed_context':[],'assumptions':[],'normalized_question':'Show Review Sample save outcome','needs_clarification':False,'clarification_question':'','changes':[],
    'search_queries':['save outcome'],'keywords':['save'],'visual_check':True,'recording_names':['Review Sample']}
   old_profile,old_embed=w.model_profile,w.embed
   try:

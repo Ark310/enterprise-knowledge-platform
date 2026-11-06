@@ -33,11 +33,11 @@ class CoverageTests(unittest.TestCase):
 class ReviewerRegressions(unittest.TestCase):
  def test_missing_visual_plan_rejected(self):
   import knowledge_qa as q
-  n={'normalized_question':'Did the video save?','needs_clarification':False,'clarification_question':'','changes':[],'search_queries':[]}
+  n={'conversation_relation':'NEW','request_parts':['Fixture requested task'],'confirmed_context':[],'assumptions':[],'normalized_question':'Did the video save?','needs_clarification':False,'clarification_question':'','changes':[],'search_queries':[]}
   self.assertTrue(q.validate_normalization('Did the video save?',n))
  def test_visual_plan_without_name_requires_clarification(self):
   import knowledge_qa as q
-  n={'normalized_question':'Did the video save?','needs_clarification':False,'clarification_question':'','changes':[],'search_queries':[],'visual_check':True,'recording_names':[]}
+  n={'conversation_relation':'NEW','request_parts':['Fixture requested task'],'confirmed_context':[],'assumptions':[],'normalized_question':'Did the video save?','needs_clarification':False,'clarification_question':'','changes':[],'search_queries':[],'visual_check':True,'recording_names':[]}
   self.assertTrue(q.validate_normalization('Did the video save?',n))
  def test_exact_relative_path_resolves_duplicate_basename(self):
   from knowledge_visual import recording_matches

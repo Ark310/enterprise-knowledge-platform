@@ -7,13 +7,13 @@ class KnowledgeQaTests(unittest.TestCase):
   self.assertTrue((Path(__file__).resolve().parents[1]/'tools/knowledge_qa.py').exists())
  def test_normalization_preserves_numeric_and_named_identifiers(self):
   from knowledge_qa import validate_normalization
-  good={'normalized_question':'How does TD 2.7.0.0 handle ticket #78596?','visual_check':False,'recording_names':[],'needs_clarification':False,'clarification_question':'','changes':['spelling'],'search_queries':[]}
+  good={'conversation_relation':'NEW','request_parts':['Fixture requested task'],'confirmed_context':[],'assumptions':[],'normalized_question':'How does TD 2.7.0.0 handle ticket #78596?','visual_check':False,'recording_names':[],'needs_clarification':False,'clarification_question':'','changes':['spelling'],'search_queries':[]}
   self.assertEqual(validate_normalization('how dos TD 2.7.0.0 handle ticket #78596?',good),[])
   bad=dict(good,normalized_question='How does TD 2.8.0.0 handle ticket #78596?')
   self.assertTrue(validate_normalization('how dos TD 2.7.0.0 handle ticket #78596?',bad))
  def test_normalization_preserves_quoted_titles(self):
   from knowledge_qa import validate_normalization
-  out={'normalized_question':'How does "Other Video" work?','visual_check':False,'recording_names':[],'needs_clarification':False,'clarification_question':'','changes':[],'search_queries':[]}
+  out={'conversation_relation':'NEW','request_parts':['Fixture requested task'],'confirmed_context':[],'assumptions':[],'normalized_question':'How does "Other Video" work?','visual_check':False,'recording_names':[],'needs_clarification':False,'clarification_question':'','changes':[],'search_queries':[]}
   self.assertTrue(validate_normalization('how does "User Master" work?',out))
  def test_fabricated_quote_and_unknown_id_rejected(self):
   from knowledge_qa import validate_answer

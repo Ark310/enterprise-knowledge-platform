@@ -3,14 +3,14 @@ using System.Text.Json.Nodes;
 using TD.Poc.Core;
 using TD.Poc.Infrastructure;
 Runtime.DisableQuickEdit();Console.OutputEncoding=System.Text.Encoding.UTF8;
-if(args.Contains("--version")){Console.WriteLine("TD Knowledge Retrieval POC 0.22.0");return;}
+if(args.Contains("--version")){Console.WriteLine("TD Knowledge Retrieval POC 0.23.0");return;}
 try
 {
     var runtime=new Runtime(PocPaths.FindRoot());runtime.Progress+=Console.WriteLine;
     runtime.Config["SearchMode"]="improved_hnsw";
     runtime.Config["AgentTimeoutMinutes"]=runtime.Config["KnowledgeAgentTimeoutMinutes"]?.DeepClone()??JsonValue.Create(5);
     await runtime.LoadSecret();
-    Console.WriteLine("Knowledge Retrieval POC 0.22 | dataset evidence + labelled reasoning | HNSW | verifier gate");
+    Console.WriteLine("Knowledge Retrieval POC 0.23 | dataset evidence + labelled reasoning | HNSW | verifier gate");
     await runtime.Worker("qa_ready");
     var login=await runtime.Run(runtime.Config["CodexExecutable"]!.GetValue<string>(),["login","status"],"",runtime.Root,false,TimeSpan.FromSeconds(30));
     if(login.Code!=0)throw new Exception("Codex login is not ready. Run Setup-POC.cmd.");

@@ -29,7 +29,7 @@ def run():
    srt=source('current-state/Unseen Module.srt',[f'Actual recording explanation {i}.' for i in range(18)])
    doc=source('current-state/Unseen Module_Transcript.docx',[f'Actual companion summary {i}.' for i in range(12)])
    other=source('existing-assets/Confluence Articles/unrelated/Other.srt',['new user created saved ' * 100]*10)
-   n={'normalized_question':'What does Unseen Module say about creating a user?','needs_clarification':False,'clarification_question':'','changes':[],
+   n={'conversation_relation':'NEW','request_parts':['Fixture requested task'],'confirmed_context':[],'assumptions':[],'normalized_question':'What does Unseen Module say about creating a user?','needs_clarification':False,'clarification_question':'','changes':[],
     'search_queries':['new user created saved'],'keywords':['new user','created','saved'],'visual_check':False,'recording_names':['Unseen Module']}
    # No companion vectors: exact identity must work even if semantic search cannot return them.
    result=ks.collect(db,cfg,n)

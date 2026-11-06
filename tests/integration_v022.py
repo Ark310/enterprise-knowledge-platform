@@ -64,7 +64,7 @@ def run():
   old_profile,old_embed=w.model_profile,w.embed
   w.model_profile=lambda db,cfg:profile;w.embed=lambda cfg,text,is_query=False:[1.0]+[.01]*2559
   try:
-   n={'normalized_question':'How do I view posting entries after clicking the Post button in TradeDesk?', 'keywords':['Post button','posting entries','setting','permission'],'search_queries':['Post button posting entries setting permission'],'recording_names':[],'visual_check':False}
+   n={'conversation_relation':'NEW','request_parts':['Fixture requested task'],'confirmed_context':[],'assumptions':[],'normalized_question':'How do I view posting entries after clicking the Post button in TradeDesk?', 'keywords':['Post button','posting entries','setting','permission'],'search_queries':['Post button posting entries setting permission'],'recording_names':[],'visual_check':False}
    result=ks.collect(db,{'DataRoot':tmp},n)
    check(any(p.get('version_id')==wanted for p in result['evidence']),'complete collection and source reading retain original missing prerequisite')
    check(any(p.get('version_id')==warn for p in result['evidence']),'complete collection also retains separate posting warning guide')

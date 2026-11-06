@@ -16,6 +16,11 @@ def protected_tokens(text):
 def validate_normalization(original,obj):
  errors=schema_errors(obj,'normalization')
  if errors:return errors
+ # Current broad quantities cannot silently inherit a precise older count.
+ if re.search(r'\b(multiple|several|various)\b',original,re.I) and not obj['needs_clarification']:
+  quantity=r'\b(?:[0-9]+|one|two|three|four|five|six|seven|eight|nine|ten)\b'
+  introduced=set(re.findall(quantity,obj['normalized_question'].lower()))-set(re.findall(quantity,original.lower()))
+  if introduced:errors.append('Broad quantity narrowed to an unconfirmed count; ask for clarification')
  if obj['visual_check'] and not obj['recording_names'] and not obj['needs_clarification']:errors.append('Visual investigation needs a recording name or clarification')
  missing=protected_tokens(original)-protected_tokens(obj['normalized_question'])
  if missing:errors.append('Normalization changed protected identifiers or quoted titles: '+', '.join(sorted(missing)))
@@ -46,8 +51,12 @@ def validate_answer(obj,evidence):
  errors=schema_errors(obj,'answer')
  if errors:return errors
  refs={p['evidence_id']:p for p in evidence};seen=set()
- if obj['status']=='ANSWER' and not obj['claims']:errors.append('ANSWER requires supported claims')
- if obj['status']!='ANSWER' and obj['claims']:errors.append('Non-answer cannot contain factual claims')
+ if obj['status'] in ('ANSWER','PARTIAL') and not obj['claims']:errors.append('ANSWER requires supported claims')
+ if obj['status'] not in ('ANSWER','PARTIAL') and obj['claims']:errors.append('Non-answer cannot contain factual claims')
+ if obj['status']=='ANSWER' and obj.get('unresolved'):errors.append('Unresolved requested details require PARTIAL status')
+ if obj['status']=='PARTIAL':
+  if not obj.get('unresolved'):errors.append('PARTIAL requires explicit unresolved details')
+  if 'procedure_complete' not in obj:errors.append('PARTIAL requires procedure_complete')
  if obj['status']=='CLARIFY' and not obj['clarification_question'].strip():errors.append('Missing clarification question')
  for claim in obj['claims']:
   if claim['id'] in seen:errors.append('Duplicate claim ID')
@@ -68,20 +77,25 @@ def validate_verdict(obj,answer,retrieval=None):
  if errors:return errors
  ids=[c['id'] for c in answer.get('claims',[])];checked=[c['claim_id'] for c in obj['claim_checks']]
  if sorted(ids)!=sorted(checked):errors.append('Verifier must check every claim exactly once')
- if obj['decision']=='PASS':
-  if not obj['requested_scope_complete']:errors.append('PASS requires the requested scope to be complete')
+ if obj['decision'] in ('PASS','PARTIAL_PASS'):
+  partial=obj['decision']=='PARTIAL_PASS'
+  if partial and answer.get('status')!='PARTIAL':errors.append('PARTIAL_PASS requires PARTIAL answer')
+  if partial and obj['requested_scope_complete']:errors.append('Partial approval cannot claim complete requested scope')
+  if partial and (not answer.get('unresolved') or not answer.get('claims') or 'procedure_complete' not in answer):errors.append('Partial approval needs supported claims, unresolved items and procedure completeness')
+  if not partial and not obj['requested_scope_complete']:errors.append('PASS requires the requested scope to be complete')
   if (retrieval or {}).get('scope',{}).get('blocking_errors'):errors.append('PASS blocked by missing required source evidence')
   if not obj['evidence_coverage_sufficient']:errors.append('PASS requires sufficient evidence coverage')
   if obj.get('retrieval_queries') or obj.get('read_source_versions') or obj.get('retrieval_keywords'):errors.append('PASS cannot have outstanding evidence requests')
   if not all(obj[k] for k in ['addresses_question','normalization_faithful','premise_supported','human_readable']):errors.append('PASS requires all answer checks')
   if not all(c['supported'] for c in obj['claim_checks']):errors.append('PASS contains unsupported claims')
-  if answer.get('status')!='ANSWER':errors.append('Cannot pass a non-answer')
+  if not partial and answer.get('status')!='ANSWER':errors.append('Cannot pass a non-answer')
  return errors
 
 def may_investigate(verdict,retrieval):
  return not schema_errors(verdict,'verdict') and bool((retrieval or {}).get('scope',{}).get('blocking_errors'))
 
 def ensure(db):
+ if not w.one(db,"select exists(select 1 from pg_constraint where conrelid='knowledge_qa.turns'::regclass and conname='qa_turns_publication_v023') t")['t']:raise ValueError('Run Setup-POC.cmd for the v0.23 verified-partial migration. Existing sources and vectors are preserved.')
  if not w.one(db,"select exists(select 1 from information_schema.columns where table_schema='knowledge_qa' and table_name='evidence' and column_name='frame_id') t")['t']:raise ValueError('Run Initialize-Database.cmd or Setup-POC.cmd for the additive v0.20 migration first.')
 
 def begin(db,args):
@@ -133,7 +147,7 @@ def finish(db,args):
  answer=args.get('answer');verdict=args.get('verdict');evidence=[r['snapshot'] for r in w.q(db,'select snapshot from knowledge_qa.evidence where turn_id=%s order by evidence_key',(tid,)).fetchall()]
  if status=='VERIFIED':
   errors=validate_answer(answer,evidence)+validate_verdict(verdict,answer,((row.get('retrieval') or {}).get('rounds') or [{}])[-1])
-  if verdict.get('decision')!='PASS':errors.append('Verifier did not pass')
+  if verdict.get('decision') not in ('PASS','PARTIAL_PASS'):errors.append('Verifier did not pass')
   # Recheck image bytes and original recording revision immediately before publication.
   for p in evidence:
    if p['kind']=='FRAME':

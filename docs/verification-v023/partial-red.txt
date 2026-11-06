@@ -1,0 +1,23 @@
+.......F.
+======================================================================
+FAIL: test_partial_with_useful_supported_steps_can_be_approved (test_knowledge_v023.PartialTests.test_partial_with_useful_supported_steps_can_be_approved)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/aed6c87a9d4c/v023/TD-POC-v0.23/tests/test_knowledge_v023.py", line 11, in test_partial_with_useful_supported_steps_can_be_approved
+    self.assertEqual(qa.validate_answer(self.a,self.ev),[]);self.assertEqual(qa.validate_verdict(self.v,self.a,{}),[])
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["'PARTIAL' is not one of ['ANSWER', 'INSU[121 chars]ed)"] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+"'PARTIAL' is not one of ['ANSWER', 'INSUFFICIENT_EVIDENCE', 'CLARIFY']"
+
++ []
+- ["'PARTIAL' is not one of ['ANSWER', 'INSUFFICIENT_EVIDENCE', 'CLARIFY']",
+-  "Additional properties are not allowed ('procedure_complete', 'unresolved' "
+-  'were unexpected)']
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.003s
+
+FAILED (failures=1)

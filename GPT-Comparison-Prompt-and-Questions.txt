@@ -1,40 +1,91 @@
-TD v0.22 — independent POC 2 comparison
+TD v0.23 — POC2 natural-question retest
 
-PASTE THIS INTO A FRESH CHAT FOR EACH QUESTION:
+Start: Start-POC.cmd → choose 2.
+For independent questions: /new, then /ask QUESTION.
+For connected scenarios below: no /new between turns; answer any agent clarification in plain text.
+If the agent already gives a complete supported answer, do not force an unnecessary clarification.
+Export after each turn, rename the ZIP, then continue.
 
-I am comparing your dataset-grounded answer with a local knowledge-retrieval POC.
-Dataset folder: [PASTE THE SAME GOOGLE DRIVE FOLDER LINK / SELECT ITS CONNECTOR]
+ORIGINAL QUESTION 1
+How does password repetition work in TradeDesk? Explain what the password policy restricts, where the restriction applies, and any documented exceptions. Cite the original articles and separate documented behaviour from assumptions.
 
-Use only original files in that folder and its subfolders for product-specific facts. Do not use web searches, prior chats or the other system's answers. First confirm which files/folders you can actually read and any limitations. Do not claim to search all files if you did not. If files are inside ZIPs, disclose which archives you could inspect.
+ORIGINAL QUESTION 2
+how do i change a user's password in tradedesk?
 
-Correct obvious typos without changing intent, names, versions or identifiers. Use general knowledge only for clearly labelled reasoning from source facts, not invented product steps. Retrieve relevant originals and inspect the passages needed to answer, including later sections when the question concerns an outcome. Compare applicable release versions before deciding which is latest; distinguish exact names from broader related names. Source last_updated is not a deployment date.
+ORIGINAL QUESTION 3
+How do i set up Approval Policies?
 
-For video questions, distinguish spoken transcript instructions, directly inspected frames, previously reported AI observations and outcomes still unverified. State the exact recording and inspected timestamps. Do not claim to watch an MP4 if you only read its transcript. A visible Save button/prompt does not prove successful creation or persistence. Do not invent visual access if the connector does not supply it.
+ORIGINAL QUESTION 4
+I want to setup approval policies to have two checkers on wire templates how do i do that?
 
-Give a direct, readable answer, supported steps where applicable, original source paths, short literal supporting passages and useful evidence limits. Explain conflicting documentation. Do not assume more sources mean more accuracy. State the number of distinct original source files cited; an MP4 and its transcripts are related evidence, not independent demonstrations. If evidence is insufficient, say exactly what is missing.
+ORIGINAL QUESTION 5
+this is for TradeDesk
 
-Now answer this question:
-[PASTE ONE QUESTION BELOW]
+ORIGINAL QUESTION 6
+I want to setup approval policies to have two checkers on wire templates how do i do that? This is for TradeDesk
 
-QUESTIONS — paste exactly; add /ask only in the POC:
+ORIGINAL QUESTION 7
+how do i setup two approvers for wire templates in tradedesk?
 
-Q1 — typos and release comparison
-whcih TD verison had teh latest Woodgrove harrsi chnages and waht chnaged? cite teh relase notes pls
+ORIGINAL QUESTION 8
+I want to create multiple maker/checkers for newly created wire templates.  How do I set this up?
 
-Q2 — video evidence and successful outcome
-Does the System Admin Security User Master Walkthrough establish that a new user was successfully created and saved? Separate spoken instructions, directly inspected visual observations and outcomes that remain unverified. Cite the recording/transcript and exact timestamps examined.
+ORIGINAL QUESTION 9
+is multifactor authentication availible for TradeDesk?
 
-Q3 — steps, settings and contradictory articles
-How do I view posting entries after clicking the Post button in TradeDesk? Find the relevant documentation, explain any required setting or permission, and cite the sources. Identify conflicting instructions if you find any.
+ORIGINAL QUESTION 10
+is multifactor authentication availible for TradeDesk and Web? Also how do i set it up?
 
-Q4 — article plus recording
-How do I change an existing TradeDesk user's password? Compare the supporting article with the System Admin Security User Master Walkthrough. Explain what is documented, what the presenter says, and any steps or successful outcomes the sources do not establish. Cite paths and timestamps.
+ORIGINAL QUESTION 11
+is multifactor authentication availible for Web Users? Also how do i set it up?
 
-Q5 — distinguish related settings
-In TradeDesk, are View Posted Entries and Posting Warning the same setting? Explain what each controls according to the documentation, how they affect what happens after posting, and any conflicting navigation instructions. Cite the original articles.
+RECOMMENDED CONNECTED SCENARIOS
 
-OPTIONAL FOLLOW-UP — run after Q2 in the same session in BOTH systems:
-Which evidence supports your conclusion, and what additional evidence would you need to confirm successful creation and saving? Separate missing evidence from proof that the action failed.
+S1 — Direct password question
+/new
+/ask how do i change a user's password in tradedesk?
 
-HOW TO RETURN RESULTS:
-Label Q1–Q5; retain the full answer, source paths and limitations. For the POC retain the run export per question. Compare factual support, coverage, directness, uncertainty and elapsed time. These are evaluation questions, not an answer key.
+S2 — Approval setup and clarification
+/new
+/ask I want to setup approval policies to have two checkers on wire templates how do i do that?
+If asked desktop or Web, reply: this is for TradeDesk
+Then: /ask Show the documented configuration steps and separately identify what is still unconfirmed about requiring two different people.
+Then correction: /ask I mean multiple eligible checkers, not exactly two required approvals. Please revise the scope accordingly.
+Expected: preserve original topic/product, correct the changed count/goal, no invented self-approval rules.
+
+S3 — Natural multiple-maker/checker question independently
+/new
+/ask I want to create multiple maker/checkers for newly created wire templates. How do I set this up?
+If product is unclear, reply: TradeDesk desktop.
+If number/eligibility is unclear, answer based on your actual need rather than accepting an inferred count.
+Expected: no silent assumption that multiple means exactly two.
+
+S4 — MFA availability then setup
+/new
+/ask is multifactor authentication availible for TradeDesk?
+/ask is multifactor authentication availible for TradeDesk and Web? Also how do i set it up?
+If asked about integration and it is a simulated test only: For this test, assume the authentication provider is already configured. I need the steps for enabling an individual Web user.
+For a real installation, give its actual state; do not say it is configured unless you know.
+Expected: retain MFA topic, include both requested products initially, distinguish per-user enablement from first-time deployment.
+
+S5 — First-time Web MFA setup
+/new
+/ask is multifactor authentication availible for Web Users? Also how do i set it up?
+If asked about integration: For this scenario, treat it as a first-time installation. Which steps are documented and which configuration details remain unconfirmed?
+Expected: supported availability/user steps may be shown as PARTIAL, incomplete integration clearly identified; no guessed API-key locations.
+
+S6 — Topic change after approvals
+/new
+/ask How do i set up Approval Policies?
+/ask How does password repetition work in TradeDesk? Explain what the password policy restricts, where the restriction applies, and any documented exceptions.
+Expected: password question must not inherit wire-template/checker requirements.
+
+S7 — Intent-preserving paraphrase and follow-up
+/new
+/ask What is the documented process for resetting an existing TradeDesk user's password, and how does it compare with the System Admin Security User Master Walkthrough? Distinguish replacement password entry from requiring a change at next login. Cite paths and timestamps and identify unverified outcomes.
+/ask I mean an administrator resetting another existing user's password, not the user changing their own password.
+Expected: keep article/video comparison and evidence distinctions; clarification should not discard requested timestamps or treat earlier AI output as evidence.
+
+OPTIONAL CHATGPT COMPARISON PROMPT
+Use only original files in the connected dataset for product facts. Confirm access limitations first. Correct typos without changing intent. Maintain the current task across clarification replies; explicit corrections override older context and topic changes start a new task. Cite original paths, short supporting passages and exact inspected video timestamps. Separate supported facts from unresolved details; give a useful partial answer when appropriate and ask one focused follow-up question. Do not invent missing steps or treat previous AI replies as evidence. Distinguish product/version applicability, per-user enablement vs first-time integration, and eligible checkers vs required distinct approvals. Wait for my questions.
+Paste identical questions without /ask and run the same reply sequence. Do not show either system the other's answer.

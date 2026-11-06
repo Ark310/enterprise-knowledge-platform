@@ -35,7 +35,7 @@ def run():
   w.migration(db);w.migration(db);db.commit();check(True,'migration repeats without resetting data')
   w.q(db,"update knowledge.source_versions set lifecycle_status='ACTIVE'");db.commit()
   before=w.one(db,'select count(*) n from retrieval.content_embeddings')['n']
-  t=newturn();normal={'normalized_question':'How do I open user settings?','visual_check':False,'recording_names':[],'needs_clarification':False,'clarification_question':'','changes':[],'search_queries':['user settings']}
+  t=newturn();normal={'conversation_relation':'NEW','request_parts':['Fixture requested task'],'confirmed_context':[],'assumptions':[],'normalized_question':'How do I open user settings?','visual_check':False,'recording_names':[],'needs_clarification':False,'clarification_question':'','changes':[],'search_queries':['user settings']}
   qa.event(db,{'turn_id':t,'stage':'NORMALIZATION','payload':normal})
   ev=qa.retrieve(db,{'SearchMode':'old_exact'},{'turn_id':t,'normalization':normal})
   check(any(s['kind']=='HYBRID_HNSW' for s in ev['searches']) and all(s['diagnostics']['hnsw_index_used'] for s in ev['searches'] if s['kind']=='HYBRID_HNSW'),'QA forces actual HNSW even when inherited config says old_exact')

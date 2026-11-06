@@ -1,3 +1,12 @@
+# v0.23 — verified partial answers and conversation intent
+- POC2 contract supports PARTIAL + independently checked PARTIAL_PASS; unsupported claims remain blocked.
+- Required structured normalization: relationship to prior turn, requested parts, user-confirmed context and assumptions.
+- Pending clarification and unresolved intent survive terminal responses; new topics replace active task and /new clears session memory. Memory is intent only, never source evidence.
+- Confirmed information, incomplete documented steps, unresolved details and a focused next question are displayed separately.
+- Repeatable migration023 updates only the QA publication constraint; no source/vector rewrite or new tables. Existing full answers remain valid; partial distinction stored in answer/verification JSON and completion note.
+- Prompts distinguish per-user enablement from first-time integration and distinct people from approval stages. A broad multiple-count cannot silently become exactly two.
+- Captured natural-run replay and actual SQL publication tests accompany host/context checks. Live model quality still requires operator retest.
+
 # v0.22 — focused retrieval and readable answers
 - Topic/title matching uses PostgreSQL English stemming; generic settings/permission terms no longer dominate the topic rank.
 - Long-source focused reads use the same word-inflection matching; release chronology preserves exact-name matching.
