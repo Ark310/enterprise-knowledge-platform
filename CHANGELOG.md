@@ -1,3 +1,13 @@
+# v0.24 — Workspace local web interface
+
+- Both POCs launch locally from the existing menu; legacy CLI remains available.
+- PostgreSQL-backed, per-chat history and context; new chats isolate selected reviews and QA intent.
+- Human-readable steps, source previews pinned to cited revisions, and selected original images.
+- Chat-private pasted/uploaded images; same evidence to Knowledge and Verifier; no shared ingestion or upload vectors.
+- Stop/progress, existing agent status windows, serialized work and interrupted-request notices.
+- Additive migration024; existing source data, vector profiles and gap handoffs retained.
+- Setup includes Pillow; source/model versions retained to avoid forced re-embedding.
+
 # v0.23 — verified partial answers and conversation intent
 - POC2 contract supports PARTIAL + independently checked PARTIAL_PASS; unsupported claims remain blocked.
 - Required structured normalization: relationship to prior turn, requested parts, user-confirmed context and assumptions.

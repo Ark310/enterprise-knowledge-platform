@@ -28,13 +28,15 @@ public sealed class KnowledgeRetrieval(IKnowledgeHost host)
     public string? LastFolder {get;private set;}
     public string? LastResult {get;private set;}
     public void NewSession(){session=Guid.NewGuid().ToString();conversation.Clear();LastFolder=null;LastResult=null;}
+    public JsonObject ExportState()=>new(){{"session",session},{"conversation",conversation.Snapshot()}};
+    public void RestoreState(string chatId,JsonNode? state){session=Guid.Parse(chatId).ToString();conversation.Restore(state?["conversation"]);}
     private string Instructions(string file,string part)=>File.ReadAllText(Path.Combine(host.Root,"agents",file))+"\nOUTPUT CONTRACT (only this definition):\n"+JsonNode.Parse(File.ReadAllText(Path.Combine(host.Root,"contracts","knowledge-qa.schema.json")))!["$defs"]![part]!.ToJsonString();
-    public async Task<string> Ask(string question)
+    public async Task<string> Ask(string question,JsonArray? attachmentIds=null)
     {
         question=question.Trim();
         if(question.Length is 0 or >12000)throw new ArgumentException("Enter a question between 1 and 12000 characters.");
         var id=Guid.NewGuid().ToString();var folder=Path.Combine(host.Root,"runtime","knowledge-runs",DateTime.UtcNow.ToString("yyyyMMdd-HHmmss")+"-"+id[..8]);
-        Directory.CreateDirectory(folder);LastFolder=folder;LastResult=null;bool started=false;bool active=false;JsonNode? intent=null;
+        Directory.CreateDirectory(folder);LastFolder=folder;LastResult=null;bool active=false;JsonNode? intent=null;
         async Task<JsonNode> Work(string op,JsonObject? arguments=null){arguments??=new();arguments["turn_id"]=id;arguments["work"]=folder;return await host.Worker(op,arguments);}
         void Snapshot(string status,string note=""){File.WriteAllText(Path.Combine(folder,"turn.json"),new JsonObject{{"turn_id",id},{"session_id",session},{"question",question},{"status",status},{"note",note}}.ToJsonString());}
         async Task Event(string stage,JsonNode value)=>await Work("qa_event",new(){{"stage",stage},{"payload",value.DeepClone()}});
@@ -50,11 +52,13 @@ public sealed class KnowledgeRetrieval(IKnowledgeHost host)
         }
         try
         {
-            await Work("qa_begin",new(){{"session_id",session},{"question",question}});started=true;Snapshot("PROCESSING");
+            await Work("qa_begin",new(){{"session_id",session},{"question",question}} );Snapshot("PROCESSING");
             host.Begin(folder,"Knowledge");active=true;
+            var uploads=attachmentIds is {Count:>0}?await Work("qa_attach",new(){{"ids",attachmentIds.DeepClone()}}):new JsonObject{{"evidence",new JsonArray()}};
+            var uploadEvidence=uploads["evidence"]!.AsArray();
             var before=conversation.Snapshot();File.WriteAllText(Path.Combine(folder,"conversation-before.json"),before.ToJsonString());
-            var context=new JsonObject{{"original_question",question},{"conversation",before}};
-            var normalized=await host.Model("normalize",Instructions("knowledge-assistant.md","normalization")+"\nTASK: NORMALIZE ONLY. Return the normalization contract, not an answer.",context.ToJsonString(),folder);
+            var context=new JsonObject{{"original_question",question},{"conversation",before},{"attachments",uploadEvidence.DeepClone()}};
+            var normalized=await host.Model("normalize",Instructions("knowledge-assistant.md","normalization")+"\nTASK: NORMALIZE ONLY. Return the normalization contract, not an answer.",context.ToJsonString(),folder,uploadEvidence.Select(x=>x!["path"]!.ToString()));
             await Event("NORMALIZATION",normalized);
             var nv=await Work("qa_validate",new(){{"part","normalization"},{"original",question},{"object",normalized.DeepClone()}});
             if(nv["valid"]?.GetValue<bool>()!=true)return await Stop("CLARIFY","I could not safely normalize that question while preserving its names and identifiers. Please rephrase it or confirm the intended product, version and source names.");
@@ -62,13 +66,13 @@ public sealed class KnowledgeRetrieval(IKnowledgeHost host)
             File.WriteAllText(Path.Combine(folder,"normalization.json"),normalized.ToJsonString());
             if(normalized["needs_clarification"]!.GetValue<bool>())return await Stop("CLARIFY",normalized["clarification_question"]!.GetValue<string>());
             File.WriteAllText(Path.Combine(folder,"normalization.json"),normalized.ToJsonString());
-            var retrieved=await Work("qa_retrieve",new(){{"normalization",normalized.DeepClone()}});
+            var retrieved=await Work("qa_retrieve",new(){{"normalization",normalized.DeepClone()},{"web_images",attachmentIds is not null}});
             File.WriteAllText(Path.Combine(folder,"evidence.json"),retrieved.ToJsonString());
             if(retrieved["scope"]?["clarification"]?.GetValue<string>() is {} clarify)return await Stop("CLARIFY",clarify);
             var evidence=retrieved["evidence"]!.AsArray();
             var packet=new JsonObject{{"original_question",question},{"normalization",normalized.DeepClone()},{"conversation",conversation.Snapshot()},{"retrieval",retrieved.DeepClone()}};
             JsonNode? feedback=null;string lastGap="";
-            string[] Images()=>evidence.Where(p=>p?["kind"]?.ToString()=="FRAME").Select(p=>p!["path"]!.ToString()).Distinct().ToArray();
+            string[] Images()=>evidence.Where(p=>p?["kind"]?.ToString() is "FRAME" or "USER_IMAGE" or "SOURCE_IMAGE").Select(p=>p!["path"]!.ToString()).Distinct().ToArray();
             for(var attempt=0;attempt<2;attempt++)
             {
                 if(!active){host.Begin(folder,"Knowledge");active=true;}
@@ -100,7 +104,7 @@ public sealed class KnowledgeRetrieval(IKnowledgeHost host)
                     try{File.Move(pending,Path.Combine(folder,"result.txt"),true);}
                     catch(Exception e) when(e is IOException or UnauthorizedAccessException){localWarning="\nThe verified answer is saved in PostgreSQL; local result-file finalization failed. /last can still display it in this session. The pending file is retained for recovery.";}
                     try{Snapshot("VERIFIED",localWarning);}catch(Exception e) when(e is IOException or UnauthorizedAccessException){localWarning+="\nLocal status snapshot could not be updated; PostgreSQL has the final status.";}
-                    conversation.Record(question,intent,candidate["status"]!.ToString(),candidate["clarification_question"]?.ToString()+" "+candidate["unresolved"]?.ToJsonString());
+                    conversation.Record(question,intent,candidate["status"]!.ToString(),candidate["clarification_question"]?.ToString()+" "+candidate["unresolved"]?.ToJsonString(),result);
                     try{File.WriteAllText(Path.Combine(folder,"conversation-after.json"),conversation.Snapshot().ToJsonString());}
                     catch(Exception e) when(e is IOException or UnauthorizedAccessException){localWarning+="\nAnswer is saved; local conversation snapshot could not be written. Session context remains available.";}
                     return result+localWarning+"\nRun: "+folder;
@@ -116,7 +120,7 @@ public sealed class KnowledgeRetrieval(IKnowledgeHost host)
                     {
                         if(queries.AsArray().Count==0)queries=new JsonArray(normalized["normalized_question"]!.ToString());
                         host.Begin(folder,"Knowledge");active=true;
-                        retrieved=await Work("qa_retrieve",new(){{"normalization",normalized.DeepClone()},{"expand",true},{"queries",queries},{"keywords",keywords},{"read_source_versions",versions}});
+                        retrieved=await Work("qa_retrieve",new(){{"normalization",normalized.DeepClone()},{"expand",true},{"web_images",attachmentIds is not null},{"queries",queries},{"keywords",keywords},{"read_source_versions",versions}});
                         File.WriteAllText(Path.Combine(folder,"evidence-expanded.json"),retrieved.ToJsonString());
                         evidence=retrieved["evidence"]!.AsArray();packet["retrieval"]=retrieved.DeepClone();
                     }
@@ -130,7 +134,7 @@ public sealed class KnowledgeRetrieval(IKnowledgeHost host)
         {
             if(active)host.End(false,"Stopped; see failure.json. No verified answer published.");
             host.Failure(folder,e);Snapshot(e is OperationCanceledException?"CANCELLED":"FAILED",e.Message);
-            if(started)try{await Work("qa_finish",new(){{"status",e is OperationCanceledException?"CANCELLED":"FAILED"},{"note",e.Message}});}catch(Exception save){File.WriteAllText(Path.Combine(folder,"save-failure.txt"),save.Message);}
+            try{await Work("qa_finish",new(){{"status",e is OperationCanceledException?"CANCELLED":"FAILED"},{"note",e.Message}});}catch(Exception save){File.WriteAllText(Path.Combine(folder,"save-failure.txt"),save.Message);}
             throw;
         }
     }

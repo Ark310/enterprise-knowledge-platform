@@ -1,0 +1,23 @@
+waiting for server to start.... done
+server started
+PASS QA24 messages survive independent reads
+PASS QA24 intent context persists
+PASS QA24 new chat starts isolated
+PASS QA24 actual decoded upload is retrievable
+PASS QA24 cross-chat upload rejected
+PASS QA24 cross-chat preview rejected
+PASS QA24 upload attached as scoped QA evidence
+PASS QA24 repeat migration accepts existing image evidence
+PASS QA24 upload and QA attach never add corpus vectors
+PASS QA24 changed image bytes cannot be silently reused
+PASS QA24 cited article receives an opaque local hyperlink
+PASS QA24 source link reads original text
+PASS QA24 original web link retained
+PASS QA24 original linked screenshot discovered without remote fetching
+PASS QA24 newer file bytes never substituted for cited revision
+PASS QA24 concurrent process lease rejected
+PASS QA24 active lease does not mark current job interrupted
+PASS QA24 interrupted job is explained without replay
+QA24 checks passed: 18
+waiting for server to shut down.... done
+server stopped

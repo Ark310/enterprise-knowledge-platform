@@ -57,9 +57,9 @@ def merge_evidence(old,new,char_budget=100000,max_items=80,reserved_ids=()):
 
 def enrich(db,rows):
  ids=list({str(p['version_id']) for p in rows})
- meta={str(v['id']):v for v in w.q(db,'select id,source_modified_at,metadata from knowledge.source_versions where id=any(%s::uuid[])',(ids,)).fetchall()} if ids else {}
+ meta={str(v['id']):v for v in w.q(db,'select v.id,v.source_modified_at,v.metadata,s.source_url from knowledge.source_versions v join knowledge.sources s on s.id=v.source_id where v.id=any(%s::uuid[])',(ids,)).fetchall()} if ids else {}
  for p in rows:
-  v=meta.get(str(p['version_id']),{});p['source_metadata']=v.get('metadata',{});p['source_modified_at']=str(v.get('source_modified_at') or '')
+  v=meta.get(str(p['version_id']),{});p['source_metadata']=dict(v.get('metadata',{}),url=v.get('source_url')); p['source_modified_at']=str(v.get('source_modified_at') or '')
   p['release_version']='.'.join(map(str,release_version(p.get('storage_uri','')))) or None
   m=re.search(r'(?im)^\s*last_updated\s*:\s*["\x27]?([^\r\n"\x27]+)',p['content_text'])
   if not m:m=re.search(r'"last_updated"\s*:\s*"([^"]+)"',p['content_text'])

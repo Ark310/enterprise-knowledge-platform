@@ -1,8 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><Version>0.23.0</Version></PropertyGroup>
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><Version>0.24.0</Version></PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../TD.Poc.Core/TD.Poc.Core.csproj" />
     <ProjectReference Include="../TD.Poc.Console/TD.Poc.Console.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="../TD.Poc.Retrieval.Console/TD.Poc.Retrieval.Console.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../TD.Poc.Web/TD.Poc.Web.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 </Project>

@@ -6,6 +6,7 @@ namespace TD.Poc.Infrastructure;
 
 public sealed partial class Runtime
 {
+    public CancellationToken JobCancellation {get;set;}
     public string Root { get; }
     public JsonObject Config { get; }
     public event Action<string>? Progress;
@@ -44,7 +45,7 @@ public sealed partial class Runtime
         var prefix=Path.Combine(work,"workers",op+"-"+Guid.NewGuid().ToString("N"));
         try
         {
-            var result=await Run(python,[Path.Combine(Root,"tools","worker.py")],new JsonObject{{"op",op},{"args",args??new JsonObject()}}.ToJsonString(),Root,false,TimeSpan.FromHours(24),true,prefix);
+            var result=await Run(python,[Path.Combine(Root,"tools","worker.py")],new JsonObject{{"op",op},{"args",args??new JsonObject()}}.ToJsonString(),Root,false,TimeSpan.FromHours(24),true,prefix,op.StartsWith("ui_")||op=="fail_run"||(op=="qa_finish"&&args?["status"]?.ToString() is "FAILED" or "CANCELLED")?CancellationToken.None:JobCancellation);
             JsonNode obj;
             try{obj=JsonNode.Parse(result.Output)!;}catch{throw new Exception($"Worker {op} returned invalid JSON; see {prefix}-stderr.txt");}
             if(result.Code!=0 || obj["ok"]?.GetValue<bool>()!=true)throw new Exception(obj["error"]?.ToString()??$"Worker {op} failed; see {prefix}-stderr.txt");
@@ -81,20 +82,21 @@ public sealed partial class Runtime
 
         RoleLog($"{role}: reasoning started. Ctrl+C in main or Q in the role window cancels. Raw logs: {Path.GetFileName(prefix)}-events.jsonl.");
         var timeout=TimeSpan.FromMinutes(Config["AgentTimeoutMinutes"]!.GetValue<int>());
-        var r=await Run(Config["CodexExecutable"]!.GetValue<string>(),args,prompt,folder,true,timeout,true,prefix);
+        var r=await Run(Config["CodexExecutable"]!.GetValue<string>(),args,prompt,folder,true,timeout,true,prefix,JobCancellation);
         if(r.Code!=0)throw new Exception($"Codex {role} exited {r.Code}. See {role}-stderr.txt and {role}-status.json in the run folder.");
         if(!File.Exists(output))throw new Exception("Codex did not produce the expected final output file.");
         try{return JsonNode.Parse(File.ReadAllText(output).Trim())??throw new Exception("Empty output");}
         catch{throw new Exception($"Codex {role} returned invalid JSON. Raw output retained for review.");}
     }
-    public async Task<(int Code,string Output,string Error)> Run(string executable,IEnumerable<string> arguments,string input,string cwd,bool codex,TimeSpan timeout,bool logErrors=true,string? livePrefix=null)
+    public async Task<(int Code,string Output,string Error)> Run(string executable,IEnumerable<string> arguments,string input,string cwd,bool codex,TimeSpan timeout,bool logErrors=true,string? livePrefix=null,CancellationToken jobToken=default)
     {
+        jobToken.ThrowIfCancellationRequested();
         var list=arguments.ToList();
         var start=new ProcessStartInfo{FileName=executable,WorkingDirectory=cwd,UseShellExecute=false,RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true,CreateNoWindow=true,StandardInputEncoding=new UTF8Encoding(false),StandardOutputEncoding=Encoding.UTF8,StandardErrorEncoding=Encoding.UTF8};
         if(OperatingSystem.IsWindows() && (executable.Equals("codex",StringComparison.OrdinalIgnoreCase)||executable.EndsWith(".cmd",StringComparison.OrdinalIgnoreCase)))
         {
             // cmd is used only for a trusted installed .cmd shim. User prompts go through stdin.
-            static string Quote(string s){if(s.IndexOfAny(['"','\r','\n','&','|','<','>','%','!'])>=0)throw new Exception("Unsafe character in executable/argument path; extract to a simple path such as C:\\TD-POC-v0.23.");return "\""+s+"\"";}
+            static string Quote(string s){if(s.IndexOfAny(['"','\r','\n','&','|','<','>','%','!'])>=0)throw new Exception("Unsafe character in executable/argument path; extract to a simple path such as C:\\TD-POC-v0.24.");return "\""+s+"\"";}
             start.FileName="cmd.exe";
             start.Arguments="/d /s /c \""+Quote(executable)+" "+string.Join(" ",list.Select(Quote))+"\"";
         }
@@ -107,7 +109,7 @@ public sealed partial class Runtime
             start.Environment.Remove("OPENAI_API_KEY");start.Environment.Remove("CODEX_API_KEY");
             start.Environment["CODEX_HOME"]=Path.Combine(Root,"config","codex-home");
         }
-        if(codex)return await RunAgentProcess(start,input,timeout,livePrefix ?? Path.Combine(cwd,"codex"));
+        if(codex)return await RunAgentProcess(start,input,timeout,livePrefix ?? Path.Combine(cwd,"codex"),jobToken);
         using var process=new Process{StartInfo=start};
         using var outLog=livePrefix is null?null:new StreamWriter(livePrefix+"-stdout.json",false,new UTF8Encoding(false)){AutoFlush=true};
         using var errLog=livePrefix is null?null:new StreamWriter(livePrefix+"-stderr.txt",false,new UTF8Encoding(false)){AutoFlush=true};
@@ -124,7 +126,7 @@ public sealed partial class Runtime
         var aout=Pump(process.StandardOutput,stdout,false);var aerr=Pump(process.StandardError,stderr,true);
         using var timeoutCancel=new CancellationTokenSource(timeout);
         using var manual=new CancellationTokenSource();
-        using var cancel=CancellationTokenSource.CreateLinkedTokenSource(timeoutCancel.Token,manual.Token);
+        using var cancel=CancellationTokenSource.CreateLinkedTokenSource(timeoutCancel.Token,manual.Token,jobToken);
         using var monitorStop=new CancellationTokenSource();
         var roleCancel=RoleCancel;
         ConsoleCancelEventHandler handler=(_,e)=>{e.Cancel=true;manual.Cancel();};

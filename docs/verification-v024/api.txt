@@ -1,0 +1,27 @@
+waiting for server to start.... done
+server started
+PASS GAP A/B fixture validates, links, saves and embeds
+PASS API POST without token denied
+PASS API cross-chat source download denied
+PASS API overlapping agent job denied
+PASS API knowledge plus verifier stores a structured answer
+PASS API human-facing steps retained
+PASS API verified answer lists original cited files
+PASS API local source link resolves original file
+PASS API verified illustration returned
+PASS API prior answer retained as non-evidence follow-up reference
+PASS API unrelated chat remains empty
+PASS API cancellation saved as stopped, no unverified answer
+PASS API two durable chat records
+API checks passed: 12
+PASS API cancellation finalizes PostgreSQL QA audit
+PASS API server restart retains both chats
+PASS API POC1 host starts independently
+PASS API POC1 saved gap run selectable
+PASS API POC1 review links article, transcript and recording
+PASS API POC1 C answers selected review
+PASS API POC1 C can select supplied original review frame
+PASS API POC1 search uses checked source presentation
+GAP API checks passed: 5
+waiting for server to shut down.... done
+server stopped

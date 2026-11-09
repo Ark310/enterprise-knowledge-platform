@@ -110,6 +110,11 @@ internal static class KnowledgeTests
         Check(memory.Snapshot().ToJsonString().Contains("Two checkers")&&memory.Snapshot().ToJsonString().Contains("Desktop or Web?"),"clarification retains original task and pending question");
         memory.Record("TradeDesk",new JsonObject{{"normalized_question","Two checkers for wire templates in TradeDesk"}},"INSUFFICIENT_EVIDENCE","Assignment details unresolved");
         Check(memory.Snapshot().ToJsonString().Contains("Assignment details unresolved"),"insufficient response retains task context");
+        var restored=new ConversationState();restored.Restore(memory.Snapshot());
+        Check(restored.Snapshot().ToJsonString()==memory.Snapshot().ToJsonString(),"structured follow-up context survives save and restore");
+        restored.Record("Explain step 3",null,"ANSWER","","3. Select the setting. This reply is an intent reference only.");
+        var restarted=new ConversationState();restarted.Restore(restored.Snapshot());
+        Check(restarted.Snapshot()["turns"]!.AsArray().Last()!["assistant_reply_reference"]!.ToString().Contains("Select the setting"),"assistant reply reference survives restart without becoming evidence");
         memory.Record("Is MFA available?",new JsonObject{{"normalized_question","Is MFA available?"},{"conversation_relation","NEW"}},"ANSWER","");
         Check(!memory.Snapshot().ToJsonString().Contains("Two checkers")&&memory.Snapshot()["active_task"]?["normalized_question"]?.ToString()=="Is MFA available?","topic change replaces active task instead of retaining old approval goal");
         memory.Clear();Check(!memory.Snapshot().ToJsonString().Contains("Two checkers"),"new session clears structured context");

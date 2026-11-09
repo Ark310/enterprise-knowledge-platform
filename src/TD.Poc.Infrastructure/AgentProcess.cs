@@ -19,7 +19,7 @@ public sealed partial class Runtime
         var handle=GetStdHandle(-10);
         if(GetConsoleMode(handle,out var mode))SetConsoleMode(handle,(mode|0x80u)&~0x40u);
     }
-    private async Task<(int Code,string Output,string Error)> RunAgentProcess(ProcessStartInfo start,string input,TimeSpan timeout,string prefix)
+    private async Task<(int Code,string Output,string Error)> RunAgentProcess(ProcessStartInfo start,string input,TimeSpan timeout,string prefix,CancellationToken jobToken=default)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(prefix)!);
         // Flush every line so a partial export remains useful during a blocked console or crash.
@@ -30,7 +30,7 @@ public sealed partial class Runtime
         var clock=Stopwatch.StartNew();var lastEvent="starting";double lastEventAt=0;
         using var deadline=new CancellationTokenSource(timeout);
         using var manual=new CancellationTokenSource();
-        using var linked=CancellationTokenSource.CreateLinkedTokenSource(deadline.Token,manual.Token);
+        using var linked=CancellationTokenSource.CreateLinkedTokenSource(deadline.Token,manual.Token,jobToken);
         using var monitoring=new CancellationTokenSource();
         using var process=new Process{StartInfo=start};
         void Note(string message){lock(gate)activity.WriteLine($"[{DateTimeOffset.Now:HH:mm:ss}] {message}");}
@@ -114,8 +114,9 @@ public sealed partial class Runtime
             if(!process.HasExited)process.Kill(true);
             try {await Task.WhenAll(outputPump,errorPump).WaitAsync(TimeSpan.FromSeconds(5));}catch{ }
             monitoring.Cancel();await heartbeat;
-            var state=manual.IsCancellationRequested?"CANCELLED":deadline.IsCancellationRequested?"TIMED_OUT":"FAILED";
+            var state=(manual.IsCancellationRequested||jobToken.IsCancellationRequested)?"CANCELLED":deadline.IsCancellationRequested?"TIMED_OUT":"FAILED";
             State(state);Note(state+": "+e.Message+". Partial logs retained; no successful handoff is claimed.");
+            if(state=="CANCELLED")throw new OperationCanceledException($"Agent {state}. See {prefix}-status.json and live logs.",e,jobToken);
             throw new Exception($"Agent {state}. See {prefix}-status.json and live logs.",e);
         }
         finally

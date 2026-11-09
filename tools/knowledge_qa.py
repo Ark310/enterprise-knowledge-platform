@@ -67,9 +67,11 @@ def validate_answer(obj,evidence):
    if not cite['excerpt'].strip() or cite['excerpt'] not in p['text']:errors.append('Citation excerpt is not literal evidence')
    source|=p['kind']=='SOURCE'
   if not claim['citations']:errors.append('Every claim needs evidence')
-  if claim['basis']=='VISUAL' and not any(refs.get(c['evidence_id'],{}).get('kind')=='FRAME' for c in claim['citations']):errors.append('Visual claim needs attached frame evidence')
+  if claim['basis']=='VISUAL' and not any(refs.get(c['evidence_id'],{}).get('kind') in ('FRAME','USER_IMAGE','SOURCE_IMAGE') for c in claim['citations']):errors.append('Visual claim needs attached frame evidence')
   if claim['basis'] in ('SOURCE','INFERENCE') and not source:errors.append('Product facts/inferences need original source evidence, not just saved AI findings')
   if claim['basis']=='REVIEW_REPORT' and not any(refs.get(c['evidence_id'],{}).get('kind')=='REVIEW' for c in claim['citations']):errors.append('Review report must cite a saved review')
+ for ident in obj.get('illustrations',[]):
+  if refs.get(ident,{}).get('kind') not in ('FRAME','SOURCE_IMAGE'):errors.append('Illustration must be a supplied original source image')
  return errors
 
 def validate_verdict(obj,answer,retrieval=None):
@@ -87,6 +89,9 @@ def validate_verdict(obj,answer,retrieval=None):
   if not obj['evidence_coverage_sufficient']:errors.append('PASS requires sufficient evidence coverage')
   if obj.get('retrieval_queries') or obj.get('read_source_versions') or obj.get('retrieval_keywords'):errors.append('PASS cannot have outstanding evidence requests')
   if not all(obj[k] for k in ['addresses_question','normalization_faithful','premise_supported','human_readable']):errors.append('PASS requires all answer checks')
+  selected=answer.get('illustrations',[]);checked_images=obj.get('illustration_checks',[])
+  if sorted(selected)!=sorted(x['evidence_id'] for x in checked_images):errors.append('Every selected illustration needs an independent relevance check')
+  if not all(x['relevant'] for x in checked_images):errors.append('Unrelated illustration cannot be published')
   if not all(c['supported'] for c in obj['claim_checks']):errors.append('PASS contains unsupported claims')
   if not partial and answer.get('status')!='ANSWER':errors.append('Cannot pass a non-answer')
  return errors
@@ -132,7 +137,11 @@ def retrieve(db,cfg,args):
  result=knowledge_search.collect(db,cfg,normalized,args.get('queries') if expanding else None,args.get('read_source_versions') if expanding else None,previous,args.get('keywords') if expanding else None)
  import knowledge_visual
  if any(p['kind']=='FRAME' for p in result['evidence']):result['evidence']=knowledge_visual.stage_images(result['evidence'],args['work'])
+ if args.get('web_images'):
+  import chat_images
+  result=chat_images.enrich(db,cfg,tid,result)
  for p in result['evidence']:
+  if p['kind'] in ('USER_IMAGE','SOURCE_IMAGE'):continue
   w.q(db,"""insert into knowledge_qa.evidence(turn_id,evidence_key,content_unit_id,source_version_id,record_id,frame_id,snapshot)
     values(%s,%s,%s,%s,%s,%s,%s::jsonb) on conflict(turn_id,evidence_key) do nothing""",(tid,p['evidence_id'],p.get('unit_id'),p.get('version_id'),p.get('record_id'),p.get('frame_id'),w.j(p)))
  history=w.one(db,'select retrieval from knowledge_qa.turns where id=%s',(tid,))['retrieval'] or {}
@@ -150,6 +159,10 @@ def finish(db,args):
   if verdict.get('decision') not in ('PASS','PARTIAL_PASS'):errors.append('Verifier did not pass')
   # Recheck image bytes and original recording revision immediately before publication.
   for p in evidence:
+   if p['kind'] in ('USER_IMAGE','SOURCE_IMAGE'):
+    try:
+     if w.file_hash(p['path'])!=p['image_sha256']:errors.append('Image attachment changed during this turn')
+    except OSError:errors.append('Image attachment unavailable at publication')
    if p['kind']=='FRAME':
     try:
      if w.file_hash(p['path'])!=p['image_sha256']:errors.append('Frame evidence changed during this turn')
@@ -175,6 +188,9 @@ def finish(db,args):
   (status,w.j(answer),w.j(verdict),str(args.get('note',''))[:4000],tid));db.commit();return {'status':status}
 
 def main(db,cfg,op,args):
+ if op=='qa_attach':
+  import chat_images
+  return chat_images.attach(db,cfg,args)
  if op=='qa_begin':return begin(db,args)
  if op=='qa_event':return event(db,args)
  if op=='qa_retrieve':return retrieve(db,cfg,args)

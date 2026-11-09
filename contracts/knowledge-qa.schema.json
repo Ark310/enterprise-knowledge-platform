@@ -206,6 +206,15 @@
         },
         "procedure_complete": {
           "type": "boolean"
+        },
+        "illustrations": {
+          "type": "array",
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "maxLength": 20
+          }
         }
       },
       "required": [
@@ -308,6 +317,32 @@
             "type": "string",
             "minLength": 2,
             "maxLength": 100
+          }
+        },
+        "illustration_checks": {
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "properties": {
+              "evidence_id": {
+                "type": "string",
+                "maxLength": 20
+              },
+              "relevant": {
+                "type": "boolean"
+              },
+              "reason": {
+                "type": "string",
+                "maxLength": 1000
+              }
+            },
+            "required": [
+              "evidence_id",
+              "relevant",
+              "reason"
+            ],
+            "additionalProperties": false
           }
         }
       },

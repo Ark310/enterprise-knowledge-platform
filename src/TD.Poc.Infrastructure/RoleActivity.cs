@@ -13,6 +13,7 @@ public sealed partial class Runtime
     private readonly object roleGate=new();
     private RoleSession? currentRole;
     private readonly HashSet<string> connectorNotices=[];
+    public string? CurrentActivity{get{lock(roleGate)return currentRole is null?null:$"{currentRole.Role}: {currentRole.Step}";}}
     private string? RoleCancel {get{lock(roleGate)return currentRole?.Cancel;}}
     public void BeginRole(string work,string role)
     {
