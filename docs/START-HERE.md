@@ -1,4 +1,4 @@
-# Workspace v0.25 — videos, screenshots and tests
+# Workspace v0.26 — videos, screenshots and tests
 
 ## What changes
 
@@ -11,14 +11,14 @@ You can select existing-asset videos, ask about their content, and receive trans
 - Article screenshot requests no longer require a video name. Your three captured v0.24 failures are regression tests.
 - **Scan files** and **Process new files** are visible actions; registered MP4s no longer keep appearing as unfinished text extraction.
 
-Your two supplied SRTs contain six zero-duration cues: one in Sections3/4 and five in Sections5/6. v0.25 imports their text and original exact timestamps as **POINT_ONLY** cues, with warnings that spoken duration is unverified. It does not invent timings, silently drop these words or rewrite the SRTs. Reversed timestamps and malformed cues still require attention.
+Your two supplied SRTs contain six zero-duration cues: one in Sections3/4 and five in Sections5/6. v0.26 imports their text and original exact timestamps as **POINT_ONLY** cues, with warnings that spoken duration is unverified. It does not invent timings, silently drop these words or rewrite the SRTs. Reversed timestamps and malformed cues still require attention.
 
 ## 1. Upgrade
 
 Close v0.24 and its activity windows; keep its folder as fallback. Back up `knowledge_poc` in pgAdmin. Extract the new application to:
 
 ```text
-C:\TD-POC-v0.25
+C:\TD-POC-v0.26
 ```
 
 **Keep your existing PostgreSQL database and data bucket. Do not run the fresh schema installer, delete vectors or recreate the database.** This release uses the existing024 tables and metadata; it adds no new production table schema.
@@ -26,7 +26,7 @@ C:\TD-POC-v0.25
 In CMD:
 
 ```cmd
-cd /d C:\TD-POC-v0.25
+cd /d C:\TD-POC-v0.26
 Setup-POC.cmd
 ```
 

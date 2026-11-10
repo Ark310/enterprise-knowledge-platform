@@ -1,4 +1,4 @@
-# v0.25 — Video questions, frames and ingestion readiness
+# v0.26 — Video questions, frames and ingestion readiness
 
 - Separates article screenshots, user images and video inspection; captured v024 screenshot requests pass normalization regression tests.
 - Video library lists registered/scanned recordings and transcript/vector readiness; up to two exact selections retained per chat.

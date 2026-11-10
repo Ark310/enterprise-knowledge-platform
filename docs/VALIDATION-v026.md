@@ -1,0 +1,3 @@
+## Verified before packaging
+
+157 Python tests; 26 runtime host checks plus 41 Knowledge host checks; 20 real sample-video checks; five web API groups; six additional real PostgreSQL/embedding recovery checks, including a deliberately stalled response, stack capture, safe resume, explicit retry and database statement timeout. .NET Release build: zero errors and zero warnings. Tests use a controlled embedding service and model fixtures, not your live Ollama/Codex account. Windows-native launch/PowerShell windows and rendered browser layout could not be exercised in this Linux environment. Your exact historical stall is not reproduced or attributed to a proven cause.

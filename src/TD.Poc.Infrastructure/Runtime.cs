@@ -45,11 +45,34 @@ public sealed partial class Runtime
         var prefix=Path.Combine(work,"workers",op+"-"+Guid.NewGuid().ToString("N"));
         try
         {
-            var result=await Run(python,[Path.Combine(Root,"tools","worker.py")],new JsonObject{{"op",op},{"args",args??new JsonObject()}}.ToJsonString(),Root,false,TimeSpan.FromHours(24),true,prefix,op.StartsWith("ui_")||op=="fail_run"||(op=="qa_finish"&&args?["status"]?.ToString() is "FAILED" or "CANCELLED")?CancellationToken.None:JobCancellation);
+            for(var attempt=0;attempt<3;attempt++)
+            {
+            var importKey=Guid.NewGuid().ToString("N");
+            args!["import_run_key"]=importKey;
+            prefix=Path.Combine(work,"workers",op+"-"+importKey);
+            var result=await Run(python,[Path.Combine(Root,"tools","worker.py")],new JsonObject{{"op",op},{"args",args?.DeepClone()??new JsonObject()}}.ToJsonString(),Root,false,TimeSpan.FromHours(24),true,prefix,op.StartsWith("ui_")||op=="fail_run"||(op=="qa_finish"&&args?["status"]?.ToString() is "FAILED" or "CANCELLED")?CancellationToken.None:JobCancellation);
+            if(result.Code==124 && op is "process" or "scan")
+            {
+                var health=Path.Combine(Root,"runtime","import-traces",importKey,"state.json");
+                JsonNode? state=null;try{state=JsonNode.Parse(File.ReadAllText(health));}catch{ }
+                var file=state?["file"]?["relative"]?.ToString();
+                var stage=state?["stage"]?.ToString()??"unknown stage";
+                if(op=="process" && !string.IsNullOrEmpty(file) && attempt<2)
+                {
+                    Log($"Processing timeout at {stage}: {file}. Saved work retained. Resuming with this file set aside; see {health}.");
+                    var skipped=args!["skip_timeout_paths"] as JsonArray??new JsonArray();
+                    if(args["skip_timeout_paths"] is null)args["skip_timeout_paths"]=skipped;
+                    skipped.Add(state!["file"]!["path"]!.ToString());
+                    continue;
+                }
+                throw new Exception($"Processing timed out at {stage}: {file??"startup"}. Saved work retained. Diagnostics: {health}. Retry timed-out files after reviewing the cause.");
+            }
             JsonNode obj;
             try{obj=JsonNode.Parse(result.Output)!;}catch{throw new Exception($"Worker {op} returned invalid JSON; see {prefix}-stderr.txt");}
             if(result.Code!=0 || obj["ok"]?.GetValue<bool>()!=true)throw new Exception(obj["error"]?.ToString()??$"Worker {op} failed; see {prefix}-stderr.txt");
             return obj["result"]!.DeepClone();
+            }
+            throw new Exception("Processing recovery limit reached. Review import diagnostics.");
         }
         catch(Exception e){RecordFailure(work,"worker:"+op,e);throw;}
     }
@@ -96,7 +119,7 @@ public sealed partial class Runtime
         if(OperatingSystem.IsWindows() && (executable.Equals("codex",StringComparison.OrdinalIgnoreCase)||executable.EndsWith(".cmd",StringComparison.OrdinalIgnoreCase)))
         {
             // cmd is used only for a trusted installed .cmd shim. User prompts go through stdin.
-            static string Quote(string s){if(s.IndexOfAny(['"','\r','\n','&','|','<','>','%','!'])>=0)throw new Exception("Unsafe character in executable/argument path; extract to a simple path such as C:\\TD-POC-v0.25.");return "\""+s+"\"";}
+            static string Quote(string s){if(s.IndexOfAny(['"','\r','\n','&','|','<','>','%','!'])>=0)throw new Exception("Unsafe character in executable/argument path; extract to a simple path such as C:\\TD-POC-v0.26.");return "\""+s+"\"";}
             start.FileName="cmd.exe";
             start.Arguments="/d /s /c \""+Quote(executable)+" "+string.Join(" ",list.Select(Quote))+"\"";
         }

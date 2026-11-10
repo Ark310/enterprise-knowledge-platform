@@ -10,7 +10,7 @@ try
 {
 var root=PocPaths.FindRoot();var mode=args.Contains("--poc1")?1:2;
 var builder=WebApplication.CreateBuilder(new WebApplicationOptions{Args=args,ContentRootPath=root,WebRootPath=Path.Combine(root,"src","TD.Poc.Web","wwwroot")});
-builder.Logging.ClearProviders();builder.Logging.AddConsole();
+builder.Logging.ClearProviders();builder.Logging.AddConsole();builder.Logging.SetMinimumLevel(LogLevel.Warning);
 var port=int.TryParse(Environment.GetEnvironmentVariable("WORKSPACE_PORT"),out var custom)?custom:5250;
 if(port is <1024 or >65535)throw new Exception("Choose a port between 1024 and 65535");
 builder.WebHost.UseUrls($"http://127.0.0.1:{port}");

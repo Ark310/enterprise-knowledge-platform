@@ -1,4 +1,6 @@
 """TD 0.17 evidence worker. JSON stdin/stdout; progress to stderr. Never executes source files."""
+import urllib.error
+import import_health as ih
 import sys,os,json,re,hashlib,uuid,datetime,urllib.request,urllib.parse,zipfile,html,subprocess,shutil,traceback
 from pathlib import Path
 from xml.etree import ElementTree as ET
@@ -35,6 +37,7 @@ def safe_path(root,path):
   cur=cur.parent
  return p
 
+@ih.traced('HASH_FILE',file_arg=0)
 def file_hash(p):
  h=hashlib.sha256()
  with open(p,'rb') as f:
@@ -42,6 +45,10 @@ def file_hash(p):
  return h.hexdigest()
 
 def scan(cfg):
+ with ih.session(BASE,cfg):
+  with ih.phase('SCAN'):return _scan(cfg)
+
+def _scan(cfg):
  root=Path(cfg['DataRoot']).absolute();files=[];errors=[];skipped=[]
  for rel,role in ROOTS:
   folder=root/rel
@@ -55,7 +62,9 @@ def scan(cfg):
     p=Path(d)/n
     if n.startswith('~$'):skipped.append(str(p));continue
     try:
-     safe_path(root,p);before=p.stat();digest=file_hash(p);after=p.stat()
+     safe_path(root,p)
+     if ih.skip_file(p):errors.append({'path':str(p),'error':'Skipped after a prior processing timeout. Use Retry timed-out files to try it again.'});continue
+     before=p.stat();digest=file_hash(p);after=p.stat()
      if (before.st_size,before.st_mtime_ns)!=(after.st_size,after.st_mtime_ns):raise ValueError('File changed during scan; retry after copy completes')
      files.append({'path':str(p),'relative':p.relative_to(root).as_posix(),'role':role,'group':'current-state' if role=='CURRENT_STATE' else 'existing-assets','sha256':digest,'bytes':after.st_size,'modified':datetime.datetime.fromtimestamp(after.st_mtime,datetime.timezone.utc).isoformat()})
     except Exception as e:errors.append({'path':str(p),'error':str(e)})
@@ -68,6 +77,7 @@ def decode(b):
   except UnicodeError:pass
  raise ValueError('Unknown text encoding')
 
+@ih.traced('EXTRACT_TEXT',file_arg=0)
 def extract(path):
  p=Path(path);ext=p.suffix.lower();out=[];warnings=[];meta={};status='COMPLETE'
  def add(text,loc,**kw):
@@ -130,13 +140,19 @@ def extract(path):
  if not out:warnings.append('No usable text extracted');status='PARTIAL'
  return {'status':status,'units':out,'warnings':warnings,'metadata':meta}
 
+@ih.traced('DATABASE_CONNECT')
 def connect():
  import psycopg
  from psycopg.rows import dict_row
  conn=os.environ.get('TD_PG_CONNECTION','')
  if not conn:raise ValueError('TD_PG_CONNECTION is unset. Run Configure-Database.cmd once.')
- return psycopg.connect(conn,row_factory=dict_row,connect_timeout=10,prepare_threshold=None)
+ limits={}
+ if ih.ACTIVE:
+  cfg=ih.ACTIVE.cfg;statement=int(float(cfg.get('ImportSqlTimeoutSeconds',120))*1000);lock=int(float(cfg.get('ImportLockTimeoutSeconds',10))*1000)
+  limits['options']=f'-c statement_timeout={max(1,statement)} -c lock_timeout={max(1,lock)} -c idle_in_transaction_session_timeout=300000'
+ return psycopg.connect(conn,row_factory=dict_row,connect_timeout=10,prepare_threshold=None,**limits)
 
+@ih.traced('DATABASE')
 def q(db,sql,args=()):return db.execute(sql,args if args else None)
 def one(db,sql,args=()):return q(db,sql,args).fetchone()
 def require_db(db):
@@ -153,12 +169,16 @@ def migration(db):
  q(db,(BASE/'database/migrations/023-verified-partial.sql').read_text(encoding='utf-8-sig'))
  q(db,(BASE/'database/migrations/024-workspace.sql').read_text(encoding='utf-8-sig'))
 
+@ih.traced('EMBEDDING_API')
 def ollama(cfg,endpoint,body=None):
  url=cfg.get('OllamaUrl','http://localhost:11434').rstrip('/')+endpoint
  # Credentials and extracted content must not be sent to arbitrary destinations by source data.
  if urllib.parse.urlparse(url).hostname not in {'localhost','127.0.0.1','::1'}:raise ValueError('OllamaUrl must be loopback for local POC')
  req=urllib.request.Request(url,data=None if body is None else j(body).encode(),headers={'Content-Type':'application/json'})
- with urllib.request.urlopen(req,timeout=600) as r:return json.load(r)
+ try:
+  with urllib.request.urlopen(req,timeout=max(1,float(cfg.get('EmbeddingRequestTimeoutSeconds',120)))) as r:return json.load(r)
+ except (TimeoutError,urllib.error.URLError) as error:
+  raise ih.ServiceUnavailable('Local embedding service did not complete its request: '+type(error).__name__+'. Completed vectors are retained. Check Ollama before retrying processing.') from error
 
 def model_profile(db,cfg):
  model=cfg['EmbeddingModel'];tags=ollama(cfg,'/api/tags')['models'];tag=next((x for x in tags if x['name']==model or x.get('model')==model),None)
@@ -171,6 +191,7 @@ def model_profile(db,cfg):
   values(%s,'OLLAMA',%s,%s,%s,'COSINE','td-chars3000-v1/query-instruction-v1') returning *""",(key,model,digest,dims))
  return row
 
+@ih.traced('EMBED_TEXT')
 def embed(cfg,text,is_query=False):
  if is_query:text='Instruct: Given a question about Contoso product documentation, retrieve passages that answer the question\nQuery: '+text
  r=ollama(cfg,'/api/embed',{'model':cfg['EmbeddingModel'],'input':text,'truncate':False,'keep_alive':'30m','options':{'num_ctx':4096,'num_batch':64}})
@@ -185,6 +206,7 @@ def source_type(p):
  return {'.srt':'TRANSCRIPT','.docx':'DOCUMENT','.doc':'DOCUMENT','.pdf':'DOCUMENT','.xlsx':'WORKBOOK','.xls':'WORKBOOK','.png':'SCREENSHOT','.jpg':'SCREENSHOT','.json':('API_SPEC' if 'REST API' in str(p) else 'OTHER'),'.md':'ARTICLE','.html':'ARTICLE'}.get(e,'OTHER')
 def mime(p):return __import__('mimetypes').guess_type(str(p))[0] or 'application/octet-stream'
 
+@ih.traced('REGISTER_FILE')
 def register(db,f):
  group=one(db,'select id from knowledge.source_groups where group_key=%s',(f['group'],))
  if not group:raise ValueError('Missing approved source group '+f['group'])
@@ -237,7 +259,11 @@ def ingest_api(db,sv,ov,data,file):
 
 
 def process(cfg,options):
- inventory=scan(cfg);totals={'registered':0,'extracted':0,'blocked':0,'failed':0,'embedded':0,'unchanged':0,'failures':[],'scan_errors':inventory['errors']}
+ with ih.session(BASE,cfg,options):
+  with ih.phase('PROCESS'):return _process(cfg,options)
+
+def _process(cfg,options):
+ inventory=scan(cfg);totals={'registered':0,'extracted':0,'blocked':0,'failed':0,'embedded':0,'unchanged':0,'failures':[],'scan_errors':inventory['errors'],'timed_out_skipped':[e for e in inventory['errors'] if 'prior processing timeout' in e.get('error','')]}
  limit=int(options.get('limit',0));selected=inventory['files'][:limit] if limit>0 else inventory['files']
  with connect() as db:
   require_db(db)
@@ -247,53 +273,55 @@ def process(cfg,options):
   profile=model_profile(db,cfg);db.commit()
   batch=one(db,"insert into knowledge.intake_batches(batch_key,declared_scope,scan_status,manifest_reconciliation,notes) values(%s,%s::jsonb,%s,'NO_MANIFEST',%s::jsonb) returning id",('local-'+str(uuid.uuid4()),j({'roots':ROOTS,'limit':limit}),'PARTIAL' if inventory['errors'] or limit else 'COMPLETE',j({'errors':inventory['errors'],'exclusions':inventory['excluded']})))['id'];db.commit()
   for i,f in enumerate(selected,1):
-   progress(f"[{i}/{len(selected)}] {f['relative']}")
-   committed=False;before_counts={k:totals[k] for k in ['registered','extracted','blocked','unchanged']}
-   try:
-    if file_hash(f['path'])!=f['sha256']:raise ValueError('File changed after scan')
-    with db.transaction():
-     sv,ov=register(db,f);totals['registered']+=1
-     q(db,"insert into knowledge.intake_entries(batch_id,group_id,entry_key,member_path,expected_bytes,expected_sha256,observed_object_version_id,presence_status,review_status) select %s,group_id,%s,%s,%s,%s,%s,'PRESENT','INVENTORIED' from knowledge.source_versions where id=%s",(batch,f['relative'],f['relative'],f['bytes'],f['sha256'],ov,sv))
-     ex=one(db,"select id,status from knowledge.extractions where source_version_id=%s and is_active and processor_version=%s",(sv,EXTRACTION_VERSION))
-     if not ex and Path(f['path']).suffix.lower() in VIDEO_EXT:
-      ex=one(db,"select id,status from knowledge.extractions where source_version_id=%s and processor_version=%s order by created_at desc limit 1",(sv,EXTRACTION_VERSION))
-     if not ex:
-      data=extract(f['path'])
-      if file_hash(f['path'])!=f['sha256']:raise ValueError('File changed while extracting; transaction rolled back')
-      if data['metadata'].get('title'):q(db,"update knowledge.sources set title=%s,product=%s,source_url=coalesce(%s,source_url),source_type='ARTICLE' where id=(select source_id from knowledge.source_versions where id=%s)",(data['metadata']['title'],data['metadata'].get('product'),data['metadata'].get('url'),sv))
-      status=data['status'];q(db,'update knowledge.extractions set is_active=false where source_version_id=%s',(sv,))
-      ex=one(db,"insert into knowledge.extractions(source_version_id,method,processor_version,status,warnings,is_active) values(%s,'LOCAL_PARSER',%s,%s,%s::jsonb,%s) returning id,status",(sv,EXTRACTION_VERSION,'PARTIAL' if status=='BLOCKED' else status,j(data['warnings']),status!='BLOCKED'))
-      for n,u in enumerate(data['units']):
-       loc=dict(u['locator'],file=f['relative'],source_version_id=str(sv))
-       q(db,"""insert into knowledge.content_units(extraction_id,unit_key,unit_type,heading,content_text,representation_kind,locator,content_sha256,start_seconds,end_seconds,page_number,sheet_name,cell_range)
-       values(%s,%s,'PASSAGE',%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s)""",(ex['id'],str(n),Path(f['path']).name,u['text'],u.get('kind','SOURCE_TEXT'),j(loc),sha(u['text']),u.get('start'),u.get('end'),u.get('page'),u.get('sheet'),u.get('cell_range')))
-      ingest_api(db,sv,ov,data['metadata'].get('json',{}),f['relative'])
-      job(db,ov,'EXTRACT',status,{'warnings':data['warnings'],'unit_count':len(data['units'])})
-      if status=='BLOCKED':totals['blocked']+=1
-      else:totals['extracted']+=1
-     else:totals['unchanged']+=1
-    db.commit();committed=True
-    pending=q(db,"select u.id,u.content_text from knowledge.content_units u where u.extraction_id=%s and u.content_status='USABLE' and not exists(select 1 from retrieval.content_embeddings e where e.content_unit_id=u.id and e.profile_id=%s)",(ex['id'],profile['id'])).fetchall();db.commit()
-    for u in pending:
-     v=embed(cfg,u['content_text'])
-     if len(v)!=profile['dimensions']:raise ValueError('Embedding dimensions changed')
-     q(db,"insert into retrieval.content_embeddings(content_unit_id,profile_id,input_sha256,embedding,embedded_text) values(%s,%s,%s,%s::vector,%s) on conflict do nothing",(u['id'],profile['id'],sha(u['content_text']),vector(v),u['content_text']));db.commit();totals['embedded']+=1
-    if Path(f['path']).suffix.lower()=='.srt':
-     from transcript_groups import ensure_grouped
-     totals.setdefault('grouped_embedded',0);totals['grouped_embedded']+=ensure_grouped(db,cfg,f,sv,ov,profile)
-    if Path(f['path']).suffix.lower() in VIDEO_EXT:
-     totals.setdefault('registered_media',0);totals['registered_media']+=1;continue
-    count=one(db,'select count(*) n from knowledge.content_units where extraction_id=%s',(ex['id'],))['n']
-    job(db,ov,'EMBED','COMPLETE' if count else 'BLOCKED',{'profile_id':str(profile['id']),'new_vectors':len(pending),'reason':None if count else 'No searchable units; conversion or scoped video review required'});db.commit()
-   except Exception as e:
-    db.rollback()
-    if not committed:
-     for k,v in before_counts.items():totals[k]=v
-    totals['failed']+=1;totals['failures'].append({'file':f['relative'],'error':str(e)});progress('FAILED '+f['relative']+': '+str(e))
-    # Persist a failure separately when physical registration already committed.
-    existing=one(db,"select id from knowledge.object_versions where storage_uri=%s and sha256=%s",(Path(f['path']).absolute().as_uri(),f['sha256']))
-    if existing:job(db,existing['id'],'EMBED','FAILED',{'message':str(e)})
-    db.commit()
+   with ih.file_scope(f['path']):
+    progress(f"[{i}/{len(selected)}] {f['relative']}")
+    ih.ACTIVE.file['sha256']=f['sha256'];committed=False;before_counts={k:totals[k] for k in ['registered','extracted','blocked','unchanged']}
+    try:
+     if file_hash(f['path'])!=f['sha256']:raise ValueError('File changed after scan')
+     with db.transaction():
+      sv,ov=register(db,f);totals['registered']+=1
+      q(db,"insert into knowledge.intake_entries(batch_id,group_id,entry_key,member_path,expected_bytes,expected_sha256,observed_object_version_id,presence_status,review_status) select %s,group_id,%s,%s,%s,%s,%s,'PRESENT','INVENTORIED' from knowledge.source_versions where id=%s",(batch,f['relative'],f['relative'],f['bytes'],f['sha256'],ov,sv))
+      ex=one(db,"select id,status from knowledge.extractions where source_version_id=%s and is_active and processor_version=%s",(sv,EXTRACTION_VERSION))
+      if not ex and Path(f['path']).suffix.lower() in VIDEO_EXT:
+       ex=one(db,"select id,status from knowledge.extractions where source_version_id=%s and processor_version=%s order by created_at desc limit 1",(sv,EXTRACTION_VERSION))
+      if not ex:
+       data=extract(f['path'])
+       if file_hash(f['path'])!=f['sha256']:raise ValueError('File changed while extracting; transaction rolled back')
+       if data['metadata'].get('title'):q(db,"update knowledge.sources set title=%s,product=%s,source_url=coalesce(%s,source_url),source_type='ARTICLE' where id=(select source_id from knowledge.source_versions where id=%s)",(data['metadata']['title'],data['metadata'].get('product'),data['metadata'].get('url'),sv))
+       status=data['status'];q(db,'update knowledge.extractions set is_active=false where source_version_id=%s',(sv,))
+       ex=one(db,"insert into knowledge.extractions(source_version_id,method,processor_version,status,warnings,is_active) values(%s,'LOCAL_PARSER',%s,%s,%s::jsonb,%s) returning id,status",(sv,EXTRACTION_VERSION,'PARTIAL' if status=='BLOCKED' else status,j(data['warnings']),status!='BLOCKED'))
+       for n,u in enumerate(data['units']):
+        loc=dict(u['locator'],file=f['relative'],source_version_id=str(sv))
+        q(db,"""insert into knowledge.content_units(extraction_id,unit_key,unit_type,heading,content_text,representation_kind,locator,content_sha256,start_seconds,end_seconds,page_number,sheet_name,cell_range)
+        values(%s,%s,'PASSAGE',%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s)""",(ex['id'],str(n),Path(f['path']).name,u['text'],u.get('kind','SOURCE_TEXT'),j(loc),sha(u['text']),u.get('start'),u.get('end'),u.get('page'),u.get('sheet'),u.get('cell_range')))
+       ingest_api(db,sv,ov,data['metadata'].get('json',{}),f['relative'])
+       job(db,ov,'EXTRACT',status,{'warnings':data['warnings'],'unit_count':len(data['units'])})
+       if status=='BLOCKED':totals['blocked']+=1
+       else:totals['extracted']+=1
+      else:totals['unchanged']+=1
+     db.commit();committed=True
+     pending=q(db,"select u.id,u.content_text from knowledge.content_units u where u.extraction_id=%s and u.content_status='USABLE' and not exists(select 1 from retrieval.content_embeddings e where e.content_unit_id=u.id and e.profile_id=%s)",(ex['id'],profile['id'])).fetchall();db.commit()
+     for u in pending:
+      v=embed(cfg,u['content_text'])
+      if len(v)!=profile['dimensions']:raise ValueError('Embedding dimensions changed')
+      q(db,"insert into retrieval.content_embeddings(content_unit_id,profile_id,input_sha256,embedding,embedded_text) values(%s,%s,%s,%s::vector,%s) on conflict do nothing",(u['id'],profile['id'],sha(u['content_text']),vector(v),u['content_text']));db.commit();totals['embedded']+=1
+     if Path(f['path']).suffix.lower()=='.srt':
+      from transcript_groups import ensure_grouped
+      totals.setdefault('grouped_embedded',0);totals['grouped_embedded']+=ensure_grouped(db,cfg,f,sv,ov,profile)
+     if Path(f['path']).suffix.lower() in VIDEO_EXT:
+      totals.setdefault('registered_media',0);totals['registered_media']+=1;ih.acknowledge(f['path']);continue
+     count=one(db,'select count(*) n from knowledge.content_units where extraction_id=%s',(ex['id'],))['n']
+     job(db,ov,'EMBED','COMPLETE' if count else 'BLOCKED',{'profile_id':str(profile['id']),'new_vectors':len(pending),'reason':None if count else 'No searchable units; conversion or scoped video review required'});db.commit();ih.acknowledge(f['path'])
+    except Exception as e:
+     db.rollback()
+     if not committed:
+      for k,v in before_counts.items():totals[k]=v
+     totals['failed']+=1;totals['failures'].append({'file':f['relative'],'error':str(e)});progress('FAILED '+f['relative']+': '+str(e))
+     # Persist a failure separately when physical registration already committed.
+     existing=one(db,"select id from knowledge.object_versions where storage_uri=%s and sha256=%s",(Path(f['path']).absolute().as_uri(),f['sha256']))
+     if existing:job(db,existing['id'],'EMBED','FAILED',{'message':str(e)})
+     db.commit()
+     if isinstance(e,ih.ServiceUnavailable):raise
   q(db,"update knowledge.intake_batches set notes=notes || %s::jsonb where id=%s",(j({'processing_summary':totals}),batch));db.commit()
   return totals
 
@@ -451,7 +479,7 @@ def save_output(db,cfg,options):
   q(db,'update analysis.runs set status=%s,completed_at=now() where id=%s',(st,rid));stage(db,rid,'RETRIEVAL_READY',st,{'human_review':'not yet performed'})
  return result
 
-def main(req):
+def _main(req):
  cfg=json.loads((BASE/'config/appsettings.json').read_text(encoding='utf-8-sig'));op=req['op'];args=req.get('args',{})
  if args.get('search_mode'):
   from retrieval_v017 import validate_mode
@@ -507,6 +535,13 @@ def main(req):
     q(db,"insert into analysis.run_sources(run_id,source_version_id,coverage_status,search_terms,coverage_details) values(%s,%s,'SEARCHED',%s::jsonb,%s::jsonb) on conflict(run_id,source_version_id) do nothing",(rid,p['version_id'],j([terms]),j({'bounded_candidate_packet':True})))
    (work/'evidence-b.json').write_text(j(data),encoding='utf-8');return data
   raise ValueError('Unknown operation')
+def main(request):
+ if request.get('op') in ('scan','process'):
+  cfg=json.loads((BASE/'config/appsettings.json').read_text(encoding='utf-8-sig'))
+  with ih.session(BASE,cfg,request.get('args',{})):
+   with ih.phase(request['op'].upper()):return _main(request)
+ return _main(request)
+
 def configure_stdio():
  # Explicit protocol encoding, independent of Windows' console/pipe locale.
  for stream in (sys.stdin,sys.stdout,sys.stderr):

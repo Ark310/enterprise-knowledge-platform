@@ -72,6 +72,20 @@ try
         Check(roleLog.Contains("Section 1 of 2") && roleLog.Contains("Section 2 of 2"),"A sections share one activity stream");
         Check(JsonNode.Parse(File.ReadAllText(Path.Combine(roleWork,"activity","agent-b.status.json")))!["state"]!.ToString()=="COMPLETE","B aggregate completion recorded");
     }
+    Directory.CreateDirectory(Path.Combine(dir,"tools"));
+    File.WriteAllText(Path.Combine(dir,"tools","worker.py"),"""
+import sys,json,pathlib,os
+request=json.load(sys.stdin);a=request['args'];root=pathlib.Path(__file__).resolve().parent.parent
+if not a.get('skip_timeout_paths'):
+ p=root/'runtime/import-traces'/a['import_run_key'];p.mkdir(parents=True)
+ (p/'state.json').write_text(json.dumps({'file':{'relative':'a.md','path':'/fixture/a.md'},'stage':'EMBEDDING_API'}))
+ sys.exit(124)
+assert a['retry_timeouts'] is True
+assert a['skip_timeout_paths']==['/fixture/a.md']
+print(json.dumps({'ok':True,'result':{'recovered':True}}))
+""");
+    var recovered=await r.Worker("process",new JsonObject{{"retry_timeouts",true}});
+    Check(recovered["recovered"]!.GetValue<bool>(),"processing timeout resumes with only this invocation's failed file excluded");
     int generated=0,validated=0;bool receivedFeedback=false;
     await BatchRecovery.Run((attempt,feedback)=>{generated++;receivedFeedback|=feedback is not null;return Task.CompletedTask;},()=>Task.FromResult<JsonNode>(new JsonObject{{"valid",++validated==2},{"errors",new JsonArray("fixture citation mismatch")}}));
     Check(generated==2&&receivedFeedback,"invalid batch repaired with validation feedback");

@@ -1,4 +1,4 @@
-$ErrorActionPreference='Stop'
+﻿$ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
 Write-Host 'Stores the connection encrypted for THIS Windows account. Do not share database.dpapi.'
 $server=Read-Host 'PostgreSQL host [localhost]'; if(!$server){$server='localhost'}

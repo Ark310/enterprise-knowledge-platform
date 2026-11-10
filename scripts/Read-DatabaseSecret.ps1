@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$SecretPath)
+﻿param([Parameter(Mandatory=$true)][string]$SecretPath)
 $ErrorActionPreference='Stop'
 [Console]::OutputEncoding=New-Object System.Text.UTF8Encoding($false)
 $encrypted=(Get-Content -LiteralPath $SecretPath -Raw).Trim()

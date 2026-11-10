@@ -1,4 +1,4 @@
-$ErrorActionPreference='Stop'
+﻿$ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
 Set-Location $root
 if(!(Get-Command dotnet -ErrorAction SilentlyContinue)){throw 'Install the .NET 10 SDK first.'}

@@ -33,7 +33,7 @@ public sealed class WorkspaceEngine
     public async Task<JsonObject> Submit(Guid id,string text,JsonArray attachments,JsonArray? recordings=null)
     {
         text=text.Trim();if(text.Length is 0 or >12000)throw new Exception("Enter a question or command (up to 12,000 characters).");
-        await CheckChat(id);var maintenance=text is "/scan" or "/process" or "/status" or "/pilot" or "/videos" or "/help";
+        await CheckChat(id);var maintenance=text is "/scan" or "/process" or "/status" or "/pilot" or "/retry-processing" or "/videos" or "/help";
         var pinned=maintenance?new JsonObject{{"recordings",new JsonArray()}}:await Data("ui_video_pins",new(){{"recordings",recordings?.DeepClone()??new JsonArray()}});
         if(!await gate.WaitAsync(0))throw new Exception("An agent is working. Wait or stop it before sending another request.");
         var job=Guid.NewGuid().ToString();
@@ -49,18 +49,18 @@ public sealed class WorkspaceEngine
         var state=new JsonObject();var response=new JsonObject();var body="";string? work=null;KnowledgeRetrieval? qa=null;
         try
         {
-            var chat=await CheckChat(id);state=chat["context"]?.DeepClone().AsObject()??new();if(!(text is "/scan" or "/process" or "/status" or "/pilot" or "/videos" or "/help"))state["recordings"]=recordings.DeepClone();
+            var chat=await CheckChat(id);state=chat["context"]?.DeepClone().AsObject()??new();if(!(text is "/scan" or "/process" or "/status" or "/pilot" or "/retry-processing" or "/videos" or "/help"))state["recordings"]=recordings.DeepClone();
             await Data("ui_assets",new(){{"chat_id",id.ToString()},{"ids",attachments.DeepClone()}});
             await SaveMessage(id,"user",text,new(){{"attachments",attachments.DeepClone()},{"recordings",recordings.DeepClone()},{"job",job}});
             if(text=="/new")throw new Exception("Use New chat to start a separate conversation.");
             if(text=="/help")body=mode==2?"Ask a question or use /ask, /search, /scan, /process, /status. Paste or attach an image. Use New chat for a fresh conversation.":"Use /review followed by the recording path, /results latest or a run key, /ask a question, /search a question, /scan, /process, /status. Use New chat for another review.";
             else if(text=="/videos"){var videos=await Data("ui_videos");response["video_catalog"]=videos.DeepClone();body="Choose a recording from Videos to ask about it. Scan, then Process new files to prepare newly added transcripts.";}
-            else if(text is "/scan" or "/status" or "/process" or "/pilot")
+            else if(text is "/scan" or "/status" or "/process" or "/pilot" or "/retry-processing")
             {
-                var processing=text is "/process" or "/pilot";
+                var processing=text is "/process" or "/pilot" or "/retry-processing";
                 if(processing)runtime.BeginRole(Path.Combine(runtime.Root,"runtime","web-processing",job),"Processing");
-                try{var result=await Data(text[1..] is "pilot"?"process":text[1..],new(){{"limit",text=="/pilot"?10:0}});if(text=="/scan"){var files=result["files"]!.AsArray();body=$"Scan complete: {files.Count} files. New/pending text: {files.Count(f=>f?["state"]?.ToString()=="NEW_OR_PENDING")}. New recordings: {files.Count(f=>f?["state"]?.ToString()=="NEW_MEDIA")}. Registered recordings: {files.Count(f=>f?["state"]?.ToString()=="REGISTERED_MEDIA")}. Errors: {result["errors"]?.AsArray().Count??0}. Use Process new files to import transcripts and create missing vectors. Full list: runtime/last-scan.json.";}
-                else if(processing){response["processing_totals"]=result.DeepClone();body=$"Processing finished. Files registered: {result["registered"]}. Text extractions: {result["extracted"]}. New vectors: {result["embedded"]}. New grouped transcript vectors: {result["grouped_embedded"]??0}. Registered videos: {result["registered_media"]??0}. Files needing conversion: {result["blocked"]}. Failed files: {result["failed"]}. Unchanged files: {result["unchanged"]}.";foreach(var f in result["failures"]?.AsArray().Take(10)??[])body+=$"\nNeeds attention: {f!["file"]}: {f["error"]}";}
+                try{var result=await Data(text is "/pilot" or "/retry-processing"?"process":text[1..],new(){{"limit",text=="/pilot"?10:0},{"retry_timeouts",text=="/retry-processing"}});if(text=="/scan"){var files=result["files"]!.AsArray();body=$"Scan complete: {files.Count} files. New/pending text: {files.Count(f=>f?["state"]?.ToString()=="NEW_OR_PENDING")}. New recordings: {files.Count(f=>f?["state"]?.ToString()=="NEW_MEDIA")}. Registered recordings: {files.Count(f=>f?["state"]?.ToString()=="REGISTERED_MEDIA")}. Errors: {result["errors"]?.AsArray().Count??0}. Use Process new files to import transcripts and create missing vectors. Full list: runtime/last-scan.json.";}
+                else if(processing){response["processing_totals"]=result.DeepClone();body=$"Processing finished. Files registered: {result["registered"]}. Text extractions: {result["extracted"]}. New vectors: {result["embedded"]}. New grouped transcript vectors: {result["grouped_embedded"]??0}. Registered videos: {result["registered_media"]??0}. Files needing conversion: {result["blocked"]}. Failed files: {result["failed"]}. Unchanged files: {result["unchanged"]}. Files set aside after timeout: {result["timed_out_skipped"]?.AsArray().Count??0}.";foreach(var skipped in result["timed_out_skipped"]?.AsArray()??[])body+=$"\nSet aside: {skipped!["path"]}. Use Retry timed-out files after reviewing runtime/import-traces.";foreach(var f in result["failures"]?.AsArray().Take(10)??[])body+=$"\nNeeds attention: {f!["file"]}: {f["error"]}";}
                 else body=result.ToJsonString(new(){WriteIndented=true});if(processing)runtime.EndRole(true,"Processing finished. Review totals in Workspace.");}
                 catch{if(processing)runtime.EndRole(false,"Processing stopped. Partial work may have been saved; inspect status before retrying.");throw;}
             }

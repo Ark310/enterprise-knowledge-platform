@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$Prefix,[long]$StartByte=0)
+﻿param([Parameter(Mandatory=$true)][string]$Prefix,[long]$StartByte=0)
 $ErrorActionPreference='Stop'
 [Console]::OutputEncoding=New-Object System.Text.UTF8Encoding($false)
 $Host.UI.RawUI.WindowTitle='TD '+(Split-Path $Prefix -Leaf)+' activity'

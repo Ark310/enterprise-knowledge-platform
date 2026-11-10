@@ -1,4 +1,4 @@
-$ErrorActionPreference='Stop'
+﻿$ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
 $destination=Join-Path $root 'tools\ffmpeg'
 if(Get-Command ffmpeg -ErrorAction SilentlyContinue){Write-Host 'ffmpeg already on PATH. No installation needed.';exit 0}

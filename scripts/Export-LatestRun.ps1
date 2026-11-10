@@ -1,4 +1,4 @@
-$ErrorActionPreference='Stop'
+﻿$ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
 $latest=Get-ChildItem (Join-Path $root 'runtime\runs') -Directory | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 if(!$latest){throw 'No analysis run exists yet'}

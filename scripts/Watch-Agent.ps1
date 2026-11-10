@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$Prefix)
+﻿param([Parameter(Mandatory=$true)][string]$Prefix)
 $ErrorActionPreference='Stop'
 $Host.UI.RawUI.WindowTitle='TD Agent Activity - '+(Split-Path $Prefix -Leaf)
 Add-Type @'

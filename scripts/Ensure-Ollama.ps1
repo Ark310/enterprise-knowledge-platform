@@ -1,4 +1,4 @@
-$ErrorActionPreference='Stop'
+﻿$ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
 $config=Get-Content (Join-Path $root 'config\appsettings.json') -Raw | ConvertFrom-Json
 function Test-Ollama {try {$null=Invoke-RestMethod ($config.OllamaUrl+'/api/tags') -TimeoutSec 3;return $true}catch{return $false}}

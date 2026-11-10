@@ -1,4 +1,4 @@
-$ErrorActionPreference='Stop'
+﻿$ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
 $parent=Join-Path $root 'runtime\knowledge-runs'
 if(!(Test-Path -LiteralPath $parent)){throw 'No knowledge retrieval run exists yet.'}

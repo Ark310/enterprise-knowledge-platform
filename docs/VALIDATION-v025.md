@@ -1,4 +1,4 @@
-# v0.25 verification
+# v0.26 verification
 
 - .NET10 solution Release build: zero warnings/errors.
 - Python suite: 152 tests pass. Includes all three captured v024 screenshot failures, ambiguous/unique recording titles, selected-video normalization, transcript-only requests, point-only cues and reversed-timing rejection.
