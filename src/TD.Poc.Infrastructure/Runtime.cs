@@ -10,18 +10,21 @@ public sealed partial class Runtime
     public string Root { get; }
     public JsonObject Config { get; }
     public event Action<string>? Progress;
-    private readonly Channel<string> consoleActivity=Channel.CreateBounded<string>(new BoundedChannelOptions(64){SingleReader=true,FullMode=BoundedChannelFullMode.DropOldest});
+    private readonly System.Collections.Concurrent.ConcurrentQueue<Action> terminalActivity=new();
+    private readonly Channel<Action> consoleActivity=Channel.CreateBounded<Action>(new BoundedChannelOptions(64){SingleReader=true,FullMode=BoundedChannelFullMode.DropOldest});
     private void PublishActivity(string text)
     {
-        bool active;lock(roleGate)active=currentRole is not null;
-        if(active)RoleLog(text);else consoleActivity.Writer.TryWrite($"[{DateTimeOffset.Now:HH:mm:ss}] {text}");
+        var session=Volatile.Read(ref currentRole);
+        if(session is not null)session.Step=text;
+        // Always drain child stderr immediately. Slow/locked viewer files cannot fill its pipe.
+        consoleActivity.Writer.TryWrite(()=>{if(session is not null)PersistRoleLine(session,text);else Progress?.Invoke($"[{DateTimeOffset.Now:HH:mm:ss}] {text}");});
     }
     public Runtime(string root)
     {
         var printer=new Thread(()=>
         {
             while(consoleActivity.Reader.WaitToReadAsync().AsTask().GetAwaiter().GetResult())
-                while(consoleActivity.Reader.TryRead(out var line))try{Progress?.Invoke(line);}catch{ }
+                while(consoleActivity.Reader.TryRead(out var line)){while(terminalActivity.TryDequeue(out var terminal))try{terminal();}catch{}try{line();}catch{ }}
         }){IsBackground=true,Name="TD console activity"};
         printer.Start();
         Root=Path.GetFullPath(root);
@@ -57,7 +60,7 @@ public sealed partial class Runtime
                 JsonNode? state=null;try{state=JsonNode.Parse(File.ReadAllText(health));}catch{ }
                 var file=state?["file"]?["relative"]?.ToString();
                 var stage=state?["stage"]?.ToString()??"unknown stage";
-                if(op=="process" && !string.IsNullOrEmpty(file) && attempt<2)
+                if(op=="process" && state?["recoverable"]?.GetValue<bool>()!=false && !string.IsNullOrEmpty(file) && attempt<2)
                 {
                     Log($"Processing timeout at {stage}: {file}. Saved work retained. Resuming with this file set aside; see {health}.");
                     var skipped=args!["skip_timeout_paths"] as JsonArray??new JsonArray();

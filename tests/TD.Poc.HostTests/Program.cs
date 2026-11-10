@@ -67,11 +67,22 @@ try
         var roleWork=Path.Combine(dir,"role-work");
         r.BeginRole(roleWork,"A");r.RoleLog("Section 1 of 2");await r.Codex("a","fixture","section",Path.Combine(roleWork,"S1"));r.RoleLog("Section 2 of 2");await r.Codex("index","fixture","index",roleWork);r.EndRole(true,"A saved and embedded (fixture)");
         r.BeginRole(roleWork,"B");await r.Codex("b","fixture","batch",Path.Combine(roleWork,"batch"));r.EndRole(true,"B saved and embedded (fixture)");
+        await r.FlushActivityForTests();
         Check(Directory.GetFiles(Path.Combine(roleWork,"activity"),"*.status.json").Length==2,"one aggregate status stream per A/B role");
         var roleLog=File.ReadAllText(Path.Combine(roleWork,"activity","agent-a.log"));
         Check(roleLog.Contains("Section 1 of 2") && roleLog.Contains("Section 2 of 2"),"A sections share one activity stream");
         Check(JsonNode.Parse(File.ReadAllText(Path.Combine(roleWork,"activity","agent-b.status.json")))!["state"]!.ToString()=="COMPLETE","B aggregate completion recorded");
     }
+    var displayWork=Path.Combine(dir,"display-denied");r.BeginRole(displayWork,"Processing");
+    var displayStatus=Path.Combine(displayWork,"activity","agent-processing.status.json");
+    File.Delete(displayStatus);Directory.CreateDirectory(displayStatus);
+    r.RoleLog("Fixture: display file cannot be replaced");
+    await r.FlushActivityForTests();
+    Check(r.CurrentActivity!.Contains("activity display could not be updated"),"denied status-file replacement is visible but nonfatal");
+    var noise=await r.Run("python3",["-c","import sys;[print('fixture progress '+str(i),file=sys.stderr) for i in range(15000)];print('finished')"],"",dir,false,TimeSpan.FromSeconds(15));
+    Check(noise.Code==0&&noise.Output.Contains("finished")&&noise.Error.Contains("14999"),"blocked activity status cannot stop draining large child progress output");
+    r.EndRole(true,"Fixture processing completed");
+    Check(r.CurrentActivity is null,"denied activity status cannot prevent closing the role");
     Directory.CreateDirectory(Path.Combine(dir,"tools"));
     File.WriteAllText(Path.Combine(dir,"tools","worker.py"),"""
 import sys,json,pathlib,os

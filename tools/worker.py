@@ -7,11 +7,12 @@ from xml.etree import ElementTree as ET
 BASE=Path(__file__).resolve().parents[1]
 VERSION='0.17.0'
 EXTRACTION_VERSION='0.10.0' # Parser/chunk semantics unchanged; reuse successful v0.10 extractions
-ROOTS=[('current-state','CURRENT_STATE'),('existing-assets/Confluence Articles','EXISTING_ASSET'),('existing-assets/REST API','EXISTING_ASSET'),('existing-assets/Sharepoint','EXISTING_ASSET'),('existing-assets/VLCs','EXISTING_ASSET')]
+ROOTS=[('current-state','CURRENT_STATE'),('existing-assets','EXISTING_ASSET')]
 TEXT_EXT={'.txt','.md','.json','.csv','.html','.htm','.xml','.yaml','.yml','.cs','.go','.java','.js','.php','.py','.rb','.sh','.sql','.svg','.srt','.vtt','.log'}
 VIDEO_EXT={'.mp4','.wmv','.mov','.mkv','.avi','.webm'}
 def j(v):return json.dumps(v,ensure_ascii=False,default=str)
 def sha(v):return hashlib.sha256(v.encode('utf-8') if isinstance(v,str) else v).hexdigest()
+@ih.traced('REPORT_PROGRESS')
 def progress(s):print(s,file=sys.stderr,flush=True)
 def chunks(s,size=3000):return [s[i:i+size] for i in range(0,len(s),size)]
 def srt_units(s,allow_points=False):
@@ -56,6 +57,7 @@ def _scan(cfg):
   def onerror(e):errors.append({'path':str(e.filename),'error':str(e)})
   for d,dirs,names in os.walk(folder,followlinks=False,onerror=onerror):
    for n in dirs[:]:
+    if (Path(d)/n).relative_to(root).as_posix().lower()=='existing-assets/meeting recordings':dirs.remove(n);skipped.append(str(Path(d)/n));continue
     try:safe_path(root,Path(d)/n)
     except ValueError:dirs.remove(n);skipped.append(str(Path(d)/n))
    for n in sorted(names):
@@ -488,13 +490,19 @@ def _main(req):
   result=scan(cfg)
   try:
    with connect() as db:
-    for f in result['files']:
-     r=one(db,"select v.id,exists(select 1 from knowledge.extractions e where e.source_version_id=v.id and e.is_active and e.processor_version=%s) extracted from knowledge.source_versions v where v.storage_uri=%s and v.content_sha256=%s and v.lifecycle_status='ACTIVE'",(EXTRACTION_VERSION,Path(f['path']).absolute().as_uri(),f['sha256']))
+    from transcript_groups import VERSION as GROUPED_VERSION,CONFIG_HASH
+    progress(f"Comparing {len(result['files'])} files with PostgreSQL in one inventory query")
+    rows=q(db,"""select v.id,v.storage_uri,v.content_sha256,
+      coalesce(bool_or(e.is_active and e.processor_version=%s),false) extracted,
+      coalesce(bool_or(e.processor_version=%s and e.config_sha256=%s and e.status='COMPLETE'),false) prepared
+      from knowledge.source_versions v left join knowledge.extractions e on e.source_version_id=v.id
+      where v.lifecycle_status='ACTIVE' group by v.id""",(EXTRACTION_VERSION,GROUPED_VERSION,CONFIG_HASH)).fetchall()
+    lookup={(x['storage_uri'],x['content_sha256']):x for x in rows}
+    for count,f in enumerate(result['files'],1):
+     r=lookup.get((Path(f['path']).absolute().as_uri(),f['sha256']))
      f['state']=('REGISTERED_MEDIA' if r else 'NEW_MEDIA') if Path(f['path']).suffix.lower() in VIDEO_EXT else ('UNCHANGED' if r and r['extracted'] else 'NEW_OR_PENDING')
-     if Path(f['path']).suffix.lower()=='.srt':
-      from transcript_groups import VERSION as GROUPED_VERSION,CONFIG_HASH
-      prepared=one(db,"select exists(select 1 from knowledge.extractions where source_version_id=%s and processor_version=%s and config_sha256=%s and status='COMPLETE') ok",(r['id'],GROUPED_VERSION,CONFIG_HASH))['ok'] if r else False
-      f['grouping_state']='PREPARED_CHECK_PROFILE' if prepared else 'PENDING'
+     if Path(f['path']).suffix.lower()=='.srt':f['grouping_state']='PREPARED_CHECK_PROFILE' if r and r['prepared'] else 'PENDING'
+     if count%1000==0 or count==len(result['files']):progress(f"Checked {count}/{len(result['files'])} files against database inventory")
     result['grouped_transcripts_pending']=sum(f.get('grouping_state')=='PENDING' for f in result['files'])
   except Exception:result['database_comparison']='Unavailable; scan still read-only, database health must pass before processing'
   (BASE/'runtime').mkdir(exist_ok=True);(BASE/'runtime/last-scan.json').write_text(j(result),encoding='utf-8');return result

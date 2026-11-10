@@ -19,7 +19,7 @@ class Probe:
   self.run_id=uuid.UUID(str(self.options['import_run_key'])).hex if self.options.get('import_run_key') else uuid.uuid4().hex;self.trace=self.runtime/'import-traces'/self.run_id;self.trace.mkdir(parents=True)
   self.stack_file=open(self.trace/'python-stack.log','w',encoding='utf-8',buffering=1)
   self.stage_seconds=max(.1,float(cfg.get('ImportStageTimeoutSeconds',180)));self.file_seconds=max(self.stage_seconds,float(cfg.get('ImportFileTimeoutSeconds',1800)));self.beat=max(.05,float(cfg.get('ImportHeartbeatSeconds',10)))
-  self.lock=threading.RLock();self.frames=[];self.file=None;self.state='RUNNING';self.stop=threading.Event();self.last_saved=0;self.timed_out=False;self.failure=None
+  self.lock=threading.RLock();self.frames=[];self.file=None;self.state='RUNNING';self.stop=threading.Event();self.last_saved=0;self.timed_out=False;self.failure=None;self.log_thread=None
   self.exclusions=read(self.skip_path);self.thread=threading.Thread(target=self.watch,name='import-watchdog',daemon=True)
  def snapshot(self):
   with self.lock:
@@ -64,11 +64,12 @@ class Probe:
    if overdue:
     self.state='TIMED_OUT';self.timed_out=True
     with self.lock:
-     if self.file:
+     recoverable=bool(self.file) and overdue['stage'] not in ('SCAN','PROCESS','REPORT_PROGRESS')
+     if recoverable:
       entry=dict(self.file,stage=overdue['stage'],at=stamp(),trace_directory=str(self.trace));self.exclusions[self.key(entry)]=entry
     # Persist the reason before terminating blocked I/O. Never mark an embedding as complete here.
     try:
-     atomic(self.skip_path,self.exclusions);data=self.snapshot();data.update(stage=overdue['stage'],elapsed_seconds=round(now-overdue['started'],1));atomic(self.trace/'state.json',data);atomic(self.state_path,data)
+     atomic(self.skip_path,self.exclusions);data=self.snapshot();data.update(stage=overdue['stage'],elapsed_seconds=round(now-overdue['started'],1),limit_seconds=overdue['limit'],recoverable=recoverable);atomic(self.trace/'state.json',data);atomic(self.state_path,data)
      faulthandler.dump_traceback(file=self.stack_file,all_threads=True)
     finally:os._exit(124)
    if now>=next_beat:
@@ -79,7 +80,9 @@ class Probe:
     s=self.snapshot();label=(s['file'] or {}).get('relative','startup')
     # Logging is separate so a full stderr pipe cannot stop the watchdog deadline.
     line=f"[import] still waiting: {label} | {s['stage']} | {s['elapsed_seconds']}s / {s['limit_seconds']}s"
-    threading.Thread(target=lambda t=line:print(t,file=__import__('sys').stderr,flush=True),daemon=True).start();next_beat=now+self.beat
+    if self.log_thread is None or not self.log_thread.is_alive():
+     self.log_thread=threading.Thread(target=lambda t=line:print(t,file=__import__('sys').stderr,flush=True),daemon=True);self.log_thread.start()
+    next_beat=now+self.beat
  def close(self,error=None):
   self.stop.set();self.thread.join(2)
   if self.timed_out:return

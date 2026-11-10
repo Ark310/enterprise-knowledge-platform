@@ -32,6 +32,15 @@ class Import026Tests(unittest.TestCase):
    code="import sys,time;sys.path.insert(0,sys.argv[1]);import import_health as h;from pathlib import Path\nwith h.session(Path(sys.argv[2]),{'DataRoot':sys.argv[2],'ImportHeartbeatSeconds':0.05}):\n h.ACTIVE.save=lambda *a:(_ for _ in ()).throw(OSError('fixture'));time.sleep(3)"
    result=subprocess.run([sys.executable,'-c',code,str(Path(h.__file__).parent),tmp],capture_output=True,text=True,timeout=5)
    self.assertEqual(result.returncode,125)
+ def test_full_asset_scope_excludes_only_meeting_recordings_and_links(self):
+  import worker as w
+  with tempfile.TemporaryDirectory() as tmp:
+   p=Path(tmp);(p/'current-state').mkdir();(p/'existing-assets/New Folder').mkdir(parents=True);(p/'existing-assets/Meeting Recordings').mkdir()
+   (p/'existing-assets/New Folder/new.srt').write_text('new transcript')
+   (p/'existing-assets/inventory.txt').write_text('top level asset')
+   (p/'existing-assets/Meeting Recordings/meeting.srt').write_text('excluded')
+   found=w.scan({'DataRoot':tmp})
+   self.assertTrue(found['complete']);self.assertEqual({f['relative'] for f in found['files']},{'existing-assets/New Folder/new.srt','existing-assets/inventory.txt'})
  def test_successful_work_finishes_cleanly(self):
   with tempfile.TemporaryDirectory() as tmp:
    p=Path(tmp)

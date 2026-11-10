@@ -7,13 +7,14 @@ public sealed partial class Runtime
     private sealed class RoleSession(string work,string role)
     {
         public string Work=work,Role=role,State="RUNNING",Step="Starting";
+        public bool DisplayWarning;
         public string Base=>Path.Combine(Work,"activity","agent-"+Role.ToLowerInvariant());
         public string Cancel=>Base+".cancel";
     }
     private readonly object roleGate=new();
     private RoleSession? currentRole;
     private readonly HashSet<string> connectorNotices=[];
-    public string? CurrentActivity{get{lock(roleGate)return currentRole is null?null:$"{currentRole.Role}: {currentRole.Step}";}}
+    public string? CurrentActivity{get{lock(roleGate)return currentRole is null?null:$"{currentRole.Role}: {currentRole.Step}"+(currentRole.DisplayWarning?" (activity display could not be updated; processing continues)":"");}}
     private string? RoleCancel {get{lock(roleGate)return currentRole?.Cancel;}}
     public void BeginRole(string work,string role)
     {
@@ -42,18 +43,43 @@ public sealed partial class Runtime
     }
     private static void WriteRoleState(RoleSession s)
     {
-        File.WriteAllText(s.Base+".status.json.tmp",JsonSerializer.Serialize(new{role=s.Role,state=s.State,step=s.Step,updated_at=DateTimeOffset.Now}));
-        File.Move(s.Base+".status.json.tmp",s.Base+".status.json",true);
+        var temp=s.Base+".status."+Guid.NewGuid().ToString("N")+".tmp";
+        try
+        {
+            File.WriteAllText(temp,JsonSerializer.Serialize(new{role=s.Role,state=s.State,step=s.Step,updated_at=DateTimeOffset.Now}));
+            File.Move(temp,s.Base+".status.json",true);
+        }
+        catch(Exception error) when(error is IOException or UnauthorizedAccessException)
+        {
+            // The activity viewer is optional. Its status file must never abort ingestion.
+            s.DisplayWarning=true;
+        }
+        finally{try{File.Delete(temp);}catch(IOException){}catch(UnauthorizedAccessException){}}
+    }
+    private void PersistRoleLine(RoleSession session,string text)
+    {
+        {
+            try{File.AppendAllText(session.Base+".log",$"[{DateTimeOffset.Now:HH:mm:ss}] {text}\n",Encoding.UTF8);}
+            catch(Exception error) when(error is IOException or UnauthorizedAccessException){session.DisplayWarning=true;}
+            WriteRoleState(session);
+        }
     }
     public void RoleLog(string text)
     {
-        lock(roleGate)
+        RoleSession? session;
+        lock(roleGate){session=currentRole;if(session is not null)session.Step=text;}
+        consoleActivity.Writer.TryWrite(()=>
         {
-            if(currentRole is null){File.AppendAllText(Path.Combine(Root,"runtime","workflow.log"),$"[{DateTimeOffset.Now:HH:mm:ss}] {text}\n");return;}
-            currentRole.Step=text;
-            File.AppendAllText(currentRole.Base+".log",$"[{DateTimeOffset.Now:HH:mm:ss}] {text}\n",Encoding.UTF8);
-            WriteRoleState(currentRole);
-        }
+            if(session is not null){PersistRoleLine(session,text);return;}
+            try{File.AppendAllText(Path.Combine(Root,"runtime","workflow.log"),$"[{DateTimeOffset.Now:HH:mm:ss}] {text}\n");}
+            catch(Exception error) when(error is IOException or UnauthorizedAccessException){}
+        });
+    }
+    public async Task FlushActivityForTests()
+    {
+        var done=new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        consoleActivity.Writer.TryWrite(()=>done.TrySetResult());
+        await done.Task.WaitAsync(TimeSpan.FromSeconds(5));
     }
     private void ConnectorNotice()
     {
@@ -68,8 +94,9 @@ public sealed partial class Runtime
         {
             if(currentRole is null)return;
             role=currentRole.Role;currentRole.State=success?"COMPLETE":"FAILED";currentRole.Step=message;
-            File.AppendAllText(currentRole.Base+".log",$"[{DateTimeOffset.Now:HH:mm:ss}] {message}\n",Encoding.UTF8);
-            WriteRoleState(currentRole);currentRole=null;
+            var completed=currentRole;currentRole=null;
+            terminalActivity.Enqueue(()=>PersistRoleLine(completed,message));
+            consoleActivity.Writer.TryWrite(()=>{});
         }
         Log($"Agent {role} {(success?"completed":"stopped")}: {message}");
     }

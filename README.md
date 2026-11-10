@@ -1,3 +1,7 @@
+# Corrected 0.26 build
+
+Read [Update and resume](docs/START-HERE-v026-CORRECTED.md) first. Fixes the exported activity-status access-denied failure and broadens scanning to all existing assets except Meeting Recordings.
+
 # Workspace v0.26 — full release
 
 Start with [Setup and recovery instructions](docs/START-HERE-v026.md). This complete release preserves the 0.25 features below and adds bounded import recovery, clear progress, timeout exports and explicit retry. Keep your existing database and data bucket.

@@ -1,0 +1,26 @@
+PASS VIDEO25 sample MP4/SRT ingestion succeeds
+PASS VIDEO25 both supplied recordings appear
+PASS VIDEO25 sample transcript vectors ready in current profile
+PASS VIDEO25 repeat processing reuses source and transcript vectors
+PASS VIDEO25 registered MP4s are not repeatedly treated as failed text extraction
+PASS VIDEO25 Sections 3 and 4 required transcript/frame scope satisfied
+PASS VIDEO25 Sections 3 and 4 original JPGs extracted within frame cap
+PASS VIDEO25 Sections 3 and 4 frames belong to requested recording
+PASS VIDEO25 Sections 3 and 4 gallery links to playable pinned recording
+PASS VIDEO25 Sections 3 and 4 frame endpoint resolves actual JPG
+PASS VIDEO25 Sections 3 and 4 frame cache reused
+PASS VIDEO25 Sections 5 and 6 required transcript/frame scope satisfied
+PASS VIDEO25 Sections 5 and 6 original JPGs extracted within frame cap
+PASS VIDEO25 Sections 5 and 6 frames belong to requested recording
+PASS VIDEO25 Sections 5 and 6 gallery links to playable pinned recording
+PASS VIDEO25 Sections 5 and 6 frame endpoint resolves actual JPG
+PASS VIDEO25 Sections 5 and 6 frame cache reused
+PASS VIDEO25 changed transcript blocks false READY
+PASS VIDEO25 stale selected transcript requires processing
+PASS VIDEO25 article-image request no longer needs a video name
+VIDEO25 checks passed: 20
+PASS API25 selected video -> normalization -> original transcript + frames -> verifier -> saved answer + playback
+PASS API25 original JPG bytes and seekable MP4 range response
+PASS API25 identical frame attachments reach Knowledge and Verifier
+PASS API25 scan bypasses stale selection and returns concise summary
+PASS API25 videos/status/process commands bypass stale selections

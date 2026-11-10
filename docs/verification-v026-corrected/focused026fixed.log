@@ -1,0 +1,12 @@
+[1/4] existing-assets/VLCs/TradeDesk/Sections 3 and 4 [iuinh8jZ7J8].mp4
+[2/4] existing-assets/VLCs/TradeDesk/Sections 3 and 4 [iuinh8jZ7J8].srt
+[3/4] existing-assets/VLCs/TradeDesk/Sections 5 and 6 [H232GBThOTE].mp4
+[4/4] existing-assets/VLCs/TradeDesk/Sections 5 and 6 [H232GBThOTE].srt
+PASS GENERAL no selected/named video: ordinary topic question retrieves imported transcript source passages 23
+Comparing 4 files with PostgreSQL in one inventory query
+Checked 4/4 files against database inventory
+PASS SCAN original sample videos/transcripts compared with exactly one database query
+PASS RECOVERY blocked response exits with exact file/stage and stack
+PASS RECOVERY skips timed-out file and saves healthy vectors
+PASS RECOVERY explicit retry completes original file without duplicating healthy vectors
+PASS DATABASE session SQL deadline enforced
