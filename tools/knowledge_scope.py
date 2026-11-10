@@ -3,6 +3,8 @@ import re,urllib.parse
 from pathlib import Path
 import worker as w
 
+def urlparse_local(uri):return urllib.parse.urlparse(uri).scheme=='file'
+
 def decoded(uri):return urllib.parse.unquote(uri).replace('\\','/').casefold()
 def companion(video,transcript):
  video=decoded(video);transcript=decoded(transcript)
@@ -36,6 +38,10 @@ def resolve_bundle(db,cfg,normalized):
   for v in found:
    item['transcripts'].append({'version_id':str(v['id']),'file':v['storage_uri'],'pairing':'REGISTERED_LINK' if v['linked'] else 'SAME_FOLDER_EXACT_FILENAME','content_sha256':v['content_sha256']})
    result['required_version_ids'].append(str(v['id']))
+   if urlparse_local(v['storage_uri']):
+    from workspace_ui import source_path
+    p=source_path(cfg,v['storage_uri'])
+    if not p or w.file_hash(p)!=v['content_sha256']:result['blocking_errors'].append('Companion transcript changed or missing; run /process: '+name)
   if not found:result['blocking_errors'].append('No imported companion transcript for '+name)
  result['required_version_ids']=list(dict.fromkeys(result['required_version_ids']))
  return result

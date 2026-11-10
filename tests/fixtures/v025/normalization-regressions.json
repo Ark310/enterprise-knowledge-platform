@@ -1,0 +1,111 @@
+[
+  {
+    "question": "Are there any pictures t show case what it looks like?",
+    "normalization": {
+      "normalized_question": "Are there any pictures showing what View Posted Entries and Posting Warning look like?",
+      "needs_clarification": false,
+      "clarification_question": "",
+      "changes": [
+        "Corrected \"t show case\" to \"showing\".",
+        "Resolved \"it\" from the preceding comparison of View Posted Entries and Posting Warning."
+      ],
+      "search_queries": [
+        "\"View Posted Entries\" screenshots",
+        "\"Posting Warning\" screenshots"
+      ],
+      "keywords": [
+        "View Posted Entries",
+        "Posting Warning",
+        "pictures",
+        "screenshots"
+      ],
+      "include_reviews": false,
+      "latest_release": false,
+      "visual_check": true,
+      "recording_names": [],
+      "conversation_relation": "FOLLOW_UP",
+      "request_parts": [
+        "Find pictures showing what View Posted Entries looks like.",
+        "Find pictures showing what Posting Warning looks like."
+      ],
+      "confirmed_context": [
+        "The preceding request compared View Posted Entries and Posting Warning and requested a simple explanation with article citations.",
+        "The user now wants pictures showing what the referenced features look like."
+      ],
+      "assumptions": [
+        "\"It\" refers to both View Posted Entries and Posting Warning from the preceding comparison."
+      ]
+    }
+  },
+  {
+    "question": "I need to add a new employee to TradeDesk. Where do I start, and what needs to be set up first? Show any relevant screenshots from the articles.",
+    "normalization": {
+      "normalized_question": "I need to add a new employee to TradeDesk. Where do I start, and what needs to be set up first? Show any relevant screenshots from the articles.",
+      "needs_clarification": false,
+      "clarification_question": "",
+      "changes": [],
+      "search_queries": [
+        "TradeDesk add new employee user setup prerequisites",
+        "TradeDesk employee setup article screenshots"
+      ],
+      "keywords": [
+        "TradeDesk",
+        "new employee",
+        "add user",
+        "prerequisites",
+        "employee setup",
+        "screenshots"
+      ],
+      "include_reviews": false,
+      "latest_release": false,
+      "visual_check": true,
+      "recording_names": [],
+      "conversation_relation": "NEW",
+      "request_parts": [
+        "Explain where to start when adding a new employee to TradeDesk.",
+        "Identify what needs to be set up before adding the employee.",
+        "Show relevant screenshots from the articles."
+      ],
+      "confirmed_context": [
+        "The user wants to add a new employee to TradeDesk.",
+        "The user requests starting guidance, prerequisites and relevant article screenshots."
+      ],
+      "assumptions": []
+    }
+  },
+  {
+    "question": "How do I create a payment confirmation? Find the instructions and show any useful screenshots from the Confirmations training material.",
+    "normalization": {
+      "normalized_question": "How do I create a payment confirmation? Find the instructions and show any useful screenshots from the Confirmations training material.",
+      "needs_clarification": false,
+      "clarification_question": "",
+      "changes": [],
+      "search_queries": [
+        "Confirmations training material create payment confirmation instructions screenshots",
+        "Confirmations payment confirmation creation"
+      ],
+      "keywords": [
+        "payment confirmation",
+        "Confirmations",
+        "training material",
+        "instructions",
+        "screenshots"
+      ],
+      "include_reviews": false,
+      "latest_release": false,
+      "visual_check": true,
+      "recording_names": [],
+      "conversation_relation": "NEW",
+      "request_parts": [
+        "Find instructions for creating a payment confirmation in the Confirmations training material.",
+        "Show any useful screenshots from that training material."
+      ],
+      "confirmed_context": [
+        "The requested topic is creating a payment confirmation.",
+        "The requested source is the Confirmations training material.",
+        "The user wants useful screenshots alongside the instructions."
+      ],
+      "assumptions": []
+    }
+  }
+]

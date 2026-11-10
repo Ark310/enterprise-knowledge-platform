@@ -31,7 +31,7 @@ public sealed class KnowledgeRetrieval(IKnowledgeHost host)
     public JsonObject ExportState()=>new(){{"session",session},{"conversation",conversation.Snapshot()}};
     public void RestoreState(string chatId,JsonNode? state){session=Guid.Parse(chatId).ToString();conversation.Restore(state?["conversation"]);}
     private string Instructions(string file,string part)=>File.ReadAllText(Path.Combine(host.Root,"agents",file))+"\nOUTPUT CONTRACT (only this definition):\n"+JsonNode.Parse(File.ReadAllText(Path.Combine(host.Root,"contracts","knowledge-qa.schema.json")))!["$defs"]![part]!.ToJsonString();
-    public async Task<string> Ask(string question,JsonArray? attachmentIds=null)
+    public async Task<string> Ask(string question,JsonArray? attachmentIds=null,JsonArray? recordings=null)
     {
         question=question.Trim();
         if(question.Length is 0 or >12000)throw new ArgumentException("Enter a question between 1 and 12000 characters.");
@@ -57,11 +57,12 @@ public sealed class KnowledgeRetrieval(IKnowledgeHost host)
             var uploads=attachmentIds is {Count:>0}?await Work("qa_attach",new(){{"ids",attachmentIds.DeepClone()}}):new JsonObject{{"evidence",new JsonArray()}};
             var uploadEvidence=uploads["evidence"]!.AsArray();
             var before=conversation.Snapshot();File.WriteAllText(Path.Combine(folder,"conversation-before.json"),before.ToJsonString());
-            var context=new JsonObject{{"original_question",question},{"conversation",before},{"attachments",uploadEvidence.DeepClone()}};
+            var context=new JsonObject{{"original_question",question},{"conversation",before},{"attachments",uploadEvidence.DeepClone()},{"selected_recordings",recordings?.DeepClone()??new JsonArray()}};
             var normalized=await host.Model("normalize",Instructions("knowledge-assistant.md","normalization")+"\nTASK: NORMALIZE ONLY. Return the normalization contract, not an answer.",context.ToJsonString(),folder,uploadEvidence.Select(x=>x!["path"]!.ToString()));
             await Event("NORMALIZATION",normalized);
-            var nv=await Work("qa_validate",new(){{"part","normalization"},{"original",question},{"object",normalized.DeepClone()}});
-            if(nv["valid"]?.GetValue<bool>()!=true)return await Stop("CLARIFY","I could not safely normalize that question while preserving its names and identifiers. Please rephrase it or confirm the intended product, version and source names.");
+            var nv=await Work("qa_validate",new(){{"part","normalization"},{"original",question},{"object",normalized.DeepClone()},{"recordings",recordings?.DeepClone()}});
+            if(nv["valid"]?.GetValue<bool>()!=true)return await Stop("CLARIFY",nv["errors"]?.ToJsonString().Contains("recording name")==true?"Which recording should I inspect? Select it under Videos, or give its title. Article screenshots do not require a recording.":"The question interpreter returned an invalid result. Your original question is saved; no search has run. Diagnostic details: "+nv["errors"]);
+            normalized=nv["object"]?.DeepClone()??normalized;
             intent=normalized.DeepClone();
             File.WriteAllText(Path.Combine(folder,"normalization.json"),normalized.ToJsonString());
             if(normalized["needs_clarification"]!.GetValue<bool>())return await Stop("CLARIFY",normalized["clarification_question"]!.GetValue<string>());

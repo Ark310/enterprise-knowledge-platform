@@ -1,153 +1,68 @@
-# Workspace v0.24 — start here
+# Workspace v0.25 — videos, screenshots and tests
 
-You now use a local website for both POCs. Codex still does the reasoning; Ollama's **qwen3-embedding:4b** still creates the 2,560-dimensional vectors; PostgreSQL and HNSW still retrieve your existing data.
+## What changes
 
-## 1. Keep your data
+You can select existing-asset videos, ask about their content, and receive transcript-grounded answers with relevant original video frames and playback timestamps.
 
-Close the previous POC and its agent windows. Back up `knowledge_poc` in pgAdmin. Keep the previous application folder as a fallback.
+- **Videos** opens a searchable list of recordings and their transcript/vector readiness.
+- Select up to **two recordings** for the current chat. The selected filenames stay pinned through normalization and retrieval.
+- Video questions may take longer than text-only questions because frames must be extracted and visually checked. The app finds relevant transcript passages, extracts/reuses a bounded set of original JPGs and sends the same images to Knowledge and Verifier.
+- Helpful selected images appear after the answer, with timestamps and a **Play video at…** button.
+- Article screenshot requests no longer require a video name. Your three captured v0.24 failures are regression tests.
+- **Scan files** and **Process new files** are visible actions; registered MP4s no longer keep appearing as unfinished text extraction.
 
-Extract the new ZIP to:
+Your two supplied SRTs contain six zero-duration cues: one in Sections3/4 and five in Sections5/6. v0.25 imports their text and original exact timestamps as **POINT_ONLY** cues, with warnings that spoken duration is unverified. It does not invent timings, silently drop these words or rewrite the SRTs. Reversed timestamps and malformed cues still require attention.
+
+## 1. Upgrade
+
+Close v0.24 and its activity windows; keep its folder as fallback. Back up `knowledge_poc` in pgAdmin. Extract the new application to:
 
 ```text
-C:\TD-POC-v0.24
+C:\TD-POC-v0.25
 ```
 
-Your `C:\S3 bucket Data` folder and PostgreSQL database stay where they are. **Do not recreate the database, run the fresh schema installer, or delete your vectors.** Setup adds web-chat tables and image references; it retains existing source records and reviews. Extraction and embedding profile versions remain unchanged, avoiding a forced corpus re-embedding.
+**Keep your existing PostgreSQL database and data bucket. Do not run the fresh schema installer, delete vectors or recreate the database.** This release uses the existing024 tables and metadata; it adds no new production table schema.
 
-## 2. Run setup once
-
-Open CMD under the same Windows account you normally use:
+In CMD:
 
 ```cmd
-cd /d C:\TD-POC-v0.24
+cd /d C:\TD-POC-v0.25
 Setup-POC.cmd
 ```
 
-Follow its prompts:
+Confirm your data folder, enter the PostgreSQL connection details and complete the POC Codex login if requested. Setup installs dependencies, builds the solution, checks migrations/indexes, FFmpeg, model and login. Existing embeddings are reused with the same local model/profile.
 
-1. Confirm the data folder, normally `C:\S3 bucket Data`.
-2. Enter the PostgreSQL host (`localhost`), port (`5432`), username and hidden password.
-3. Sign into Codex if requested. This version uses its own POC login directory.
-4. Wait for `SETUP PASSED`.
-
-The script installs Python dependencies (including image decoding), checks the local embedding model, builds the solution, applies additive migrations, checks HNSW indexes, checks FFmpeg and checks Codex. It requires your existing Python 3.11+, .NET 10 SDK, Ollama, Codex and PostgreSQL 17/pgvector installation.
-
-If CMD's title starts with **Select**, press **Esc** to leave selection mode and let output continue.
-
-## 3. Start Workspace
+Then:
 
 ```cmd
-cd /d C:\TD-POC-v0.24
 Start-POC.cmd
 ```
 
-Choose:
+Choose **2 — Knowledge Retrieval and Verification**. Open the localhost URL printed in CMD, normally `http://127.0.0.1:5250`. Keep CMD open. Agent activity windows still show progress.
 
-- **1** — Documentation gap analysis: Agent A understands a recording, B compares the documentation, C discusses the saved results.
-- **2** — Knowledge retrieval: ask a question, retrieve sources, then independently check the proposed answer.
+## 2. Place the sample files correctly
 
-The selected POC checks the database, local embedding model and indexes before opening:
-
-```text
-http://127.0.0.1:5250
-```
-
-If it does not open automatically, paste that address into your browser. **Keep CMD open** while using the website. Existing agent activity windows still open during work; they show status and progress, not private internal reasoning.
-
-Only one agent job runs at a time. You can browse other saved chats while it works. Use **Stop** in the website to cancel the current request. If an application crash interrupts a request, the chat reports it once the job lease expires (up to 90 seconds); it does not silently rerun the request.
-
-If port 5250 is occupied, use another local port before starting:
-
-```cmd
-set WORKSPACE_PORT=5251
-Start-POC.cmd
-```
-
-To use the previous command-line interface instead:
-
-```cmd
-Start-CLI.cmd
-```
-
-## 4. POC 2 — first test
-
-Choose **2**, then type a natural question, or paste:
+Under your existing data root, the four files should be together in:
 
 ```text
-How do I view posting entries after clicking Post in TradeDesk? Give me clear steps, explain the required setting, and identify any conflicting instructions in the sources.
+C:\S3 bucket Data\existing-assets\VLCs\TradeDesk\
+  Sections 3 and 4 [iuinh8jZ7J8].mp4
+  Sections 3 and 4 [iuinh8jZ7J8].srt
+  Sections 5 and 6 [H232GBThOTE].mp4
+  Sections 5 and 6 [H232GBThOTE].srt
 ```
 
-The reply should show clear steps first, then important notes and clickable **Sources** at the end. Numbered references connect claims to sources. Clicking a source opens the original local file preview; supported files can be opened or downloaded. A source website link appears when an original URL is available in the imported metadata.
+If a video already exists there, keep that single copy and put its matching SRT beside it. Do not create another copy under a second folder. Extract the files from the sample ZIP; the importer does not search inside a ZIP archive.
 
-An original screenshot or sampled video frame appears only when available, supplied to the agent and selected as relevant. **Not every answer will include an image.** Unsupported binary formats and screenshots without a usable source link are not automatically interpreted as shared documentation.
+Use the supplied SRTs as they are. They do not need to be retranscribed solely because of their zero-duration cues.
 
-Source previews are pinned to the revision used in the answer. If an original was moved, deleted or changed, the preview is unavailable rather than showing a different revision.
+The application ZIP does not duplicate your MP4 samples. Use the files you already have.
 
-Follow up in the same chat:
+## 3. Import the new transcripts
 
-```text
-Can you explain the required setting more simply?
-```
+Click **Scan files**, then wait for its summary. Click **Process new files** and wait for completion.
 
-Then click **New chat** and ask an unrelated question. Each chat retains its own history and context across reloads and application restarts. POC 1 and POC 2 have separate chat lists.
-
-Old CLI conversations are not automatically imported into this new sidebar. Existing database QA audit records remain. Existing gap reviews can be selected using `/results latest` or an exact run key.
-
-## 5. Try an image
-
-Click **Attach image**, or paste a screenshot into the question box with **Ctrl+V**. Enter a question, for example:
-
-```text
-What does this message show? Search our documentation for the matching setting and explain what I should check. Clearly separate what is visible in my screenshot from what the articles establish.
-```
-
-PNG, JPEG and WebP are accepted, up to 10 MB and 20 megapixels each; up to four selected images per message. Images are decoded and resized for processing. Deselect an earlier image if it should not accompany the next question.
-
-**Your uploads stay within their chat.** They do not enter the data bucket, shared source corpus or embedding tables. Both the Knowledge and Verifier agents receive the same image evidence. Uploads can show your problem; they cannot establish general product behaviour by themselves.
-
-## 6. POC 1 — reuse an existing review first
-
-Choose **1** on startup. In a new web chat, enter:
-
-```text
-/results latest
-```
-
-Or use an exact saved run key:
-
-```text
-/results YOUR-RUN-KEY
-```
-
-Then ask:
-
-```text
-/ask Which topics need rework, why, and what should a documentation writer change first? Cite the topics and articles.
-```
-
-The selected review belongs to this chat. A different chat can select a different run. Saved findings remain agent proposals awaiting human review.
-
-For a new whole-recording review:
-
-```text
-/review current-state\System Admin_ Security_User Master Walkthrough.mp4
-```
-
-Put the recording path on the **same line** as `/review`. The matching SRT must already be imported. A and B still validate, save and embed their findings through the existing workflow before C discusses the result.
-
-C can show relevant supplied frames from the saved review. The displayed frame set is bounded; images are sampled evidence, not continuous video inspection. Historical source warnings remain important. If frames only exist in an older application folder, they may not preview in this version; run a fresh review to populate its frame cache.
-
-Search original documentation from POC 1 with:
-
-```text
-/search How do I view posting entries after posting?
-```
-
-This uses the shared checked retrieval path, with source links and the verifier.
-
-## 7. Add new files later
-
-Place the new video and matching `.srt` in `current-state`. On startup, scanning is read-only; it does **not** import or embed source data automatically. During a session:
+The equivalent chat commands are:
 
 ```text
 /scan
@@ -155,35 +70,89 @@ Place the new video and matching `.srt` in `current-state`. On startup, scanning
 /status
 ```
 
-`/scan` discovers changes. `/process` explicitly imports supported content and creates missing vectors. Wait for processing to finish before starting a review or asking questions about the new content. `/pilot` processes a limited sample; it is not a complete corpus import.
+Processing imports new/changed transcripts and creates missing vectors. It reuses vectors already present for unchanged content. It does not run a speech transcriber or embed raw MP4/image bytes. If some files fail, review the listed filenames/errors; other files can still finish.
 
-## 8. Quick regression questions for POC 2
+Open **Videos**. Search for `Sections`. These recordings should show **Transcript searchable**, with embedded-passage counts. Refresh the list by closing and reopening it after processing.
 
-Run each main question in a new chat; keep its follow-up in the same chat:
+- **Needs processing:** new/changed content, incomplete vectors or missing searchable companion content.
+- **No imported transcript:** put a matching SRT beside the MP4 and process it.
+- MP4 revision hashes are checked on selection; required local transcripts are checked for changes before use.
 
-1. **How do I change an existing TradeDesk user's password? Compare the article with the System Admin Security User Master Walkthrough. Explain the documented steps, what the presenter says, and what the sources do not establish. Cite timestamps.**
-   Follow-up: **Does that prove the password change was successfully completed?**
-2. **Which TD version has the latest Woodgrove Bank changes, and what changed? Compare the relevant release notes and distinguish exact “Woodgrove Bank” mentions from broader Woodgrove changes.**
-3. **Are View Posted Entries and Posting Warning the same setting? Explain what each controls and cite the supporting articles.**
-4. **Does the User Master walkthrough prove a new user was created and saved? Separate spoken instructions, sampled visual evidence and unverified outcomes.**
+## 4. Test the first video
 
-Check whether the answer addresses the question, whether links open the right originals, whether relevant images match the topic, and whether follow-ups preserve context. The verifier checks the answer; it does not guarantee perfect product accuracy.
+Start a **New chat**. Open **Videos**, select **Sections3and4**, then close the video list. Ask:
 
-## 9. Where things live
+> According to this training video, how do I draw down a forward? Explain what the presenter says, show the relevant screen frames, and cite the timestamps. Do not assume that every action completed successfully.
 
-- `agents/knowledge-assistant.md`: POC 2 normalization, reasoning and clear-answer instructions.
-- `agents/knowledge-verifier.md`: independent relevance, evidence, completeness and image checks.
-- `agents/agent-a-module.md`, `agents/agent-b-module.md`: POC 1 comprehension and gap-review instructions.
-- `src/TD.Poc.Core/ModuleReview.cs`: selected-run C instructions and A→B workflow.
-- `src/TD.Poc.Web`: local website and API.
-- `tools/workspace_ui.py`: chat persistence and protected source previews.
-- `database/migrations/024-workspace.sql`: additive web-chat tables.
-- `runtime`: diagnostic logs and run files; existing export scripts still export agent runs.
+Follow up in the same chat:
 
-New `workspace_ui` tables store chats, messages, asset references and the active-job lease. Chat images are stored outside the versioned application folder, normally under `%LOCALAPPDATA%\Contoso\Workspace`. Retain that directory and the database to retain chats and uploads through upgrades. Back up both as needed. This POC is for one local Windows operator; it is not a multi-user or tenant-isolated web deployment.
+> What does the presenter say about fixed-date versus window forwards? Show the relevant screen if it was inspected.
 
-In Visual Studio, open `TD.Poc.sln` and set **TD.Poc.Launcher** as the startup project. It builds the selected web/console targets through project dependencies. CMD setup is still needed once for Python, credentials, database migrations and model checks.
+The supplied transcript discusses forwards, drawdowns and margin. That establishes a useful test topic; it is not a predetermined answer or proof of current product behaviour.
 
-## Validation and limits
+## 5. Test the second video
 
-The release includes unit, host and disposable PostgreSQL/API checks for both POCs. Deterministic test-only model responses exercise the application wiring and evidence gates; they do not establish real Codex answer quality on your corpus. Browser access was blocked in the build environment, so rendered browser interaction and native Windows PowerShell window behaviour still need your local smoke test. No production database or real operator credentials were used during verification.
+Start another **New chat**. Select **Sections5and6** in Videos. Ask:
+
+> Where does the presenter go to open a corporate client, and what information do they review? Walk me through the video and show relevant screenshots with timestamps.
+
+Follow up:
+
+> What does the video say about corporate and individual clients being different? Separate the presenter’s explanation from anything the screenshots directly establish.
+
+This transcript discusses client onboarding and front-office information. Test whether the reply cites this recording rather than the User Master video.
+
+## 6. Compare both recordings
+
+New chat → select both recordings → ask:
+
+> Using these two videos, explain how client setup relates to the dealing workflow. Clearly say which video supports each point, show a useful frame from each if available, and identify any connection the recordings do not actually establish.
+
+The answer should distinguish the two recordings. It may say that a relationship is not established; it must not invent a connection just to provide a complete story.
+
+## 7. Test a typed video title
+
+In a new chat without selections:
+
+> In the Sections 5 and 6 training video, how does the presenter start onboarding a corporate client? Include relevant screenshots and timestamps.
+
+A unique human title can resolve without its YouTube ID. If more than one recording has that title, select the exact file in Videos. File paths remain the most reliable selection.
+
+## 8. Retest the original screenshot error
+
+New chat, no recording selected:
+
+> I need to add a new employee to TradeDesk. Where do I start, and what needs to be set up first? Show any relevant screenshots from the articles.
+
+Then:
+
+> Are there any pictures to show what that looks like?
+
+These requests should reach article retrieval rather than asking for a recording name. Images appear only if relevant original article images are available and approved by the verifier.
+
+## What to check
+
+1. The answer concerns your selected video and question.
+2. Spoken instructions and visible screen evidence are distinguished.
+3. Timestamps and pictures are relevant, with playable source links.
+4. Source links open the right original revision; changed/missing files give warnings.
+5. Follow-ups keep the selected recording/context; New chat starts separately.
+6. Missing evidence is acknowledged rather than replaced with an invented product step.
+
+Search is driven by transcript text. Visual-only details that are never described may not be found; the system does not index every screen in advance. Frames are bounded samples, not continuous viewing. Not every answer needs an illustration. A screenshot showing Save does not prove that saving succeeded. You can request **“Use the transcript only; no video frames”** when images are unnecessary.
+
+## Storage and what stays unchanged
+
+MP4s remain in the data folder. Transcript text, vectors, timestamps and source relationships are in PostgreSQL. JPGs remain on disk in `runtime\frame-cache` and run snapshots; PostgreSQL stores their paths, hashes and recording references, not image blobs.
+
+There is no frame-vector model or new embedding provider. Existing HNSW retrieval remains. POC1’s current-state A→B→C review workflow remains available under option1; its findings still follow the existing save/embed handoffs. Chat image uploads remain private to their chat and are not promoted into shared knowledge.
+
+Chats and uploaded chat images retain the same database and `%LOCALAPPDATA%\Contoso\Workspace` storage used by024. Keep those through upgrades. Old per-version frame caches may not preview in the new folder; asking the video question again builds this version’s cache.
+
+Agent instructions are in `agents\knowledge-assistant.md` and `agents\knowledge-verifier.md`. Media logic is in `tools\knowledge_visual.py`, `tools\video_evidence.py` and `tools\video_catalog.py`. The selected-video and gallery interface is in `src\TD.Poc.Web`.
+
+## Verification limits
+
+Both actual uploaded MP4/SRT pairs were ingested and sampled with real FFmpeg and a disposable PostgreSQL/pgvector database. Automated tests cover original frame files, correct recording identity, timestamps, cache reuse, readiness, changed transcripts and playback references. Direct API checks exercise selected-video normalization, retrieval, verification, persistence and identical agent image attachments.
+
+Model responses in the integration harness are deterministic test substitutes. These checks validate wiring and evidence safeguards; they do not establish live Codex answer quality. Browser rendering and native Windows activity-window behaviour still need your local smoke test. No operator credentials or production database were used.

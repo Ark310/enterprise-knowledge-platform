@@ -16,7 +16,7 @@ string FindRoot()
 try
 {
     var runtime=new Runtime(FindRoot());runtime.Progress+=Console.WriteLine;var workflow=new Workflow(runtime);var moduleReview=new ModuleReview(runtime);
-    if(args.Contains("--version")){Console.WriteLine("TD POC 0.24.0");return;}
+    if(args.Contains("--version")){Console.WriteLine("TD POC 0.25.0");return;}
     await runtime.LoadSecret();
     if(args.Contains("--build-indexes")){Console.WriteLine(await runtime.Worker("build_indexes"));return;}
     if(args.Contains("--search-health")){Console.WriteLine(await runtime.Worker("search_health"));return;}
@@ -34,7 +34,7 @@ try
         if(check["ready"]?.GetValue<bool>()!=true)throw new Exception("Readiness failed");
         Console.WriteLine(await runtime.Worker("status"));return;
     }
-    Console.WriteLine("TD Gap Analysis POC 0.24 | Codex A/B/C | local Qwen embeddings | automatic scan, MANUAL processing");
+    Console.WriteLine("TD Gap Analysis POC 0.25 | Codex A/B/C | local Qwen embeddings | automatic scan, MANUAL processing");
     Console.WriteLine("Checking database...");var dbStatus=await runtime.Worker("status");
     Console.WriteLine($"Database ready: {dbStatus["sources"]} sources; {dbStatus["vectors"]} source vectors.");
     Console.WriteLine("Checking Codex login...");

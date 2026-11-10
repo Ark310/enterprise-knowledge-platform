@@ -111,6 +111,18 @@ def recover(db,chat):
  if pending:db.commit()
 
 def main(db,cfg,op,args):
+ if op in ('ui_videos','ui_video_pins'):
+  import video_catalog
+  return video_catalog.catalog(db,cfg) if op=='ui_videos' else video_catalog.pins(db,cfg,args.get('recordings',[]))
+ if op=='ui_video_source':
+  chat_row(db,args['chat_id'])
+  path=source_path(cfg,args['file'])
+  if not path or path.suffix.lower() not in w.VIDEO_EXT:raise ValueError('Choose a registered recording under the data folder')
+  version=w.one(db,"select id from knowledge.source_versions where storage_uri=%s and lifecycle_status='ACTIVE'",(path.absolute().as_uri(),))
+  if not version:raise ValueError('Process this recording first')
+  result=register_source(db,cfg,args['chat_id'],{'file':args['file'],'version_id':str(version['id'])})
+  if not result:raise ValueError('Recording changed or unavailable')
+  db.commit();return result
  if op=='ui_list':return {'chats':w.q(db,'select id,poc,title,created_at,updated_at from workspace_ui.chats where poc=%s order by updated_at desc limit 500',(int(args['poc']),)).fetchall()}
  if op=='ui_create':
   chat=str(uuid.uuid4());poc=int(args['poc'])
@@ -159,14 +171,14 @@ def main(db,cfg,op,args):
     if len(rows)>=4:return {'images':rows}
   return {'images':rows}
  if op=='ui_present':
-  sources=[];images=[];seen=set();unavailable=[]
+  sources=[];images=[];seen=set();unavailable=[];source_assets={}
   for p in args.get('evidence',[]):
    if p.get('kind') in ('SOURCE','FRAME','SOURCE_IMAGE'):
     if p.get('kind')=='SOURCE_IMAGE':p=dict(p,file=p.get('source_file',p.get('file')))
     key=p.get('file')
     if key not in seen:
      seen.add(key);s=register_source(db,cfg,chat,p)
-     if s:sources.append(s)
+     if s:sources.append(s);source_assets[key]=s['id']
      else:unavailable.append(key or 'Cited source')
    if p.get('kind') in ('FRAME','SOURCE_IMAGE'):
     path=Path(p['path']);root=w.BASE/'runtime' if p['kind']=='FRAME' else Path(cfg['DataRoot'])
@@ -174,7 +186,7 @@ def main(db,cfg,op,args):
     except ValueError:continue
     path=safe_file(root,rel)
     if path and w.file_hash(path)==p['image_sha256']:
-     images.append(asset(db,chat,'FRAME' if p['kind']=='FRAME' else 'SOURCE_IMAGE',path,p.get('label') or p.get('file','Video frame'),{'evidence_id':p['evidence_id'],'locator':p.get('locator',{}),'file':p.get('file'),'source_file':p.get('source_file')}))
+     images.append(asset(db,chat,'FRAME' if p['kind']=='FRAME' else 'SOURCE_IMAGE',path,p.get('label') or p.get('file','Video frame'),{'evidence_id':p['evidence_id'],'locator':p.get('locator',{}),'file':p.get('file'),'source_file':p.get('source_file'),'recording_asset_id':source_assets.get(p.get('file')) if p['kind']=='FRAME' else None}))
   db.commit();return {'sources':sources,'images':images,'unavailable':unavailable}
  if op=='ui_answer':
   chat_row(db,args['chat_id'])

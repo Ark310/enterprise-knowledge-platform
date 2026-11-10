@@ -13,6 +13,22 @@ def protected_tokens(text):
  # Numbers/versions/ticket IDs, quoted source names and uppercase product acronyms cannot be guessed away.
  return set(re.findall(r'\b\d+(?:[.:-]\d+)*\b|\b[A-Z][A-Z0-9_]{1,}\b|"[^"\n]+"',text))
 
+def canonical_normalization(original,obj,recordings=None):
+ # Backward-compatible v024 visual_check meant video only. Keep product/identifier text unchanged.
+ from copy import deepcopy
+ n=deepcopy(obj)
+ if schema_errors(n,'normalization'):return n
+ names=list(recordings) if recordings else n.get('recording_names',[])
+ targets=list(n.get('visual_targets',[]));text=original+' '+n['normalized_question']
+ transcript_only=bool(re.search(r'\b(transcript[- ]only|transcript only|only (?:the )?transcript|no (?:frames|images)|without (?:frames|images))\b',text,re.I))
+ if names and not transcript_only:targets.append('VIDEO_FRAME')
+ if not targets and n.get('visual_check'):
+  targets.append('VIDEO_FRAME' if re.search(r'\b(video|recording|walkthrough|vlcs?)\b',text,re.I) and not re.search(r'\b(article|documentation) (?:screenshots?|images?)\b',text,re.I) else 'ARTICLE_IMAGE')
+ if not targets and re.search(r'\b(screenshot|picture|image)s?\b',text,re.I):targets.append('ARTICLE_IMAGE')
+ if transcript_only:targets=[t for t in targets if t!='VIDEO_FRAME']
+ n['visual_targets']=list(dict.fromkeys(targets));n['visual_check']='VIDEO_FRAME' in targets;n['recording_names']=names
+ return n
+
 def validate_normalization(original,obj):
  errors=schema_errors(obj,'normalization')
  if errors:return errors
@@ -123,7 +139,7 @@ def event(db,args):
 def retrieve(db,cfg,args):
  ensure(db);tid=str(uuid.UUID(args['turn_id']));row=w.one(db,'select question,status from knowledge_qa.turns where id=%s',(tid,))
  if not row or row['status']!='PROCESSING':raise ValueError('Unknown/inactive retrieval turn')
- normalized=args['normalization'];errors=validate_normalization(row['question'],normalized)
+ normalized=canonical_normalization(row['question'],args['normalization']);errors=validate_normalization(row['question'],normalized)
  if errors:raise ValueError('; '.join(errors))
  if normalized['needs_clarification']:raise ValueError('Clarification required before searching')
  import knowledge_search
@@ -197,8 +213,9 @@ def main(db,cfg,op,args):
  if op=='qa_finish':return finish(db,args)
  if op=='qa_validate':
   part=args['part'];obj=args['object']
+  obj=canonical_normalization(args['original'],obj,args.get('recordings')) if part=='normalization' else obj
   errors=validate_normalization(args['original'],obj) if part=='normalization' else validate_answer(obj,args['evidence']) if part=='answer' else validate_verdict(obj,args['answer'],args.get('retrieval')) if part=='verdict' else ['Unknown contract']
-  return {'valid':not errors,'errors':errors,'needs_investigation':part=='verdict' and may_investigate(obj,args.get('retrieval'))}
+  return {'object':obj,'valid':not errors,'errors':errors,'needs_investigation':part=='verdict' and may_investigate(obj,args.get('retrieval'))}
  if op=='qa_ready':ensure(db);return {'ready':True}
  if op=='qa_diagnose':
   import knowledge_search

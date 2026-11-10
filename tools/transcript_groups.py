@@ -14,7 +14,7 @@ def group_cues(cues,duration_seconds=None):
     previous=-1
     for cue in cues:
         a=float(cue['start']);b=float(cue['end'])
-        if not math.isfinite(a+b) or a<0 or b<=a or a<previous:raise ValueError('Invalid or out-of-order transcript timing')
+        if not math.isfinite(a+b) or a<0 or b<a or (b==a and cue.get('locator',{}).get('timing_quality')!='POINT_ONLY') or a<previous:raise ValueError('Invalid or out-of-order transcript timing')
         if duration_seconds is not None and b>float(duration_seconds)+0.25:raise ValueError('Transcript cue exceeds the matching recording duration; fix the SRT, timing was not altered')
         previous=a;text=cue['text']
         if len(text)>CONFIG['max_characters']:
@@ -32,7 +32,7 @@ def ensure_grouped(db,cfg,f,sv,ov,profile):
     """Called under the existing import lock, only for SRTs. Commit checkpoints allow retry."""
     ex=w.one(db,'select id from knowledge.extractions where source_version_id=%s and processor_version=%s and config_sha256=%s order by created_at desc limit 1',(sv,VERSION,CONFIG_HASH))
     if not ex:
-        cues=w.srt_units(w.decode(__import__('pathlib').Path(f['path']).read_bytes()))
+        cues=w.srt_units(w.decode(__import__('pathlib').Path(f['path']).read_bytes()),allow_points=True)
         path=__import__('pathlib').Path(f['path'])
         videos=[p for p in path.parent.iterdir() if p.is_file() and p.stem.lower()==path.stem.lower() and p.suffix.lower() in w.VIDEO_EXT]
         if len(videos)>1:raise ValueError('More than one matching recording; choose an unambiguous basename')

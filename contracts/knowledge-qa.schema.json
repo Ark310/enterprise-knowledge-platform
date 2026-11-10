@@ -94,6 +94,18 @@
             "minLength": 1,
             "maxLength": 1000
           }
+        },
+        "visual_targets": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "ARTICLE_IMAGE",
+              "VIDEO_FRAME",
+              "USER_IMAGE"
+            ]
+          },
+          "uniqueItems": true,
+          "maxItems": 3
         }
       },
       "required": [

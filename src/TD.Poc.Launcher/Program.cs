@@ -3,13 +3,13 @@ using TD.Poc.Core;
 using TD.Poc.Infrastructure;
 Runtime.DisableQuickEdit();
 Console.OutputEncoding=System.Text.Encoding.UTF8;
-if(args.Contains("--version")){Console.WriteLine("Workspace launcher 0.24.0");return;}
+if(args.Contains("--version")){Console.WriteLine("Workspace launcher 0.25.0");return;}
 try
 {
     var root=PocPaths.FindRoot();
     while(true)
     {
-        Console.WriteLine("\nWorkspace 0.24\n1. Documentation Gap Analysis\n2. Knowledge Retrieval and Verification\n0. Exit");
+        Console.WriteLine("\nWorkspace 0.25\n1. Documentation Gap Analysis\n2. Knowledge Retrieval and Verification\n0. Exit");
         Console.Write("Choose 1 or 2: ");var choice=Console.ReadLine();if(choice is null || choice.Trim()=="0")break;
         var selected=PocPaths.ProjectForChoice(choice);
         var project=args.Contains("--cli")?selected:"TD.Poc.Web";

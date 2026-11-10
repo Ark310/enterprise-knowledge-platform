@@ -8,9 +8,14 @@ def recording_key(name):
  name=re.sub(r'\.(mp4|mkv|mov|wmv|avi|webm)$','',name,flags=re.I)
  return ' '.join(re.findall(r'[a-z0-9]+',name.casefold()))
 
+def human_key(name):
+ return recording_key(re.sub(r'\s*\[[A-Za-z0-9_-]{6,}\](?=\.[^.]+$|$)','',name))
+
 def recording_matches(videos,name,root):
  name=name.replace('\\','/')
- if '/' not in name:return [v for v in videos if recording_key(urllib.parse.unquote(urllib.parse.urlparse(v['storage_uri']).path))==recording_key(name)]
+ if '/' not in name:
+  exact=[v for v in videos if recording_key(urllib.parse.unquote(urllib.parse.urlparse(v['storage_uri']).path))==recording_key(name)]
+  return exact or [v for v in videos if human_key(urllib.parse.unquote(urllib.parse.urlparse(v['storage_uri']).path))==human_key(name)]
  def pathkey(value):return urllib.parse.unquote(value).replace('\\','/').strip('/').casefold()
  if name.startswith('file:'):wanted=pathkey(urllib.parse.urlparse(name).path)
  elif name.startswith('/') or re.match(r'^[A-Za-z]:/',name):wanted=pathkey(name)
@@ -23,11 +28,14 @@ def sample_times(duration,passages,terms,cap=12):
  def add(t):
   t=round(max(0,min(float(t),end)),3)
   if t not in out and len(out)<cap:out.append(t)
- for t in [0,end,max(0,duration-4),max(0,duration-12)]:add(t)
+ boundary_slots=min(2,max(0,cap//3))
+ topic_cap=cap-boundary_slots
  ranked=sorted((p for p in passages if p.get('start_seconds') is not None),key=lambda p:-sum(t.casefold() in p['content_text'].casefold() for t in terms))
  for p in ranked:
   if not any(t.casefold() in p['content_text'].casefold() for t in terms):continue
-  add(p['start_seconds']);add(float(p['start_seconds'])+2)
+  if len(out)<topic_cap:add(p['start_seconds'])
+  if len(out)<topic_cap:add(float(p['start_seconds'])+2)
+ for t in [0,end,max(0,duration-4),max(0,duration-12)]:add(t)
  for fraction in [.08,.25,.5,.75]:add(duration*fraction)
  return sorted(out)
 

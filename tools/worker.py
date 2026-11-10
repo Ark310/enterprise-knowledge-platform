@@ -12,16 +12,16 @@ def j(v):return json.dumps(v,ensure_ascii=False,default=str)
 def sha(v):return hashlib.sha256(v.encode('utf-8') if isinstance(v,str) else v).hexdigest()
 def progress(s):print(s,file=sys.stderr,flush=True)
 def chunks(s,size=3000):return [s[i:i+size] for i in range(0,len(s),size)]
-def srt_units(s):
+def srt_units(s,allow_points=False):
  out=[]
  for i,b in enumerate(re.split(r'\n\s*\n',s.replace('\r','').strip())):
   if not b.strip():continue
   m=re.search(r'(\d+):(\d\d):(\d\d)[,.](\d{3})\s*-->\s*(\d+):(\d\d):(\d\d)[,.](\d{3})[^\n]*\n(.*)',b,re.S)
   if not m:raise ValueError('Malformed subtitle cue '+str(i+1))
   a=list(map(int,m.groups()[:8]));start=a[0]*3600+a[1]*60+a[2]+a[3]/1000;end=a[4]*3600+a[5]*60+a[6]+a[7]/1000
-  if end<=start:raise ValueError('Subtitle end must follow start')
+  if end<start or (end==start and not allow_points):raise ValueError('Subtitle end must follow start')
   text=m.group(9).strip()
-  if text:out.append({'text':text,'start':start,'end':end,'locator':{'cue':i+1,'start_seconds':start,'end_seconds':end},'kind':'SUPPLIED_TRANSCRIPT'})
+  if text:out.append({'text':text,'start':start,'end':end,'locator':dict({'cue':i+1,'start_seconds':start,'end_seconds':end},**({'timing_quality':'POINT_ONLY','timing_note':'Original zero-duration cue retained; spoken duration is unverified.'} if end==start else {})),'kind':'SUPPLIED_TRANSCRIPT'})
  return out
 
 def safe_path(root,path):
@@ -74,7 +74,10 @@ def extract(path):
   for i,t in enumerate(chunks(text)):
    out.append({'text':t,'locator':dict(loc,part=i+1),**kw})
  if ext in VIDEO_EXT:return {'status':'BLOCKED','units':[],'warnings':['Video registered; visual review is scoped to agent runs. Transcript is separately imported.'],'metadata':{}}
- if ext=='.srt':out=srt_units(decode(p.read_bytes()))
+ if ext=='.srt':
+  out=srt_units(decode(p.read_bytes()),allow_points=True)
+  points=sum(u['locator'].get('timing_quality')=='POINT_ONLY' for u in out)
+  if points:warnings.append(f'{points} zero-duration transcript cues preserved as exact points; spoken durations are unverified.');meta['point_cues']=points
  elif ext in TEXT_EXT:
   s=decode(p.read_bytes())
   if ext=='.json':
@@ -252,6 +255,8 @@ def process(cfg,options):
      sv,ov=register(db,f);totals['registered']+=1
      q(db,"insert into knowledge.intake_entries(batch_id,group_id,entry_key,member_path,expected_bytes,expected_sha256,observed_object_version_id,presence_status,review_status) select %s,group_id,%s,%s,%s,%s,%s,'PRESENT','INVENTORIED' from knowledge.source_versions where id=%s",(batch,f['relative'],f['relative'],f['bytes'],f['sha256'],ov,sv))
      ex=one(db,"select id,status from knowledge.extractions where source_version_id=%s and is_active and processor_version=%s",(sv,EXTRACTION_VERSION))
+     if not ex and Path(f['path']).suffix.lower() in VIDEO_EXT:
+      ex=one(db,"select id,status from knowledge.extractions where source_version_id=%s and processor_version=%s order by created_at desc limit 1",(sv,EXTRACTION_VERSION))
      if not ex:
       data=extract(f['path'])
       if file_hash(f['path'])!=f['sha256']:raise ValueError('File changed while extracting; transaction rolled back')
@@ -276,6 +281,8 @@ def process(cfg,options):
     if Path(f['path']).suffix.lower()=='.srt':
      from transcript_groups import ensure_grouped
      totals.setdefault('grouped_embedded',0);totals['grouped_embedded']+=ensure_grouped(db,cfg,f,sv,ov,profile)
+    if Path(f['path']).suffix.lower() in VIDEO_EXT:
+     totals.setdefault('registered_media',0);totals['registered_media']+=1;continue
     count=one(db,'select count(*) n from knowledge.content_units where extraction_id=%s',(ex['id'],))['n']
     job(db,ov,'EMBED','COMPLETE' if count else 'BLOCKED',{'profile_id':str(profile['id']),'new_vectors':len(pending),'reason':None if count else 'No searchable units; conversion or scoped video review required'});db.commit()
    except Exception as e:
@@ -455,7 +462,7 @@ def main(req):
    with connect() as db:
     for f in result['files']:
      r=one(db,"select v.id,exists(select 1 from knowledge.extractions e where e.source_version_id=v.id and e.is_active and e.processor_version=%s) extracted from knowledge.source_versions v where v.storage_uri=%s and v.content_sha256=%s and v.lifecycle_status='ACTIVE'",(EXTRACTION_VERSION,Path(f['path']).absolute().as_uri(),f['sha256']))
-     f['state']='UNCHANGED' if r and r['extracted'] else 'NEW_OR_PENDING'
+     f['state']=('REGISTERED_MEDIA' if r else 'NEW_MEDIA') if Path(f['path']).suffix.lower() in VIDEO_EXT else ('UNCHANGED' if r and r['extracted'] else 'NEW_OR_PENDING')
      if Path(f['path']).suffix.lower()=='.srt':
       from transcript_groups import VERSION as GROUPED_VERSION,CONFIG_HASH
       prepared=one(db,"select exists(select 1 from knowledge.extractions where source_version_id=%s and processor_version=%s and config_sha256=%s and status='COMPLETE') ok",(r['id'],GROUPED_VERSION,CONFIG_HASH))['ok'] if r else False

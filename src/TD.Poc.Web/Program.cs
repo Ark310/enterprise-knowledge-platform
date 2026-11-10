@@ -33,9 +33,14 @@ app.Use(async(ctx,next)=>{
 });
 app.UseDefaultFiles();app.UseStaticFiles();
 app.MapGet("/api/init",()=>new {name="Workspace",mode,token,ready=engine.Ready,status=engine.Status});
+app.MapGet("/api/videos",async()=>await engine.Data("ui_videos"));
 app.MapGet("/api/chats",async()=>await engine.Data("ui_list",new(){{"poc",mode}}));
 app.MapPost("/api/chats",async()=>await engine.Data("ui_create",new(){{"poc",mode}}));
 app.MapGet("/api/chats/{id:guid}",async(Guid id,long? before)=>await engine.GetChat(id,before));
+app.MapPost("/api/chats/{id:guid}/video-source",async(Guid id,HttpRequest request)=>{
+ await engine.CheckChat(id);var obj=await request.ReadFromJsonAsync<JsonObject>()??throw new Exception("Select a video");
+ return await engine.Data("ui_video_source",new(){{"chat_id",id.ToString()},{"file",obj["file"]?.ToString()??""}});
+});
 app.MapPost("/api/chats/{id:guid}/images",async(Guid id,HttpRequest request)=>{
  await engine.CheckChat(id);var obj=await request.ReadFromJsonAsync<JsonObject>()??throw new Exception("Missing image");
  var data=obj["base64"]?.ToString()??"";if(data.Length>14*1024*1024)throw new Exception("Image limit is 10 MB");
@@ -43,7 +48,7 @@ app.MapPost("/api/chats/{id:guid}/images",async(Guid id,HttpRequest request)=>{
 });
 app.MapPost("/api/chats/{id:guid}/messages",async(Guid id,HttpRequest request)=>{
  var obj=await request.ReadFromJsonAsync<JsonObject>()??throw new Exception("Missing message");
- return await engine.Submit(id,obj["text"]?.ToString()??"",obj["attachments"]?.AsArray()??new JsonArray());
+ return await engine.Submit(id,obj["text"]?.ToString()??"",obj["attachments"]?.AsArray()??new JsonArray(),obj["recordings"]?.AsArray()??new JsonArray());
 });
 app.MapGet("/api/job",()=>engine.JobSnapshot());
 app.MapPost("/api/stop",()=>{engine.Stop();return new{stopping=true};});

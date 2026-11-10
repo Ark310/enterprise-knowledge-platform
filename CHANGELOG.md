@@ -1,3 +1,14 @@
+# v0.25 — Video questions, frames and ingestion readiness
+
+- Separates article screenshots, user images and video inspection; captured v024 screenshot requests pass normalization regression tests.
+- Video library lists registered/scanned recordings and transcript/vector readiness; up to two exact selections retained per chat.
+- Scan/Process buttons, concise scan/import summaries and registered-media states.
+- Human video titles resolve unique filenames without trailing YouTube IDs; ambiguous names ask for selection.
+- Topic-first bounded original JPG samples, timestamp captions and seekable original-video playback.
+- Zero-duration SRT cues retained as POINT_ONLY with original text/timestamps and warnings; reversed timings remain errors.
+- Changed required transcripts block stale answers/readiness; pinned source and image hashes remain enforced.
+- Existing embeddings, HNSW profiles, both POCs, private uploads and audit history retained; no new SQL schema required beyond024.
+
 # v0.24 — Workspace local web interface
 
 - Both POCs launch locally from the existing menu; legacy CLI remains available.
