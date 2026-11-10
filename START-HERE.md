@@ -1,158 +1,88 @@
-# Workspace v0.26 — videos, screenshots and tests
+# Workspace 0.027 — full release, resume and video tests
 
-## What changes
+## What changed
 
-You can select existing-asset videos, ask about their content, and receive transcript-grounded answers with relevant original video frames and playback timestamps.
+The 0.26 export showed a PermissionError saving monitoring status. The monitor deliberately exited 125, leaving no final JSON and causing the misleading "invalid JSON" message. This release removes that dependency: optional health snapshots and importer progress logs are written in bounded background queues. Denied or slow status writes produce a warning without stopping ingestion or deadline checking. Status replacement has short bounded retries; snapshots have a single writer. Loading the timeout list has a bounded wait as well.
 
-- **Videos** opens a searchable list of recordings and their transcript/vector readiness.
-- Select up to **two recordings** for the current chat. The selected filenames stay pinned through normalization and retrieval.
-- Video questions may take longer than text-only questions because frames must be extracted and visually checked. The app finds relevant transcript passages, extracts/reuses a bounded set of original JPGs and sends the same images to Knowledge and Verifier.
-- Helpful selected images appear after the answer, with timestamps and a **Play video at…** button.
-- Article screenshot requests no longer require a video name. Your three captured v0.24 failures are regression tests.
-- **Scan files** and **Process new files** are visible actions; registered MP4s no longer keep appearing as unfinished text extraction.
+A real timed-out operation still stops. The host reads its structured reason from the captured process output even when status files are unavailable. Automatic recovery requires a matching attempt ID and a successfully persisted timeout checkpoint; otherwise it stops clearly without guessing which file to exclude. A status-only problem does not mark a source file as corrupt. Latest failure summaries now replace old summaries, while dated failure history remains.
 
-Your two supplied SRTs contain six zero-duration cues: one in Sections3/4 and five in Sections5/6. v0.26 imports their text and original exact timestamps as **POINT_ONLY** cues, with warnings that spoken duration is unverified. It does not invent timings, silently drop these words or rewrite the SRTs. Reversed timestamps and malformed cues still require attention.
+Both POCs, chat history, source hyperlinks, image uploads, original frame galleries, playback links, agent activity windows, chunking and HNSW retrieval are retained. The embedding model/profile and extraction versions are unchanged so saved vectors are reused. No new database schema, model or retrieval strategy is introduced. Scope remains current-state plus all existing-assets subfolders, excluding existing-assets/Meeting Recordings, symlinks/junctions and Office lock files. Unsupported content formats remain explicit conversion/OCR work, rather than silently claimed searchable.
 
-## 1. Upgrade
+## 1. Close the old application
 
-Close v0.24 and its activity windows; keep its folder as fallback. Back up `knowledge_poc` in pgAdmin. Extract the new application to:
+Stop active work using Stop if needed. Close the application and its activity windows. Keep the old 0.26 folder as fallback; previous cached-image references may still point there. Keep the PostgreSQL database and the original S3 bucket Data folder. Back up knowledge_poc using pgAdmin before setup.
 
-```text
-C:\TD-POC-v0.26
-```
+Do not delete tables, clear vectors, or run the fresh schema installer. Do not change Windows folder permissions or disable protection to work around this monitoring bug.
 
-**Keep your existing PostgreSQL database and data bucket. Do not run the fresh schema installer, delete vectors or recreate the database.** This release uses the existing024 tables and metadata; it adds no new production table schema.
+## 2. Extract the full ZIP
 
-In CMD:
+Extract TD-POC-v0.027.zip so this file exists:
 
-```cmd
-cd /d C:\TD-POC-v0.26
+C:\TD-POC-v0.027\Setup-POC.cmd
+
+The ZIP contains the complete source, scripts, contracts, schema/migrations, tests and instructions. It deliberately excludes your Python environment, credentials, login files, runtime logs and source videos. Your existing videos/transcripts stay in C:\S3 bucket Data.
+
+## 3. One-time setup for this new folder
+
+Open Command Prompt. Run one command at a time:
+
+```bat
+cd /d C:\TD-POC-v0.027
 Setup-POC.cmd
 ```
 
-Confirm your data folder, enter the PostgreSQL connection details and complete the POC Codex login if requested. Setup installs dependencies, builds the solution, checks migrations/indexes, FFmpeg, model and login. Existing embeddings are reused with the same local model/profile.
+Confirm the existing data root C:\S3 bucket Data (or your actual root). Enter your existing PostgreSQL connection details; use the same knowledge_poc database. Complete the isolated Codex sign-in if requested. Setup creates the new folder's .venv, builds the solution, applies the existing migrations and checks indexes and the local model. It preserves database sources, vectors and chats.
 
-Then:
+Wait for SETUP PASSED. Then run:
 
-```cmd
+```bat
 Start-POC.cmd
 ```
 
-Choose **2 — Knowledge Retrieval and Verification**. Open the localhost URL printed in CMD, normally `http://127.0.0.1:5250`. Keep CMD open. Agent activity windows still show progress.
+Choose 2 for Knowledge Retrieval and Verification. Open the localhost URL printed by the app. Leave the main CMD window open. The local embedding model is qwen3-embedding:4b, 2560 dimensions; Codex still supplies reasoning through its saved login.
 
-## 2. Place the sample files correctly
+If setup fails, read that failure before starting processing. Do not continue with missing dependencies or failed database readiness.
 
-Under your existing data root, the four files should be together in:
+## 4. Finish ingestion before testing
 
-```text
-C:\S3 bucket Data\existing-assets\VLCs\TradeDesk\
-  Sections 3 and 4 [iuinh8jZ7J8].mp4
-  Sections 3 and 4 [iuinh8jZ7J8].srt
-  Sections 5 and 6 [H232GBThOTE].mp4
-  Sections 5 and 6 [H232GBThOTE].srt
-```
+1. Wait for Workspace to show Ready. Startup may already be scanning; avoid duplicate concurrent jobs.
+2. Click Scan files. Wait for its completion message.
+3. Click Process new files. Existing committed vectors are reused; pending transcripts and new supported files receive vectors. Registered MP4 alone does not mean its transcript is ready.
+4. Wait for processing totals and inspect failed files, scan errors and timeout exclusions. Do not launch another job while one is active.
+5. If copied timeout state from an old installation causes files to be set aside, use Retry timed-out files after reviewing their cause. This action also processes other pending files. A fresh 0.027 folder does not inherit the old timeout list unless you copy it.
+6. Open Videos to check the VLC recordings' readiness. Their matching SRTs should have the same basename and sit beside the MP4, e.g. Sections 3 and 4 [iuinh8jZ7J8].mp4 and Sections 3 and 4 [iuinh8jZ7J8].srt.
 
-If a video already exists there, keep that single copy and put its matching SRT beside it. Do not create another copy under a second folder. Extract the files from the sample ZIP; the importer does not search inside a ZIP archive.
+Processing may take time for long transcripts; progress updates show the active file/stage. A "Monitoring warning (nonfatal)" means a display/log update failed while import continues. A genuine embedding, file-read or database error remains an actual processing error. A heartbeat alone is not proof an external model is advancing. Ingestion remains manual.
 
-Use the supplied SRTs as they are. They do not need to be retranscribed solely because of their zero-duration cues.
+The previous scan found 33 VLC videos and 33 SRTs. The previous process stopped before VLCs; their old pending status was not evidence the scanner ignored them. The known TinyTake21-10-2025-05-52-07.srt error is separate: its parser found no usable cues. Such a file is reported individually while other files continue. No transcript content or timings are invented to make it pass.
 
-The application ZIP does not duplicate your MP4 samples. Use the files you already have.
+## 5. Run the video questions
 
-## 3. Import the new transcripts
+Use the included Video-Test-Questions-v0.027.txt. Begin with the general question in a new chat with no recordings selected. Then try the named-recording and cross-video questions. Answers should cite original sources/timestamps and show frames only where available and relevant. General transcript retrieval does not require selecting a video, but selecting one is useful when you deliberately want to limit a demonstration to it.
 
-Click **Scan files**, then wait for its summary. Click **Process new files** and wait for completion.
-
-The equivalent chat commands are:
+For POC 1, start it using Start-POC.cmd and choose 1. In a new chat, enter /review and provide:
 
 ```text
-/scan
-/process
-/status
+current-state\System Admin_ Security_User Master Walkthrough.mp4
 ```
 
-Processing imports new/changed transcripts and creates missing vectors. It reuses vectors already present for unchanged content. It does not run a speech transcriber or embed raw MP4/image bytes. If some files fail, review the listed filenames/errors; other files can still finish.
+Wait for A then B. Use /results latest, then ask: "Which topics need rework, why, and which sources support each finding?" The matching SRT must already have been processed. This release does not change A/B review behavior.
 
-Open **Videos**. Search for `Sections`. These recordings should show **Transcript searchable**, with embedded-passage counts. Refresh the list by closing and reopening it after processing.
+## 6. If processing stops
 
-- **Needs processing:** new/changed content, incomplete vectors or missing searchable companion content.
-- **No imported transcript:** put a matching SRT beside the MP4 and process it.
-- MP4 revision hashes are checked on selection; required local transcripts are checked for changes before use.
+Capture the actual error and run:
 
-## 4. Test the first video
+```bat
+cd /d C:\TD-POC-v0.027
+Export-ImportDiagnostics.cmd
+```
 
-Start a **New chat**. Open **Videos**, select **Sections3and4**, then close the video list. Ask:
+Keep your database. Share the generated diagnostic ZIP with an authorized reviewer. Logs may contain internal file paths/excerpts. Monitoring files can be stale if their writes are denied; the final result/error in Workspace and captured importer output are authoritative. If a checkpoint cannot be saved on an actual timeout, the app stops without automatic file skipping. It does not claim completion.
 
-> According to this training video, how do I draw down a forward? Explain what the presenter says, show the relevant screen frames, and cite the timestamps. Do not assume that every action completed successfully.
+Default import limits remain 180 seconds per inner stage, 1800 seconds per file, 120 seconds per SQL statement and embedding socket request, 10 seconds for a SQL lock. A per-stage timeout is not the total batch duration. Change limits only after checking a measured legitimate long operation. The app cannot guarantee every possible machine/storage/model failure is recoverable.
 
-Follow up in the same chat:
+## Verification and limits
 
-> What does the presenter say about fixed-date versus window forwards? Show the relevant screen if it was inspected.
+162 Python tests; 33 runtime host checks and 41 Knowledge host checks; eight real PostgreSQL 17/pgvector integration checks. Tests cover denied and slow health writes, slow timeout-list reads, a genuine timeout with unwritable status storage, denied raw progress logs with 15,000 output lines, conservative checkpoint handling, truthful exit-125 reporting, latest-error summaries, malformed-SRT isolation, saved vectors reused after restart, new video/SRT ingestion and a general query retrieving transcript evidence without selecting a video. .NET Release build: zero warnings and errors.
 
-The supplied transcript discusses forwards, drawdowns and margin. That establishes a useful test topic; it is not a predetermined answer or proof of current product behaviour.
-
-## 5. Test the second video
-
-Start another **New chat**. Select **Sections5and6** in Videos. Ask:
-
-> Where does the presenter go to open a corporate client, and what information do they review? Walk me through the video and show relevant screenshots with timestamps.
-
-Follow up:
-
-> What does the video say about corporate and individual clients being different? Separate the presenter’s explanation from anything the screenshots directly establish.
-
-This transcript discusses client onboarding and front-office information. Test whether the reply cites this recording rather than the User Master video.
-
-## 6. Compare both recordings
-
-New chat → select both recordings → ask:
-
-> Using these two videos, explain how client setup relates to the dealing workflow. Clearly say which video supports each point, show a useful frame from each if available, and identify any connection the recordings do not actually establish.
-
-The answer should distinguish the two recordings. It may say that a relationship is not established; it must not invent a connection just to provide a complete story.
-
-## 7. Test a typed video title
-
-In a new chat without selections:
-
-> In the Sections 5 and 6 training video, how does the presenter start onboarding a corporate client? Include relevant screenshots and timestamps.
-
-A unique human title can resolve without its YouTube ID. If more than one recording has that title, select the exact file in Videos. File paths remain the most reliable selection.
-
-## 8. Retest the original screenshot error
-
-New chat, no recording selected:
-
-> I need to add a new employee to TradeDesk. Where do I start, and what needs to be set up first? Show any relevant screenshots from the articles.
-
-Then:
-
-> Are there any pictures to show what that looks like?
-
-These requests should reach article retrieval rather than asking for a recording name. Images appear only if relevant original article images are available and approved by the verifier.
-
-## What to check
-
-1. The answer concerns your selected video and question.
-2. Spoken instructions and visible screen evidence are distinguished.
-3. Timestamps and pictures are relevant, with playable source links.
-4. Source links open the right original revision; changed/missing files give warnings.
-5. Follow-ups keep the selected recording/context; New chat starts separately.
-6. Missing evidence is acknowledged rather than replaced with an invented product step.
-
-Search is driven by transcript text. Visual-only details that are never described may not be found; the system does not index every screen in advance. Frames are bounded samples, not continuous viewing. Not every answer needs an illustration. A screenshot showing Save does not prove that saving succeeded. You can request **“Use the transcript only; no video frames”** when images are unnecessary.
-
-## Storage and what stays unchanged
-
-MP4s remain in the data folder. Transcript text, vectors, timestamps and source relationships are in PostgreSQL. JPGs remain on disk in `runtime\frame-cache` and run snapshots; PostgreSQL stores their paths, hashes and recording references, not image blobs.
-
-There is no frame-vector model or new embedding provider. Existing HNSW retrieval remains. POC1’s current-state A→B→C review workflow remains available under option1; its findings still follow the existing save/embed handoffs. Chat image uploads remain private to their chat and are not promoted into shared knowledge.
-
-Chats and uploaded chat images retain the same database and `%LOCALAPPDATA%\Contoso\Workspace` storage used by024. Keep those through upgrades. Old per-version frame caches may not preview in the new folder; asking the video question again builds this version’s cache.
-
-Agent instructions are in `agents\knowledge-assistant.md` and `agents\knowledge-verifier.md`. Media logic is in `tools\knowledge_visual.py`, `tools\video_evidence.py` and `tools\video_catalog.py`. The selected-video and gallery interface is in `src\TD.Poc.Web`.
-
-## Verification limits
-
-Both actual uploaded MP4/SRT pairs were ingested and sampled with real FFmpeg and a disposable PostgreSQL/pgvector database. Automated tests cover original frame files, correct recording identity, timestamps, cache reuse, readiness, changed transcripts and playback references. Direct API checks exercise selected-video normalization, retrieval, verification, persistence and identical agent image attachments.
-
-Model responses in the integration harness are deterministic test substitutes. These checks validate wiring and evidence safeguards; they do not establish live Codex answer quality. Browser rendering and native Windows activity-window behaviour still need your local smoke test. No operator credentials or production database were used.
+The database/media tests use a generated short MP4, controlled embedding vectors and temporary PostgreSQL. These establish wiring and recovery, not live-model answer accuracy or a complete replay of your 34,823-file dataset. Windows-native viewer windows, your exact Windows file lock and your live Ollama/Codex account could not be tested here. Earlier versions' verification notes remain historical and do not replace this release's results.

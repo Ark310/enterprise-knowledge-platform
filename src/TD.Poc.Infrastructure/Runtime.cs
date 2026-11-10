@@ -53,14 +53,22 @@ public sealed partial class Runtime
             var importKey=Guid.NewGuid().ToString("N");
             args!["import_run_key"]=importKey;
             prefix=Path.Combine(work,"workers",op+"-"+importKey);
-            var result=await Run(python,[Path.Combine(Root,"tools","worker.py")],new JsonObject{{"op",op},{"args",args?.DeepClone()??new JsonObject()}}.ToJsonString(),Root,false,TimeSpan.FromHours(24),true,prefix,op.StartsWith("ui_")||op=="fail_run"||(op=="qa_finish"&&args?["status"]?.ToString() is "FAILED" or "CANCELLED")?CancellationToken.None:JobCancellation);
+            var result=await Run(python,[Path.Combine(Root,"tools","worker.py")],new JsonObject{{"op",op},{"args",args?.DeepClone()??new JsonObject()}}.ToJsonString(),Root,false,TimeSpan.FromHours(24),true,prefix,op.StartsWith("ui_")||op=="fail_run"||(op=="qa_finish"&&args?["status"]?.ToString() is "FAILED" or "CANCELLED")?CancellationToken.None:JobCancellation,op is "scan" or "process");
             if(result.Code==124 && op is "process" or "scan")
             {
                 var health=Path.Combine(Root,"runtime","import-traces",importKey,"state.json");
-                JsonNode? state=null;try{state=JsonNode.Parse(File.ReadAllText(health));}catch{ }
+                JsonNode? state=null;
+                foreach(var line in result.Error.Split('\n').Reverse())
+                {
+                    const string marker="TD_IMPORT_FAILURE_JSON:";
+                    if(!line.StartsWith(marker,StringComparison.Ordinal))continue;
+                    try{var report=JsonNode.Parse(line[marker.Length..]);if(report?["run_id"]?.ToString()==importKey){state=report;break;}}catch{ }
+                }
+                if(state is null)try{state=JsonNode.Parse(File.ReadAllText(health));}catch{ }
+                var checkpointValid=state?["run_id"]?.ToString()==importKey && state?["state"]?.ToString()=="TIMED_OUT" && state?["checkpoint_persisted"]?.GetValue<bool>()==true;
                 var file=state?["file"]?["relative"]?.ToString();
                 var stage=state?["stage"]?.ToString()??"unknown stage";
-                if(op=="process" && state?["recoverable"]?.GetValue<bool>()!=false && !string.IsNullOrEmpty(file) && attempt<2)
+                if(op=="process" && checkpointValid && state?["recoverable"]?.GetValue<bool>()==true && !string.IsNullOrEmpty(file) && attempt<2)
                 {
                     Log($"Processing timeout at {stage}: {file}. Saved work retained. Resuming with this file set aside; see {health}.");
                     var skipped=args!["skip_timeout_paths"] as JsonArray??new JsonArray();
@@ -70,6 +78,8 @@ public sealed partial class Runtime
                 }
                 throw new Exception($"Processing timed out at {stage}: {file??"startup"}. Saved work retained. Diagnostics: {health}. Retry timed-out files after reviewing the cause.");
             }
+            if(result.Code==125)throw new Exception("Processing stopped because the import monitor could not persist its health status (exit 125). Saved database work is retained. See "+prefix+"-stderr.txt; no automatic file skip was attempted.");
+            if(result.Code!=0 && string.IsNullOrWhiteSpace(result.Output))throw new Exception($"Processing stopped with exit {result.Code}, without a final result. Saved database work is retained. Details: {prefix}-stderr.txt");
             JsonNode obj;
             try{obj=JsonNode.Parse(result.Output)!;}catch{throw new Exception($"Worker {op} returned invalid JSON; see {prefix}-stderr.txt");}
             if(result.Code!=0 || obj["ok"]?.GetValue<bool>()!=true)throw new Exception(obj["error"]?.ToString()??$"Worker {op} failed; see {prefix}-stderr.txt");
@@ -77,7 +87,7 @@ public sealed partial class Runtime
             }
             throw new Exception("Processing recovery limit reached. Review import diagnostics.");
         }
-        catch(Exception e){RecordFailure(work,"worker:"+op,e);throw;}
+        catch(Exception e){try{RecordFailure(work,"worker:"+op,e);}catch(IOException){}catch(UnauthorizedAccessException){}throw;}
     }
     public async Task LoadSecret()
     {
@@ -114,7 +124,7 @@ public sealed partial class Runtime
         try{return JsonNode.Parse(File.ReadAllText(output).Trim())??throw new Exception("Empty output");}
         catch{throw new Exception($"Codex {role} returned invalid JSON. Raw output retained for review.");}
     }
-    public async Task<(int Code,string Output,string Error)> Run(string executable,IEnumerable<string> arguments,string input,string cwd,bool codex,TimeSpan timeout,bool logErrors=true,string? livePrefix=null,CancellationToken jobToken=default)
+    public async Task<(int Code,string Output,string Error)> Run(string executable,IEnumerable<string> arguments,string input,string cwd,bool codex,TimeSpan timeout,bool logErrors=true,string? livePrefix=null,CancellationToken jobToken=default,bool deferWorkerLogs=false)
     {
         jobToken.ThrowIfCancellationRequested();
         var list=arguments.ToList();
@@ -122,7 +132,7 @@ public sealed partial class Runtime
         if(OperatingSystem.IsWindows() && (executable.Equals("codex",StringComparison.OrdinalIgnoreCase)||executable.EndsWith(".cmd",StringComparison.OrdinalIgnoreCase)))
         {
             // cmd is used only for a trusted installed .cmd shim. User prompts go through stdin.
-            static string Quote(string s){if(s.IndexOfAny(['"','\r','\n','&','|','<','>','%','!'])>=0)throw new Exception("Unsafe character in executable/argument path; extract to a simple path such as C:\\TD-POC-v0.26.");return "\""+s+"\"";}
+            static string Quote(string s){if(s.IndexOfAny(['"','\r','\n','&','|','<','>','%','!'])>=0)throw new Exception("Unsafe character in executable/argument path; extract to a simple path such as C:\\TD-POC-v0.027.");return "\""+s+"\"";}
             start.FileName="cmd.exe";
             start.Arguments="/d /s /c \""+Quote(executable)+" "+string.Join(" ",list.Select(Quote))+"\"";
         }
@@ -137,8 +147,9 @@ public sealed partial class Runtime
         }
         if(codex)return await RunAgentProcess(start,input,timeout,livePrefix ?? Path.Combine(cwd,"codex"),jobToken);
         using var process=new Process{StartInfo=start};
-        using var outLog=livePrefix is null?null:new StreamWriter(livePrefix+"-stdout.json",false,new UTF8Encoding(false)){AutoFlush=true};
-        using var errLog=livePrefix is null?null:new StreamWriter(livePrefix+"-stderr.txt",false,new UTF8Encoding(false)){AutoFlush=true};
+        using var importLog=deferWorkerLogs && livePrefix is not null?new WorkerLogSink(livePrefix,PublishActivity):null;
+        using var outLog=livePrefix is null || deferWorkerLogs?null:new StreamWriter(livePrefix+"-stdout.json",false,new UTF8Encoding(false)){AutoFlush=true};
+        using var errLog=livePrefix is null || deferWorkerLogs?null:new StreamWriter(livePrefix+"-stderr.txt",false,new UTF8Encoding(false)){AutoFlush=true};
         if(!process.Start())throw new Exception("Could not start "+executable);
         var stdout=new StringBuilder();var stderr=new StringBuilder();
         async Task Pump(StreamReader reader,StringBuilder target,bool error)
@@ -146,6 +157,7 @@ public sealed partial class Runtime
             while(await reader.ReadLineAsync() is {} line)
             {
                 target.AppendLine(line);
+                if(importLog is not null)importLog.Write(error,line);
                 if(error){errLog?.WriteLine(line);if(logErrors)PublishActivity(line);}else outLog?.WriteLine(line);
             }
         }

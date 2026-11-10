@@ -1,0 +1,13 @@
+  TD.Poc.Infrastructure -> /workspace/scratch/aed6c87a9d4c/v027/TD-POC-v0.027/src/TD.Poc.Infrastructure/bin/Release/net10.0/TD.Poc.Infrastructure.dll
+  TD.Poc.Core -> /workspace/scratch/aed6c87a9d4c/v027/TD-POC-v0.027/src/TD.Poc.Core/bin/Release/net10.0/TD.Poc.Core.dll
+  TD.Poc.Console -> /workspace/scratch/aed6c87a9d4c/v027/TD-POC-v0.027/src/TD.Poc.Console/bin/Release/net10.0/TD.Poc.Console.dll
+  TD.Poc.Retrieval.Console -> /workspace/scratch/aed6c87a9d4c/v027/TD-POC-v0.027/src/TD.Poc.Retrieval.Console/bin/Release/net10.0/TD.Poc.Retrieval.Console.dll
+  TD.Poc.Web -> /workspace/scratch/aed6c87a9d4c/v027/TD-POC-v0.027/src/TD.Poc.Web/bin/Release/net10.0/TD.Poc.Web.dll
+  TD.Poc.Launcher -> /workspace/scratch/aed6c87a9d4c/v027/TD-POC-v0.027/src/TD.Poc.Launcher/bin/Release/net10.0/TD.Poc.Launcher.dll
+  TD.Poc.HostTests -> /workspace/scratch/aed6c87a9d4c/v027/TD-POC-v0.027/tests/TD.Poc.HostTests/bin/Release/net10.0/TD.Poc.HostTests.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:01.29

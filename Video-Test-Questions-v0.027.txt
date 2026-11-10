@@ -1,0 +1,32 @@
+POC 2 — video retrieval tests for Workspace 0.027
+
+Run after processing finishes. Start a new chat for each numbered test; retain the same chat for its follow-up. Do not select a video for test 1. For tests 2–4 you may select the named recording under Videos to make the requested scope explicit.
+
+1. General retrieval — no filename or video selection
+How do I book a forward in TradeDesk? Search the imported articles and training transcripts, explain the supported steps simply, and cite the original sources. Include timestamps if you use a transcript.
+
+Follow-up in that chat:
+Which parts of your answer came from training recordings, and what remains unverified?
+
+2. Sections 3 and 4
+Using the Sections 3 and 4 training recording, explain how booking a forward is demonstrated. Cite timestamps and show relevant original video frames if available. Separate spoken instructions from what the sampled frames actually establish.
+
+Follow-up:
+What does it explain about drawing down that forward? Keep the same recording context and cite the evidence.
+
+3. Sections 5 and 6
+What does the Sections 5 and 6 training recording explain about setting up a corporate client? Give a clear walkthrough, cite timestamps, and show relevant original frames if available. Flag steps or successful outcomes the sources do not establish.
+
+4. User Master
+Compare the password-change instructions in the System Admin Security User Master Walkthrough with the supporting article. Explain what is documented, what the presenter says, and what successful outcomes remain unverified. Cite paths and timestamps and show a relevant frame if available.
+
+5. Cross-video
+Compare the client-setup information in Sections 5 and 6 with the forward-booking information in Sections 3 and 4. What connection, if any, do the sources explicitly establish? Separate documented links from your own reasoning and cite both recordings with timestamps. Do not invent prerequisites.
+
+How to judge the answer:
+- Sources must match the named recording for a scoped test.
+- Transcript evidence must not be described as direct visual inspection.
+- Images should be original available frames with timestamps, not invented examples.
+- A general question may legitimately return an article instead of a video.
+- A clarification or limited answer is appropriate when evidence is missing.
+- If a recording is unavailable/not ready, inspect its ingestion status before retesting. Do not repeatedly rephrase around an unimported transcript.

@@ -1,0 +1,36 @@
+[import] Monitoring warning (nonfatal): Monitoring status unavailable: state.json: PermissionError. Processing continues; timeout monitor remains active.
+[1/4] existing-assets/help.md
+[2/4] existing-assets/invalid.srt
+FAILED existing-assets/invalid.srt: Malformed subtitle cue 1
+[3/4] existing-assets/VLCs/Forward.mp4
+[4/4] existing-assets/VLCs/Forward.srt
+[import] working: inventory/startup | PROCESS | 0.0s / 180.0s
+[import] working: existing-assets/VLCs/Forward.srt | FILE | 0.1s / 1800.0s
+[import] working: existing-assets/VLCs/Forward.srt | DATABASE | 0.0s / 180.0s
+PASS027 health-write denial does not abort real PostgreSQL import; malformed SRT isolated
+PASS027 vectors actually committed before completion
+[1/4] existing-assets/help.md
+[2/4] existing-assets/invalid.srt
+FAILED existing-assets/invalid.srt: Malformed subtitle cue 1
+[3/4] existing-assets/VLCs/Forward.mp4
+[4/4] existing-assets/VLCs/Forward.srt
+PASS027 restart reuses committed vectors
+PASS027 restart does not duplicate vector rows
+Comparing 4 files with PostgreSQL in one inventory query
+Checked 4/4 files against database inventory
+PASS027 meeting recordings remain excluded
+PASS027 batched scan sees imported training transcript
+Building/verifying HNSW: td017_content_fa737d2e1446422d9169f9081897bcc0; may take several minutes on the first upgrade
+Building/verifying HNSW: td017_analysis_fa737d2e1446422d9169f9081897bcc0; may take several minutes on the first upgrade
+PASS027 general question retrieves video transcript without selecting or naming video
+[1/6] existing-assets/help.md
+[2/6] existing-assets/invalid.srt
+FAILED existing-assets/invalid.srt: Malformed subtitle cue 1
+[3/6] existing-assets/VLCs/Another.mp4
+[4/6] existing-assets/VLCs/Another.srt
+[import] working: existing-assets/VLCs/Another.srt | FILE | 0.0s / 1800.0s
+[import] working: existing-assets/VLCs/Another.srt | FILE | 0.1s / 1800.0s
+[5/6] existing-assets/VLCs/Forward.mp4
+[6/6] existing-assets/VLCs/Forward.srt
+PASS027 new video transcript ingested while old vectors retained
+PostgreSQL integration checks passed: 8

@@ -111,7 +111,7 @@ public sealed partial class Runtime
         var payload=JsonSerializer.Serialize(new{stage,error=Redact(error.Message),details=Redact(error.ToString()),at=DateTimeOffset.Now});
         Directory.CreateDirectory(Path.Combine(work,"failures"));
         File.WriteAllText(Path.Combine(work,"failures",DateTimeOffset.UtcNow.ToString("yyyyMMddHHmmssfff")+"-"+Guid.NewGuid().ToString("N")+".json"),payload);
-        if(!File.Exists(Path.Combine(work,"failure.json")))File.WriteAllText(Path.Combine(work,"failure.json"),payload);
+        File.WriteAllText(Path.Combine(work,"failure.json"),payload);
         File.AppendAllText(Path.Combine(Root,"runtime","workflow.log"),$"[{DateTimeOffset.Now:HH:mm:ss}] FAILED at {stage}; see {Path.Combine(work,"failure.json")}\n");
     }
 }

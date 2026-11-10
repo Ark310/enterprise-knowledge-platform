@@ -83,13 +83,20 @@ try
     Check(noise.Code==0&&noise.Output.Contains("finished")&&noise.Error.Contains("14999"),"blocked activity status cannot stop draining large child progress output");
     r.EndRole(true,"Fixture processing completed");
     Check(r.CurrentActivity is null,"denied activity status cannot prevent closing the role");
+    var deniedPrefix=Path.Combine(dir,"denied-import-log");Directory.CreateDirectory(deniedPrefix+"-stderr.txt");
+    var drained=await r.Run("python3",["-c","import sys;[print('progress '+str(i),file=sys.stderr) for i in range(15000)];print('finished')"],"",dir,false,TimeSpan.FromSeconds(10),true,deniedPrefix,default,true);
+    Check(drained.Code==0&&drained.Output.Contains("finished")&&drained.Error.Contains("14999"),"denied raw import log cannot block child pipes or lose the final result");
     Directory.CreateDirectory(Path.Combine(dir,"tools"));
     File.WriteAllText(Path.Combine(dir,"tools","worker.py"),"""
 import sys,json,pathlib,os
 request=json.load(sys.stdin);a=request['args'];root=pathlib.Path(__file__).resolve().parent.parent
+if a.get('fault')=='unpersisted':
+ print('TD_IMPORT_FAILURE_JSON:'+json.dumps({'file':{'relative':'a.md'},'stage':'EMBEDDING_API','state':'TIMED_OUT','run_id':a['import_run_key'],'recoverable':False,'checkpoint_persisted':False}),file=sys.stderr)
+ sys.exit(124)
+if a.get('fault')=='legacy125':sys.exit(125)
 if not a.get('skip_timeout_paths'):
  p=root/'runtime/import-traces'/a['import_run_key'];p.mkdir(parents=True)
- (p/'state.json').write_text(json.dumps({'file':{'relative':'a.md','path':'/fixture/a.md'},'stage':'EMBEDDING_API'}))
+ (p/'state.json').write_text(json.dumps({'file':{'relative':'a.md','path':'/fixture/a.md'},'stage':'EMBEDDING_API','state':'TIMED_OUT','run_id':a['import_run_key'],'recoverable':True,'checkpoint_persisted':True}))
  sys.exit(124)
 assert a['retry_timeouts'] is True
 assert a['skip_timeout_paths']==['/fixture/a.md']
@@ -97,6 +104,13 @@ print(json.dumps({'ok':True,'result':{'recovered':True}}))
 """);
     var recovered=await r.Worker("process",new JsonObject{{"retry_timeouts",true}});
     Check(recovered["recovered"]!.GetValue<bool>(),"processing timeout resumes with only this invocation's failed file excluded");
+    var protocolWork=Path.Combine(dir,"protocol-failures");bool safeStop=false;
+    try{await r.Worker("process",new JsonObject{{"fault","unpersisted"},{"work",protocolWork}});}catch(Exception error){safeStop=error.Message.Contains("Processing timed out")&&!error.Message.Contains("invalid JSON");}
+    Check(safeStop&&Directory.GetFiles(Path.Combine(protocolWork,"workers"),"*-stdout.json").Length==1,"timeout without a persisted checkpoint reports cause and never auto-resumes");
+    bool monitorCause=false;
+    try{await r.Worker("process",new JsonObject{{"fault","legacy125"},{"work",protocolWork}});}catch(Exception error){monitorCause=error.Message.Contains("exit 125")&&!error.Message.Contains("invalid JSON");}
+    Check(monitorCause,"monitor exit reports actual reason instead of invalid JSON");
+    Check(File.ReadAllText(Path.Combine(protocolWork,"failure.json")).Contains("exit 125"),"latest failure replaces stale summary while dated records remain");
     int generated=0,validated=0;bool receivedFeedback=false;
     await BatchRecovery.Run((attempt,feedback)=>{generated++;receivedFeedback|=feedback is not null;return Task.CompletedTask;},()=>Task.FromResult<JsonNode>(new JsonObject{{"valid",++validated==2},{"errors",new JsonArray("fixture citation mismatch")}}));
     Check(generated==2&&receivedFeedback,"invalid batch repaired with validation feedback");
