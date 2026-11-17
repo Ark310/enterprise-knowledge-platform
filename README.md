@@ -14,6 +14,10 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Built with Claude Code](https://img.shields.io/badge/Built%20with-Claude%20Code-d97757?logo=anthropic)
 
+<!-- showcase:banner:start -->
+> 🧭 Part of **Abdul Raqeeb Khatri's portfolio**: [📂 Hub](https://github.com/Ark310/portfolio) · [🌐 Site](https://ark310.github.io) · [💼 Experience](https://github.com/Ark310/experience)
+<!-- showcase:banner:end -->
+
 > ⬅️ **Continues [knowledge-base-assistant](https://github.com/Ark310/knowledge-base-assistant)**, the June–July 2026 desktop
 > RAG assistant. Its knowledge-base scraper was rebuilt here as the ingestion stage, and the retrieval moved to PostgreSQL/pgvector
 > with an independent answer verifier.
@@ -50,6 +54,20 @@ proven from the sources, and can the system say exactly what it could not prove?
 3. **POC 2, Knowledge Retrieval and Verification**: answers questions with citations. A second,
    independent agent checks every claim, then the host checks every excerpt byte for byte before
    anything is shown or saved.
+
+<!-- showcase:why-impact:start -->
+## 💡 Why I Built It
+
+Support answers about a complex financial product were only as good as whoever happened to remember them, and the knowledge was scattered across a help site, API docs, shared folders and training recordings. Generic AI answers sounded confident even when they were wrong for a given release. I wanted a system that answers only from the sources, proves every citation, and says plainly what it could not confirm.
+
+## 📈 Impact
+
+- Built a verified offline copy of the help site that the POCs ingest: 1,743 of 1,743 articles, 0 missing in the final audit, plus 835 API reference pages captured by a scraper that is unable to send requests to the API it documents.
+- Shipped 23 POC releases and hotfixes in under two weeks (Oct 28 – Nov 10). The last release, v0.027, passes 162 Python tests, 74 host checks and 8 PostgreSQL integration checks with a 0-warning build. These tests cover wiring, validation and recovery; there are no live answer-accuracy numbers.
+- Turned the POCs into a reviewed enterprise design: support-portal integration, SSO/tenant separation, client-facing self-service and ReadMe.io publishing are **designed, not built**. Independent Claude and Gemini reviews of the 59-table production schema shaped it.
+
+`23 releases` · `162 + 74 + 8 checks` · `1,743 articles verified`
+<!-- showcase:why-impact:end -->
 
 ## What the POCs do today
 
@@ -374,3 +392,11 @@ Designed and built by Abdul Raqeeb Khatri, with Claude Code and Codex as AI pair
 
 TradeDesk, Contoso and the `*.contoso.example` hosts are placeholders for the real product and company.
 Client and bank names in the regression fixtures have been replaced.
+
+<!-- showcase:footer:start -->
+---
+
+<p align="center"><a href="https://github.com/Ark310/portfolio">← Back to the portfolio hub</a> · <a href="https://ark310.github.io">Interactive site</a> · <a href="https://github.com/Ark310/experience">Experience</a></p>
+
+**Related projects:** [Knowledge Base Assistant](https://github.com/Ark310/knowledge-base-assistant) · [Confluence to Guide Converter](https://github.com/Ark310/confluence-to-guide-converter) · [Video Transcriber](https://github.com/Ark310/video-transcriber)
+<!-- showcase:footer:end -->
