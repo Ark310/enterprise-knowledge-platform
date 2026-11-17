@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from restscraper import theneo
 from restscraper.discovery import SiteMap, build_sitemap, crosscheck
 
@@ -7,6 +9,8 @@ FIXTURE = Path(__file__).parent / "fixtures" / "page.html"
 
 
 def _pp():
+    if not FIXTURE.exists():
+        pytest.skip("captured API docs page not shipped")
     return theneo.next_data(FIXTURE.read_text(encoding="utf-8"))
 
 

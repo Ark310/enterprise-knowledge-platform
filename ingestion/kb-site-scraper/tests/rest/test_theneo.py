@@ -10,6 +10,8 @@ FIXTURE = Path(__file__).parent / "fixtures" / "page.html"
 
 @pytest.fixture(scope="module")
 def pp():
+    if not FIXTURE.exists():
+        pytest.skip("captured API docs page not shipped")
     return theneo.next_data(FIXTURE.read_text(encoding="utf-8"))
 
 

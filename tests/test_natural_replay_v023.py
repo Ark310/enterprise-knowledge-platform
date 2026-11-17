@@ -3,7 +3,11 @@ import copy,json,sys,unittest
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'tools'))
 import knowledge_qa as qa
-CASES=json.loads((Path(__file__).parent/'fixtures/v023/natural-runs.json').read_text())
+_FIXTURE=Path(__file__).parent/'fixtures/v023/natural-runs.json'
+if not _FIXTURE.exists():
+ # The captured runs quote real knowledge-base articles, so they are not published.
+ raise unittest.SkipTest('captured natural-run fixture not shipped (contains real KB excerpts)')
+CASES=json.loads(_FIXTURE.read_text())
 class CapturedNaturalRuns(unittest.TestCase):
  def test_all_eleven_natural_question_cases_accounted_for(self):
   self.assertEqual(len(CASES),11)
