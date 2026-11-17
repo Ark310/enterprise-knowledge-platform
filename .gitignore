@@ -1,14 +1,49 @@
+# .NET
 bin/
 obj/
-.venv/
-runtime/
-config/*.dpapi
+.vs/
 *.user
 *.suo
-.vs/
-tools/ffmpeg/
 
-config/codex-home/
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Local runtime state, run exports, logs (may contain source excerpts and frames)
+runtime/
+knowledge-runs/
+*.log
+!docs/verification-*/*.log
 TD-review-*.zip
-
 TD-knowledge-*.zip
+*.backup
+
+# Secrets and per-user config
+config/*.dpapi
+config/codex-home/
+auth.json
+.env
+.env.*
+
+# Tools and media
+tools/ffmpeg/
+*.mp4
+*.srt
+data-fixes/
+tests/legacy/
+
+# Ingestion output (scraped content never ships)
+ingestion/kb-site-scraper/library/
+ingestion/kb-site-scraper/REST API/
+ingestion/kb-site-scraper/state/
+ingestion/kb-site-scraper/assets/
+ingestion/kb-site-scraper/tests/fixtures/*.html
+ingestion/kb-site-scraper/tests/rest/fixtures/
+tests/fixtures/v023/natural-runs.json
+
+# Build output
+dist/
+build/
